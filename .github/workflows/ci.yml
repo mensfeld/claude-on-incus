@@ -61,36 +61,36 @@ jobs:
         sudo apt-get install -y incus
 
         # Initialize Incus (preseed with defaults)
-        cat <<EOF | sudo incus admin init --preseed
-config:
-  core.https_address: 127.0.0.1:8443
-networks:
-- config:
-    ipv4.address: auto
-    ipv6.address: auto
-  description: ""
-  name: incusbr0
-  type: bridge
-storage_pools:
-- config:
-    size: 30GiB
-  description: ""
-  name: default
-  driver: dir
-profiles:
-- config: {}
-  description: Default Incus profile
-  devices:
-    eth0:
-      name: eth0
-      network: incusbr0
-      type: nic
-    root:
-      path: /
-      pool: default
-      type: disk
-  name: default
-EOF
+        cat <<'EOFINCUS' | sudo incus admin init --preseed
+        config:
+          core.https_address: 127.0.0.1:8443
+        networks:
+        - config:
+            ipv4.address: auto
+            ipv6.address: auto
+          description: ""
+          name: incusbr0
+          type: bridge
+        storage_pools:
+        - config:
+            size: 30GiB
+          description: ""
+          name: default
+          driver: dir
+        profiles:
+        - config: {}
+          description: Default Incus profile
+          devices:
+            eth0:
+              name: eth0
+              network: incusbr0
+              type: nic
+            root:
+              path: /
+              pool: default
+              type: disk
+          name: default
+        EOFINCUS
 
     - name: Configure Incus permissions
       run: |
@@ -246,36 +246,36 @@ EOF
         sudo apt-get update
         sudo apt-get install -y incus
 
-        cat <<EOF | sudo incus admin init --preseed
-config:
-  core.https_address: 127.0.0.1:8443
-networks:
-- config:
-    ipv4.address: auto
-    ipv6.address: auto
-  description: ""
-  name: incusbr0
-  type: bridge
-storage_pools:
-- config:
-    size: 30GiB
-  description: ""
-  name: default
-  driver: dir
-profiles:
-- config: {}
-  description: Default Incus profile
-  devices:
-    eth0:
-      name: eth0
-      network: incusbr0
-      type: nic
-    root:
-      path: /
-      pool: default
-      type: disk
-  name: default
-EOF
+        cat <<'EOFINCUS' | sudo incus admin init --preseed
+        config:
+          core.https_address: 127.0.0.1:8443
+        networks:
+        - config:
+            ipv4.address: auto
+            ipv6.address: auto
+          description: ""
+          name: incusbr0
+          type: bridge
+        storage_pools:
+        - config:
+            size: 30GiB
+          description: ""
+          name: default
+          driver: dir
+        profiles:
+        - config: {}
+          description: Default Incus profile
+          devices:
+            eth0:
+              name: eth0
+              network: incusbr0
+              type: nic
+            root:
+              path: /
+              pool: default
+              type: disk
+          name: default
+        EOFINCUS
 
     - name: Configure Incus permissions
       run: |
