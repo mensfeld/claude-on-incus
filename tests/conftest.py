@@ -103,4 +103,4 @@ def workspace_dir(integrations_tmp_dir, request):
 def sessions_dir():
     """Get the sessions directory."""
     home = Path.home()
-    return str(home / ".claude-on-incus" / "sessions")
+    return str(home / ".coi" / "sessions")

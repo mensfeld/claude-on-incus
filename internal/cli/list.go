@@ -50,15 +50,39 @@ func listCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list containers: %w", err)
 	}
 
+	// Build a map of container name -> workspace from saved sessions
+	containerWorkspaces := make(map[string]string)
+	if sessions, err := listSavedSessions(cfg.Paths.SessionsDir); err == nil {
+		for _, s := range sessions {
+			// Map by container name from metadata
+			metadataPath := filepath.Join(cfg.Paths.SessionsDir, s.ID, "metadata.json")
+			if data, err := os.ReadFile(metadataPath); err == nil {
+				var metadata session.SessionMetadata
+				if err := json.Unmarshal(data, &metadata); err == nil && metadata.ContainerName != "" {
+					containerWorkspaces[metadata.ContainerName] = metadata.Workspace
+				}
+			}
+		}
+	}
+
 	if len(containers) == 0 {
 		fmt.Println("  (none)")
 	} else {
 		for _, c := range containers {
-			fmt.Printf("  %s\n", c.Name)
+			// Show container name with persistent indicator
+			if c.Persistent {
+				fmt.Printf("  %s (persistent)\n", c.Name)
+			} else {
+				fmt.Printf("  %s\n", c.Name)
+			}
 			fmt.Printf("    Status: %s\n", c.Status)
 			fmt.Printf("    Created: %s\n", c.CreatedAt)
 			if c.Image != "" {
 				fmt.Printf("    Image: %s\n", c.Image)
+			}
+			// Show workspace if we have it from session metadata
+			if workspace, ok := containerWorkspaces[c.Name]; ok && workspace != "" {
+				fmt.Printf("    Workspace: %s\n", workspace)
 			}
 		}
 	}
@@ -91,10 +115,11 @@ func listCommand(cmd *cobra.Command, args []string) error {
 
 // ContainerInfo holds information about a container
 type ContainerInfo struct {
-	Name      string
-	Status    string
-	CreatedAt string
-	Image     string
+	Name       string
+	Status     string
+	CreatedAt  string
+	Image      string
+	Persistent bool
 }
 
 // SessionInfo holds information about a saved session
@@ -106,7 +131,11 @@ type SessionInfo struct {
 
 // listActiveContainers lists all active claude-on-incus containers
 func listActiveContainers() ([]ContainerInfo, error) {
-	output, err := container.IncusOutput("list", "^claude-", "--format=json")
+	// Use the configured container prefix (respects COI_CONTAINER_PREFIX env var)
+	prefix := session.GetContainerPrefix()
+	pattern := fmt.Sprintf("^%s", prefix)
+
+	output, err := container.IncusOutput("list", pattern, "--format=json")
 	if err != nil {
 		return nil, err
 	}
@@ -122,9 +151,14 @@ func listActiveContainers() ([]ContainerInfo, error) {
 		status, _ := c["status"].(string)       // Type assertion, default to "" if fails
 		createdAt, _ := c["created_at"].(string) // Type assertion, default to "" if fails
 
-		// Get image info
+		// Get image info and ephemeral flag
 		config, _ := c["config"].(map[string]interface{}) // Type assertion
 		image, _ := config["image.description"].(string)  // Type assertion
+
+		// Check if ephemeral (persistent = !ephemeral)
+		// If ephemeral is not set or is false, container is persistent
+		ephemeral, _ := c["ephemeral"].(bool)
+		persistent := !ephemeral
 
 		// Parse created_at time
 		createdTime := ""
@@ -133,10 +167,11 @@ func listActiveContainers() ([]ContainerInfo, error) {
 		}
 
 		result = append(result, ContainerInfo{
-			Name:      name,
-			Status:    status,
-			CreatedAt: createdTime,
-			Image:     image,
+			Name:       name,
+			Status:     status,
+			CreatedAt:  createdTime,
+			Image:      image,
+			Persistent: persistent,
 		})
 	}
 
@@ -176,6 +211,7 @@ func listSavedSessions(sessionsDir string) ([]SessionInfo, error) {
 			var metadata session.SessionMetadata
 			if err := json.Unmarshal(data, &metadata); err == nil {
 				savedAt = metadata.SavedAt
+				workspace = metadata.Workspace
 			}
 		}
 

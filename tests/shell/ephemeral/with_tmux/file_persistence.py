@@ -3,7 +3,7 @@ Test file persistence after container exits.
 
 Flow:
 1. Start shell
-2. Ask Claude to write "IM HERE" to TEST.md
+2. Ask Claude to write "IM HERE" to HELLO.md
 3. Exit container
 4. Verify file exists in workspace with correct content
 5. Clean up file
@@ -37,7 +37,7 @@ def test_file_persists_after_container_exit(coi_binary, cleanup_containers, work
 
     with with_live_screen(child) as monitor:
         time.sleep(2)
-        send_prompt(child, 'Write the text "IM HERE" to a file named HELLO.md and print first 6 PI digits')
+        send_prompt(child, 'Write the text "IM HERE" to a file named HELLO.md and after that print first 6 PI digits')
         wait_for_text_in_monitor(monitor, "14159", timeout=30)
 
         # Exit Claude and wait for container cleanup while monitor is still running

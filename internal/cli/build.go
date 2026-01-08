@@ -56,10 +56,10 @@ func buildCommand(cmd *cobra.Command, args []string) error {
 	switch imageType {
 	case "sandbox":
 		opts.AliasName = image.SandboxAlias
-		opts.Description = "ClaudeYard sandbox image (Docker + build tools + sudo)"
+		opts.Description = "coi sandbox image (Docker + build tools + sudo)"
 	case "privileged":
 		opts.AliasName = image.PrivilegedAlias
-		opts.Description = "ClaudeYard privileged image (sandbox + GitHub CLI + SSH)"
+		opts.Description = "coi privileged image (sandbox + GitHub CLI + SSH)"
 	}
 
 	// Logger function

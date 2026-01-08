@@ -36,7 +36,7 @@ def test_claude_responds_to_request(coi_binary, cleanup_containers, workspace_di
 
     with with_live_screen(child) as monitor:
         time.sleep(2)
-        send_prompt(child, "What are the first 10 PI digits?")
+        send_prompt(child, "Print first 10 PI digits")
         responded = wait_for_text_in_monitor(monitor, "14159", timeout=30)
 
         # Exit Claude and wait for container cleanup while monitor is still running

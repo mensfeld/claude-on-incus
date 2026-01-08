@@ -44,7 +44,7 @@ type SetupResult struct {
 }
 
 // Setup initializes a container for a Claude session
-// This is a simplified version of ClaudeYard's 12-step setup
+// This configures the container with workspace mounting and user setup
 func Setup(opts SetupOptions) (*SetupResult, error) {
 	result := &SetupResult{}
 
@@ -81,10 +81,10 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 	}
 
 	// 3. Determine execution context
-	usingClaudeYardImage := image == SandboxImage || image == PrivilegedImage
-	// ClaudeYard images have the claude user pre-configured, so run as that user
+	usingCoiImage := image == SandboxImage || image == PrivilegedImage
+	// coi images have the claude user pre-configured, so run as that user
 	// Other images don't have this setup, so run as root
-	result.RunAsRoot = !usingClaudeYardImage
+	result.RunAsRoot = !usingCoiImage
 	if result.RunAsRoot {
 		result.HomeDir = "/root"
 	} else {
@@ -215,9 +215,14 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 				}
 			} else {
 				// SANDBOX MODE: Copy and inject settings (but only if NOT resuming)
-				opts.Logger("Setting up Claude config for sandbox mode...")
-				if err := setupClaudeConfigSandbox(result.Manager, opts.ClaudeConfigPath, result.HomeDir, opts.Logger); err != nil {
-					opts.Logger(fmt.Sprintf("Warning: Failed to setup Claude config: %v", err))
+				// Only run on first launch, not when restarting persistent container
+				if !skipLaunch {
+					opts.Logger("Setting up Claude config for sandbox mode...")
+					if err := setupClaudeConfigSandbox(result.Manager, opts.ClaudeConfigPath, result.HomeDir, opts.Logger); err != nil {
+						opts.Logger(fmt.Sprintf("Warning: Failed to setup Claude config: %v", err))
+					}
+				} else {
+					opts.Logger("Reusing existing Claude config (persistent container)")
 				}
 			}
 		} else if !os.IsNotExist(err) {
@@ -299,10 +304,10 @@ func restoreSessionData(mgr *container.Manager, resumeID, homeDir, sessionsDir s
 	return nil
 }
 
-// injectCredentials copies ONLY credentials from host to container when resuming
+// injectCredentials copies credentials and essential config from host to container when resuming
 // This ensures fresh authentication while preserving the session conversation history
 func injectCredentials(mgr *container.Manager, hostClaudeConfigPath, homeDir string, logger func(string)) error {
-	logger("Injecting fresh credentials for session resume...")
+	logger("Injecting fresh credentials and config for session resume...")
 
 	// Copy .credentials.json from host to container
 	credentialsPath := filepath.Join(hostClaudeConfigPath, ".credentials.json")
@@ -322,7 +327,35 @@ func injectCredentials(mgr *container.Manager, hostClaudeConfigPath, homeDir str
 		}
 	}
 
-	logger("Credentials injected successfully")
+	// Also copy .claude.json (sibling to .claude directory) if it exists
+	// This file contains important config like theme, startup count, etc.
+	claudeJsonPath := filepath.Join(filepath.Dir(hostClaudeConfigPath), ".claude.json")
+	if _, err := os.Stat(claudeJsonPath); err == nil {
+		logger("Copying .claude.json for session resume...")
+		claudeJsonDest := filepath.Join(homeDir, ".claude.json")
+		if err := mgr.PushFile(claudeJsonPath, claudeJsonDest); err != nil {
+			logger(fmt.Sprintf("Warning: Failed to copy .claude.json: %v", err))
+		} else {
+			// Inject sandbox settings into .claude.json
+			logger("Injecting sandbox settings into .claude.json...")
+			injectCmd := fmt.Sprintf(
+				`python3 -c 'import json; f=open("%s","r+"); d=json.load(f); d["allowDangerouslySkipPermissions"]=True; d["bypassPermissionsModeAccepted"]=True; d["permissions"]={"defaultMode":"bypassPermissions"}; f.seek(0); json.dump(d,f,indent=2); f.truncate()'`,
+				claudeJsonDest,
+			)
+			if _, err := mgr.ExecCommand(injectCmd, container.ExecCommandOptions{Capture: true}); err != nil {
+				logger(fmt.Sprintf("Warning: Failed to inject settings into .claude.json: %v", err))
+			}
+
+			// Fix ownership if running as claude user
+			if homeDir != "/root" {
+				if err := mgr.Chown(claudeJsonDest, ClaudeUID, ClaudeUID); err != nil {
+					logger(fmt.Sprintf("Warning: Failed to set .claude.json ownership: %v", err))
+				}
+			}
+		}
+	}
+
+	logger("Credentials and config injected successfully")
 	return nil
 }
 

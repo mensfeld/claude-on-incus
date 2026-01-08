@@ -18,6 +18,7 @@ type CleanupOptions struct {
 	Persistent    bool   // If true, stop but don't delete container
 	SessionsDir   string // e.g., ~/.claude-on-incus/sessions
 	SaveSession   bool   // Whether to save .claude directory
+	Workspace     string // Workspace directory path
 	Logger        func(string)
 }
 
@@ -37,15 +38,16 @@ func Cleanup(opts CleanupOptions) error {
 
 	mgr := container.NewManager(opts.ContainerName)
 
-	// Check if container is running
-	running, err := mgr.Running()
+	// Check if container exists (it might have auto-deleted if ephemeral)
+	exists, err := mgr.Exists()
 	if err != nil {
-		opts.Logger(fmt.Sprintf("Warning: Could not check container status: %v", err))
+		opts.Logger(fmt.Sprintf("Warning: Could not check container existence: %v", err))
 	}
 
-	// Save session data if requested and container is running
-	if opts.SaveSession && running && opts.SessionID != "" && opts.SessionsDir != "" {
-		if err := saveSessionData(mgr, opts.SessionID, opts.Privileged, opts.SessionsDir, opts.Logger); err != nil {
+	// Save session data if requested and container exists
+	// Note: We can pull files from stopped containers, so don't check if running
+	if opts.SaveSession && exists && opts.SessionID != "" && opts.SessionsDir != "" {
+		if err := saveSessionData(mgr, opts.SessionID, opts.Privileged, opts.Persistent, opts.Workspace, opts.SessionsDir, opts.Logger); err != nil {
 			opts.Logger(fmt.Sprintf("Warning: Failed to save session data: %v", err))
 		}
 	}
@@ -85,11 +87,11 @@ func Cleanup(opts CleanupOptions) error {
 }
 
 // saveSessionData saves the .claude directory from the container
-func saveSessionData(mgr *container.Manager, sessionID string, privileged bool, sessionsDir string, logger func(string)) error {
+func saveSessionData(mgr *container.Manager, sessionID string, privileged bool, persistent bool, workspace string, sessionsDir string, logger func(string)) error {
 	// Determine home directory
-	// For ClaudeYard images, we always use /home/claude
+	// For coi images, we always use /home/claude
 	// For other images, we use /root
-	// Since we currently only support ClaudeYard images, always use /home/claude
+	// Since we currently only support coi images, always use /home/claude
 	homeDir := "/home/" + ClaudeUser
 
 	claudeDir := filepath.Join(homeDir, ".claude")
@@ -131,6 +133,8 @@ func saveSessionData(mgr *container.Manager, sessionID string, privileged bool, 
 		SessionID:     sessionID,
 		ContainerName: mgr.ContainerName,
 		Privileged:    privileged,
+		Persistent:    persistent,
+		Workspace:     workspace,
 		SavedAt:       getCurrentTime(),
 	}
 
@@ -149,6 +153,8 @@ type SessionMetadata struct {
 	SessionID     string `json:"session_id"`
 	ContainerName string `json:"container_name"`
 	Privileged    bool   `json:"privileged"`
+	Persistent    bool   `json:"persistent"`
+	Workspace     string `json:"workspace"`
 	SavedAt       string `json:"saved_at"`
 }
 
@@ -159,9 +165,11 @@ func saveMetadata(path string, metadata SessionMetadata) error {
   "session_id": "%s",
   "container_name": "%s",
   "privileged": %t,
+  "persistent": %t,
+  "workspace": "%s",
   "saved_at": "%s"
 }
-`, metadata.SessionID, metadata.ContainerName, metadata.Privileged, metadata.SavedAt)
+`, metadata.SessionID, metadata.ContainerName, metadata.Privileged, metadata.Persistent, metadata.Workspace, metadata.SavedAt)
 
 	return os.WriteFile(path, []byte(content), 0644)
 }
@@ -169,6 +177,13 @@ func saveMetadata(path string, metadata SessionMetadata) error {
 // getCurrentTime returns current time in RFC3339 format
 func getCurrentTime() string {
 	return time.Now().Format(time.RFC3339)
+}
+
+// SessionExists checks if a session with the given ID exists and is valid
+func SessionExists(sessionsDir, sessionID string) bool {
+	claudePath := filepath.Join(sessionsDir, sessionID, ".claude")
+	info, err := os.Stat(claudePath)
+	return err == nil && info.IsDir()
 }
 
 // ListSavedSessions lists all saved sessions in the sessions directory
@@ -212,7 +227,7 @@ func GetLatestSession(sessionsDir string) (string, error) {
 
 	for _, sessionID := range sessions {
 		metadataPath := filepath.Join(sessionsDir, sessionID, "metadata.json")
-		metadata, err := loadMetadata(metadataPath)
+		metadata, err := LoadSessionMetadata(metadataPath)
 		if err != nil {
 			continue // Skip sessions without valid metadata
 		}
@@ -255,7 +270,7 @@ func GetLatestSessionForWorkspace(sessionsDir, workspacePath string) (string, er
 
 	for _, sessionID := range sessions {
 		metadataPath := filepath.Join(sessionsDir, sessionID, "metadata.json")
-		metadata, err := loadMetadata(metadataPath)
+		metadata, err := LoadSessionMetadata(metadataPath)
 		if err != nil {
 			continue // Skip sessions without valid metadata
 		}
@@ -289,8 +304,8 @@ func GetLatestSessionForWorkspace(sessionsDir, workspacePath string) (string, er
 	return latestSession, nil
 }
 
-// loadMetadata loads session metadata from a JSON file
-func loadMetadata(path string) (*SessionMetadata, error) {
+// LoadSessionMetadata loads session metadata from a JSON file
+func LoadSessionMetadata(path string) (*SessionMetadata, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -307,6 +322,10 @@ func loadMetadata(path string) (*SessionMetadata, error) {
 			metadata.ContainerName = extractJSONValue(line)
 		} else if strings.Contains(line, "\"privileged\"") {
 			metadata.Privileged = strings.Contains(line, "true")
+		} else if strings.Contains(line, "\"persistent\"") {
+			metadata.Persistent = strings.Contains(line, "true")
+		} else if strings.Contains(line, "\"workspace\"") {
+			metadata.Workspace = extractJSONValue(line)
 		} else if strings.Contains(line, "\"saved_at\"") {
 			metadata.SavedAt = extractJSONValue(line)
 		}

@@ -392,9 +392,14 @@ def send_prompt(child, prompt, delay=0.2):
     time.sleep(delay)
 
 
-def exit_claude(child, timeout=60):
+def exit_claude(child, timeout=60, use_ctrl_c=False):
     """
-    Exit Claude cleanly using /exit command.
+    Exit Claude cleanly using /exit command or Ctrl+C.
+
+    Args:
+        child: pexpect.spawn object
+        timeout: How long to wait for exit (default: 60 seconds)
+        use_ctrl_c: Use Ctrl+C instead of /exit (useful for persistent containers)
 
     Returns:
         True if Claude exited cleanly, False if timeout/force kill occurred
@@ -407,10 +412,21 @@ def exit_claude(child, timeout=60):
     verbose = getattr(child.logfile_read, "verbose", False)
 
     if verbose:
-        print("\n\n--- SENDING EXIT COMMAND ---")
+        if use_ctrl_c:
+            print("\n\n--- SENDING CTRL+C (INTERRUPT) ---")
+        else:
+            print("\n\n--- SENDING EXIT COMMAND ---")
 
-    child.send("/exit")
-    child.send("\x0d")  # Ctrl+M
+    if use_ctrl_c:
+        # Send Ctrl+C twice to interrupt
+        child.sendcontrol('c')
+        time.sleep(0.5)
+        child.sendcontrol('c')
+        time.sleep(0.5)
+    else:
+        child.send("/exit")
+        time.sleep(1)
+        child.send("\x0d")  # Ctrl+M
 
     try:
         child.expect(EOF, timeout=timeout)
@@ -942,6 +958,10 @@ class LiveScreenMonitor:
         if self.show_startup and show_message:
             print("\n⚫ Monitor stopped\n", file=sys.stderr)
 
+    def get_current_screen(self):
+        """Get the current screen content as a string."""
+        return self.last_display
+
     def _monitor_loop(self):
         """Background loop that continuously reads and displays screen."""
         while self.running:
@@ -1087,3 +1107,32 @@ def get_screen_display(child, refresh=False, clear_buffer=False):
         return child.logfile_read.get_output()
     else:
         return ""
+
+
+def calculate_container_name(workspace_dir, slot):
+    """
+    Calculate the expected container name for a given workspace and slot.
+
+    This replicates the container naming logic from internal/session/naming.go.
+
+    Args:
+        workspace_dir: Path to workspace directory
+        slot: Slot number
+
+    Returns:
+        Expected container name (e.g., "coi-test-85918044-1")
+    """
+    import hashlib
+
+    # Get container prefix from environment (defaults to "coi-" but tests use "coi-test-")
+    prefix = os.environ.get("COI_CONTAINER_PREFIX", "coi-")
+
+    # Hash the workspace path (SHA256)
+    workspace_path = str(Path(workspace_dir).resolve())
+    hash_bytes = hashlib.sha256(workspace_path.encode()).digest()
+
+    # Take first 8 hex characters
+    workspace_id = hash_bytes.hex()[:8]
+
+    # Format: {prefix}{hash}-{slot}
+    return f"{prefix}{workspace_id}-{slot}"

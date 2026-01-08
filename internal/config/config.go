@@ -51,7 +51,7 @@ func GetDefaultConfig() *Config {
 	if err != nil {
 		homeDir = "/tmp" // Fallback if home dir cannot be determined
 	}
-	baseDir := filepath.Join(homeDir, ".claude-on-incus")
+	baseDir := filepath.Join(homeDir, ".coi")
 
 	return &Config{
 		Defaults: DefaultsConfig{
@@ -88,9 +88,9 @@ func GetConfigPaths() []string {
 	}
 
 	return []string{
-		"/etc/claude-on-incus/config.toml",              // System config
-		filepath.Join(homeDir, ".config/claude-on-incus/config.toml"), // User config
-		filepath.Join(workDir, ".claude-on-incus.toml"), // Project config
+		"/etc/coi/config.toml",                          // System config
+		filepath.Join(homeDir, ".config/coi/config.toml"), // User config
+		filepath.Join(workDir, ".coi.toml"),             // Project config
 	}
 }
 

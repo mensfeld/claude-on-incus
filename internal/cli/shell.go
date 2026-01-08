@@ -30,13 +30,14 @@ All sessions run in tmux for monitoring and detach/reattach support:
   - Reattach: Run 'coi shell' again in same workspace
 
 Examples:
-  coi shell                      # Interactive session in tmux
-  coi shell --background         # Run in background (detached)
-  coi shell --resume             # Resume previous session
-  coi shell --continue           # Same as --resume (alias)
-  coi shell --privileged         # Privileged mode with Git/SSH
-  coi shell --slot 2             # Use specific slot
-  coi shell --debug              # Launch bash for debugging
+  coi shell                         # Interactive session in tmux
+  coi shell --background            # Run in background (detached)
+  coi shell --resume                # Resume latest session (auto)
+  coi shell --resume=<session-id>   # Resume specific session (note: = is required)
+  coi shell --continue=<session-id> # Same as --resume (alias)
+  coi shell --privileged            # Privileged mode with Git/SSH
+  coi shell --slot 2                # Use specific slot
+  coi shell --debug                 # Launch bash for debugging
 `,
 	RunE: shellCommand,
 }
@@ -48,6 +49,11 @@ func init() {
 }
 
 func shellCommand(cmd *cobra.Command, args []string) error {
+	// Validate no unexpected positional arguments
+	if len(args) > 0 {
+		return fmt.Errorf("unexpected argument '%s' - did you mean --resume=%s? (note: use = when specifying session ID)", args[0], args[0])
+	}
+
 	// Get absolute workspace path
 	absWorkspace, err := filepath.Abs(workspace)
 	if err != nil {
@@ -64,7 +70,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-	sessionsDir := filepath.Join(homeDir, ".claude-on-incus", "sessions")
+	sessionsDir := filepath.Join(homeDir, ".coi", "sessions")
 	if err := os.MkdirAll(sessionsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create sessions directory: %w", err)
 	}
@@ -75,9 +81,11 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		resumeID = continueSession // --continue takes precedence if both are provided
 	}
 
-	// Handle --resume/--continue with no value (gets "auto" from NoOptDefVal)
+	// Check if resume/continue flag was explicitly set
 	resumeFlagSet := cmd.Flags().Changed("resume") || cmd.Flags().Changed("continue")
-	if resumeID == "auto" || resumeID == "" && resumeFlagSet {
+
+	// Auto-detect if flag was set but value is empty or "auto"
+	if resumeFlagSet && (resumeID == "" || resumeID == "auto") {
 		// Auto-detect latest for workspace
 		resumeID, err = session.GetLatestSessionForWorkspace(sessionsDir, absWorkspace)
 		if err != nil {
@@ -89,7 +97,33 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Fprintf(os.Stderr, "Auto-detected session: %s\n", resumeID)
 	} else if resumeID != "" {
+		// Validate that the explicitly provided session exists
+		if !session.SessionExists(sessionsDir, resumeID) {
+			return fmt.Errorf("session '%s' not found - check available sessions with: coi list --all", resumeID)
+		}
 		fmt.Fprintf(os.Stderr, "Resuming session: %s\n", resumeID)
+	}
+
+	// When resuming, inherit persistent and privileged flags from the original session
+	// unless they were explicitly overridden by the user
+	if resumeID != "" {
+		metadataPath := filepath.Join(sessionsDir, resumeID, "metadata.json")
+		if metadata, err := session.LoadSessionMetadata(metadataPath); err == nil {
+			// Inherit persistent flag if not explicitly set by user
+			if !cmd.Flags().Changed("persistent") {
+				persistent = metadata.Persistent
+				if persistent {
+					fmt.Fprintf(os.Stderr, "Inherited persistent mode from session\n")
+				}
+			}
+			// Inherit privileged flag if not explicitly set by user
+			if !cmd.Flags().Changed("privileged") {
+				privileged = metadata.Privileged
+				if privileged {
+					fmt.Fprintf(os.Stderr, "Inherited privileged mode from session\n")
+				}
+			}
+		}
 	}
 
 	// Generate or use session ID
@@ -166,6 +200,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 			Persistent:    persistent,
 			SessionsDir:   sessionsDir,
 			SaveSession:   true, // Always save session data
+			Workspace:     absWorkspace,
 		}
 		if err := session.Cleanup(cleanupOpts); err != nil {
 			fmt.Fprintf(os.Stderr, "Cleanup error: %v\n", err)
@@ -188,10 +223,12 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "Workspace: %s\n", absWorkspace)
 
 	// Determine resume mode
-	// For persistent containers: use --resume flag (container has live session)
-	// For non-persistent: don't use any session flags, let Claude auto-detect from restored .claude dir
-	useResumeFlag := (resumeID != "" && persistent)
-	restoreOnly := (resumeID != "" && !persistent)
+	// When resuming, always pass --resume flag to Claude CLI so it knows which session to resume
+	// The difference is:
+	// - Persistent: container is reused, session data stays in container
+	// - Ephemeral: container is recreated, we restore .claude dir and pass --resume
+	useResumeFlag := (resumeID != "")
+	restoreOnly := false // No longer used - always use --resume flag
 
 	// Choose execution mode
 	if useTmux {

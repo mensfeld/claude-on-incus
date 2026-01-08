@@ -16,14 +16,14 @@ var tmuxCmd = &cobra.Command{
 	Use:   "tmux",
 	Short: "Interact with tmux sessions in containers",
 	Long: `Send commands to or capture output from Claude sessions running in tmux.
-This is primarily for ClaudeYard integration.`,
+This is primarily for automated workflows.`,
 }
 
 var tmuxSendCmd = &cobra.Command{
 	Use:   "send SESSION_NAME COMMAND",
 	Short: "Send a command to a tmux session",
 	Long: `Send a command to a running tmux session in a container.
-The session name should be the container name (e.g., claude-abc123-1).`,
+The session name should be the container name (e.g., coi-abc123-1).`,
 	Args: cobra.ExactArgs(2),
 	RunE: tmuxSendCommand,
 }
@@ -32,7 +32,7 @@ var tmuxCaptureCmd = &cobra.Command{
 	Use:   "capture SESSION_NAME",
 	Short: "Capture output from a tmux session",
 	Long: `Capture the current pane output from a tmux session.
-The session name should be the container name (e.g., claude-abc123-1).`,
+The session name should be the container name (e.g., coi-abc123-1).`,
 	Args: cobra.ExactArgs(1),
 	RunE: tmuxCaptureCommand,
 }
@@ -116,8 +116,8 @@ func tmuxCaptureCommand(cmd *cobra.Command, args []string) error {
 }
 
 func tmuxListCommand(cmd *cobra.Command, args []string) error {
-	// List all running containers
-	containers, err := container.ListContainers("claude-.*")
+	// List all running containers with configured prefix
+	containers, err := container.ListContainers("coi-.*")
 	if err != nil {
 		return fmt.Errorf("failed to list containers: %w", err)
 	}

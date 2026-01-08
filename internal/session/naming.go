@@ -12,15 +12,15 @@ import (
 	"github.com/mensfeld/claude-on-incus/internal/container"
 )
 
-// getContainerPrefix returns the container prefix to use.
-// Checks COI_CONTAINER_PREFIX environment variable first, defaults to "claude-".
+// GetContainerPrefix returns the container prefix to use.
+// Checks COI_CONTAINER_PREFIX environment variable first, defaults to "coi-".
 // This allows tests to use a different prefix (e.g., "coi-test-") to avoid
 // interfering with user's active sessions.
-func getContainerPrefix() string {
+func GetContainerPrefix() string {
 	if prefix := os.Getenv("COI_CONTAINER_PREFIX"); prefix != "" {
 		return prefix
 	}
-	return "claude-"
+	return "coi-"
 }
 
 // WorkspaceHash generates a short hash from workspace path
@@ -37,11 +37,11 @@ func WorkspaceHash(workspacePath string) string {
 }
 
 // ContainerName generates a container name from workspace and slot
-// Format: <prefix><workspace-hash>-<slot> where prefix defaults to "claude-"
+// Format: <prefix><workspace-hash>-<slot> where prefix defaults to "coi-"
 // Can be customized via COI_CONTAINER_PREFIX environment variable
 func ContainerName(workspacePath string, slot int) string {
 	hash := WorkspaceHash(workspacePath)
-	prefix := getContainerPrefix()
+	prefix := GetContainerPrefix()
 	return fmt.Sprintf("%s%s-%d", prefix, hash, slot)
 }
 
@@ -53,7 +53,7 @@ func AllocateSlot(workspacePath string, maxSlots int) (int, error) {
 	}
 
 	hash := WorkspaceHash(workspacePath)
-	prefix := fmt.Sprintf("%s%s-", getContainerPrefix(), hash)
+	prefix := fmt.Sprintf("%s%s-", GetContainerPrefix(), hash)
 
 	// Get all containers matching our workspace
 	output, err := container.IncusOutput("list", "--format=json")
@@ -69,7 +69,7 @@ func AllocateSlot(workspacePath string, maxSlots int) (int, error) {
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, `"name"`) {
-			// Extract name from JSON line like: "name": "claude-abc12345-1",
+			// Extract name from JSON line like: "name": "coi-abc12345-1",
 			nameMatch := regexp.MustCompile(`"name":\s*"([^"]+)"`).FindStringSubmatch(line)
 			if len(nameMatch) > 1 {
 				containerName := nameMatch[1]
@@ -100,7 +100,7 @@ func AllocateSlotFrom(workspacePath string, startSlot, maxSlots int) (int, error
 	}
 
 	hash := WorkspaceHash(workspacePath)
-	prefix := fmt.Sprintf("%s%s-", getContainerPrefix(), hash)
+	prefix := fmt.Sprintf("%s%s-", GetContainerPrefix(), hash)
 
 	// Get all containers matching our workspace
 	output, err := container.IncusOutput("list", "--format=json")
@@ -116,7 +116,7 @@ func AllocateSlotFrom(workspacePath string, startSlot, maxSlots int) (int, error
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, `"name"`) {
-			// Extract name from JSON line like: "name": "claude-abc12345-1",
+			// Extract name from JSON line like: "name": "coi-abc12345-1",
 			nameMatch := regexp.MustCompile(`"name":\s*"([^"]+)"`).FindStringSubmatch(line)
 			if len(nameMatch) > 1 {
 				containerName := nameMatch[1]
@@ -152,7 +152,7 @@ func IsSlotAvailable(workspacePath string, slot int) (bool, error) {
 // ParseContainerName extracts workspace hash and slot from container name
 // Returns (hash, slot, error)
 func ParseContainerName(containerName string) (string, int, error) {
-	prefix := regexp.QuoteMeta(getContainerPrefix())
+	prefix := regexp.QuoteMeta(GetContainerPrefix())
 	re := regexp.MustCompile(fmt.Sprintf(`^%s([a-f0-9]{8})-(\d+)$`, prefix))
 	matches := re.FindStringSubmatch(containerName)
 	if len(matches) != 3 {
@@ -172,7 +172,7 @@ func ParseContainerName(containerName string) (string, int, error) {
 // Returns map of slot -> container name
 func ListWorkspaceSessions(workspacePath string) (map[int]string, error) {
 	hash := WorkspaceHash(workspacePath)
-	prefix := fmt.Sprintf("%s%s-", getContainerPrefix(), hash)
+	prefix := fmt.Sprintf("%s%s-", GetContainerPrefix(), hash)
 
 	output, err := container.IncusOutput("list", "--format=json")
 	if err != nil {

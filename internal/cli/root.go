@@ -92,14 +92,14 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&imageName, "image", "", "Custom image to use (default: coi-sandbox or coi-privileged)")
 	rootCmd.PersistentFlags().BoolVar(&privileged, "privileged", false, "Use privileged image (Git/SSH/sudo)")
 	rootCmd.PersistentFlags().BoolVar(&persistent, "persistent", false, "Reuse container across sessions")
-	rootCmd.PersistentFlags().StringVar(&resume, "resume", "", "Resume from session ID (auto-detects latest if no ID given)")
-	rootCmd.PersistentFlags().Lookup("resume").NoOptDefVal = "auto" // Allow --resume without value
+	rootCmd.PersistentFlags().StringVar(&resume, "resume", "", "Resume from session ID (omit value to auto-detect)")
+	rootCmd.PersistentFlags().Lookup("resume").NoOptDefVal = "auto"
 	rootCmd.PersistentFlags().StringVar(&continueSession, "continue", "", "Alias for --resume")
-	rootCmd.PersistentFlags().Lookup("continue").NoOptDefVal = "auto" // Allow --continue without value
+	rootCmd.PersistentFlags().Lookup("continue").NoOptDefVal = "auto"
 	rootCmd.PersistentFlags().StringVar(&profile, "profile", "", "Use named profile")
 	rootCmd.PersistentFlags().StringSliceVarP(&envVars, "env", "e", []string{}, "Environment variables (KEY=VALUE)")
 	rootCmd.PersistentFlags().StringVar(&storage, "storage", "", "Mount persistent storage")
-	rootCmd.PersistentFlags().BoolVar(&mountClaudeConfig, "mount-claude-config", true, "Mount host ~/.claude directory")
+	rootCmd.PersistentFlags().BoolVar(&mountClaudeConfig, "mount-claude-config", true, "Mount/copy host ~/.claude directory and .claude.json")
 
 	// Add subcommands
 	rootCmd.AddCommand(runCmd)
@@ -109,6 +109,7 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(imagesCmd)
 	rootCmd.AddCommand(cleanCmd)
+	rootCmd.AddCommand(killCmd)
 	rootCmd.AddCommand(tmuxCmd)
 	rootCmd.AddCommand(versionCmd)
 }
