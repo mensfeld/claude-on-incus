@@ -51,12 +51,16 @@ func listCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Build maps of container name -> workspace and container name -> persistent from saved sessions
+	// We search for metadata.json files directly (not using listSavedSessions which requires .claude dir)
+	// because metadata is saved early at session start, before .claude directory exists
 	containerWorkspaces := make(map[string]string)
 	containerPersistent := make(map[string]bool)
-	if sessions, err := listSavedSessions(cfg.Paths.SessionsDir); err == nil {
-		for _, s := range sessions {
-			// Map by container name from metadata
-			metadataPath := filepath.Join(cfg.Paths.SessionsDir, s.ID, "metadata.json")
+	if entries, err := os.ReadDir(cfg.Paths.SessionsDir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			metadataPath := filepath.Join(cfg.Paths.SessionsDir, entry.Name(), "metadata.json")
 			if data, err := os.ReadFile(metadataPath); err == nil {
 				var metadata session.SessionMetadata
 				if err := json.Unmarshal(data, &metadata); err == nil && metadata.ContainerName != "" {

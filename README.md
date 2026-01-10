@@ -19,10 +19,11 @@ Run Claude Code in isolated, production-grade Incus containers with zero permiss
 ## Features
 
 **Core Capabilities**
-- Multi-slot support - Run parallel Claude sessions for the same workspace
-- Session resume - Resume conversations with full history and credentials restored
+- Multi-slot support - Run parallel Claude sessions for the same workspace with full isolation
+- Session resume - Resume conversations with full history and credentials restored (workspace-scoped)
 - Persistent containers - Keep containers alive between sessions (installed tools preserved)
 - Workspace isolation - Each session mounts your project directory
+- **Slot isolation** - Each parallel slot has its own home directory (files don't leak between slots)
 - **Workspace files persist even in ephemeral mode** - Only the container is deleted, your work is always saved
 
 **Security & Isolation**
@@ -51,7 +52,7 @@ Run Claude Code in isolated, production-grade Incus containers with zero permiss
 curl -fsSL https://raw.githubusercontent.com/mensfeld/claude-on-incus/master/install.sh | bash
 
 # Build image (first time only, ~5-10 minutes)
-coi build sandbox
+coi build
 
 # Start coding
 cd your-project
@@ -61,6 +62,7 @@ coi shell
 # - Your project mounted at /workspace
 # - Correct file permissions (no more chown!)
 # - Full Docker access inside the container
+# - GitHub CLI available for PR/issue management
 # - All workspace changes persisted automatically
 # - No access to your host SSH keys, env vars, or credentials
 ```
@@ -109,21 +111,24 @@ curl -fsSL https://raw.githubusercontent.com/mensfeld/claude-on-incus/master/ins
 ### Build Images
 
 ```bash
-# Basic image (5-10 minutes)
-coi build sandbox
-
-# Optional: Privileged image with Git/SSH (adds 2-3 minutes)
-coi build privileged
+# Build the unified coi image (5-10 minutes)
+coi build
 
 # Custom image from your own build script
 coi build custom my-rust-image --script build-rust.sh
-coi build custom my-image --base coi-privileged --script setup.sh
+coi build custom my-image --base coi --script setup.sh
 ```
 
-**What's included:**
-- `coi-sandbox`: Ubuntu 22.04 + Docker + Node.js 20 + Claude CLI + tmux
-- `coi-privileged`: Everything above + GitHub CLI + SSH + Git config
-- `custom`: Build your own images from base images using build scripts
+**What's included in the `coi` image:**
+- Ubuntu 22.04 base
+- Docker (full Docker-in-container support)
+- Node.js 20 + npm
+- Claude CLI
+- GitHub CLI (`gh`)
+- tmux for session management
+- Common build tools
+
+**Custom images:** Build your own specialized images using build scripts that run on top of the base `coi` image.
 
 ### Verify Installation
 
@@ -147,10 +152,7 @@ coi shell --persistent
 # Use specific slot for parallel sessions
 coi shell --slot 2
 
-# Privileged mode (Git/SSH access)
-coi shell --privileged
-
-# Resume previous session (auto-detects latest)
+# Resume previous session (auto-detects latest for this workspace)
 coi shell --resume
 
 # Resume specific session by ID
@@ -177,11 +179,11 @@ coi clean
 ```bash
 --workspace PATH       # Workspace directory to mount (default: current directory)
 --slot NUMBER          # Slot number for parallel sessions (0 = auto-allocate)
---privileged           # Use privileged image (Git/SSH/sudo)
 --persistent           # Keep container between sessions
---resume [SESSION_ID]  # Resume from session (omit ID to auto-detect latest)
+--resume [SESSION_ID]  # Resume from session (omit ID to auto-detect latest for workspace)
 --continue [SESSION_ID] # Alias for --resume
 --profile NAME         # Use named profile
+--image NAME           # Use custom image (default: coi)
 --env KEY=VALUE        # Set environment variables
 ```
 
@@ -190,6 +192,10 @@ coi clean
 ```bash
 # List all containers and sessions
 coi list --all
+
+# Output shows container mode:
+#   coi-abc12345-1 (ephemeral)   - will be deleted on exit
+#   coi-abc12345-2 (persistent)  - will be kept for reuse
 
 # Kill specific container (stop and delete)
 coi kill <container-name>
@@ -281,7 +287,7 @@ Session resume allows you to continue a previous Claude conversation with full h
 
 **Usage:**
 ```bash
-# Auto-detect and resume latest session
+# Auto-detect and resume latest session for this workspace
 coi shell --resume
 
 # Resume specific session by ID
@@ -305,6 +311,12 @@ coi list --all
 - On resume, session data is restored to the container before Claude starts
 - Fresh credentials are injected from your host `~/.claude` directory
 - Claude automatically continues from where you left off
+
+**Workspace-Scoped Sessions:**
+- `--resume` only looks for sessions from the **current workspace directory**
+- Sessions from other workspaces are never considered (security feature)
+- This prevents accidentally resuming a session with a different project context
+- Each workspace maintains its own session history
 
 **Note:** Resume works for both ephemeral and persistent containers. For ephemeral containers, the container is recreated but the conversation continues seamlessly.
 
@@ -341,8 +353,7 @@ Config file: `~/.config/coi/config.toml`
 
 ```toml
 [defaults]
-image = "coi-sandbox"
-privileged = false
+image = "coi"
 persistent = true
 mount_claude_config = true
 
@@ -453,6 +464,7 @@ Understanding how containers and sessions work in `coi`:
 - **`--resume`**: Restores the **Claude conversation** in a fresh container
   - Use when you want to continue a conversation but don't need installed packages
   - Container is recreated, only `.claude` session data is restored
+  - **Workspace-scoped**: Only finds sessions from the current workspace directory (security feature)
 
 - **`--persistent`**: Keeps the **entire container** with all modifications
   - Use when you've installed tools, built artifacts, or modified the environment
@@ -488,6 +500,29 @@ coi shell --persistent       # Start persistent session
 # Press Ctrl+b d to detach
 coi attach                   # Reconnect to same container with all tools
 coi shutdown --all           # When done, clean up
+```
+
+**Parallel sessions (multi-slot):**
+```bash
+# Terminal 1: Start first session (auto-allocates slot 1)
+coi shell
+# ... working on feature A ...
+# Press Ctrl+b d to detach (container stays running)
+
+# Terminal 2: Start second session (auto-allocates slot 2)
+coi shell
+# ... working on feature B in parallel ...
+
+# Both sessions share the same workspace but have isolated:
+# - Home directories (~/slot1_file won't appear in slot 2)
+# - Installed packages
+# - Running processes
+# - Claude conversation history
+
+# List both running sessions
+coi list
+#   coi-abc12345-1 (ephemeral)
+#   coi-abc12345-2 (ephemeral)
 ```
 
 ## License

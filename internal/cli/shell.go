@@ -175,6 +175,11 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to setup session: %w", err)
 	}
 
+	// Save metadata early so coi list shows correct persistent/ephemeral status
+	if err := session.SaveMetadataEarly(sessionsDir, sessionID, result.ContainerName, absWorkspace, persistent); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save early metadata: %v\n", err)
+	}
+
 	// Setup cleanup on exit
 	defer func() {
 		fmt.Fprintf(os.Stderr, "\nCleaning up session...\n")

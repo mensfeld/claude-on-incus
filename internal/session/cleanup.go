@@ -183,6 +183,26 @@ func getCurrentTime() string {
 	return time.Now().Format(time.RFC3339)
 }
 
+// SaveMetadataEarly saves session metadata at session start so coi list can show correct status
+func SaveMetadataEarly(sessionsDir, sessionID, containerName, workspace string, persistent bool) error {
+	// Create session directory if it doesn't exist
+	sessionDir := filepath.Join(sessionsDir, sessionID)
+	if err := os.MkdirAll(sessionDir, 0755); err != nil {
+		return fmt.Errorf("failed to create session directory: %w", err)
+	}
+
+	metadata := SessionMetadata{
+		SessionID:     sessionID,
+		ContainerName: containerName,
+		Persistent:    persistent,
+		Workspace:     workspace,
+		SavedAt:       getCurrentTime(),
+	}
+
+	metadataPath := filepath.Join(sessionDir, "metadata.json")
+	return saveMetadata(metadataPath, metadata)
+}
+
 // SessionExists checks if a session with the given ID exists and is valid
 func SessionExists(sessionsDir, sessionID string) bool {
 	claudePath := filepath.Join(sessionsDir, sessionID, ".claude")
