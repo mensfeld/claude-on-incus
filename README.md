@@ -394,6 +394,36 @@ persistent = true
 - **Go 1.21+** - For building from source
 - **incus-admin group** - User must be in group
 
+## Performance: Fast Storage
+
+By default, Incus uses directory-based storage which copies entire filesystems when creating containers. For **instant container creation**, use ZFS or Btrfs which support copy-on-write cloning.
+
+### Setting Up ZFS Storage (Recommended)
+
+```bash
+# Install ZFS
+sudo apt install zfsutils-linux
+
+# Create a ZFS storage pool (50GB loopback file)
+sudo incus storage create zfs-pool zfs size=50GiB
+
+# Or use a dedicated partition for best performance
+# sudo incus storage create zfs-pool zfs source=/dev/nvme0n1p4
+
+# Update the default profile to use ZFS
+incus profile device set default root pool=zfs-pool
+```
+
+### Performance Comparison
+
+| Storage Type | Container Creation | Copy Mechanism |
+|--------------|-------------------|----------------|
+| **dir** (default) | ~10-30 seconds | Full filesystem copy |
+| **zfs** | < 1 second | Copy-on-write clone |
+| **btrfs** | < 1 second | Copy-on-write clone |
+
+After switching to ZFS, new containers use instant snapshots. Existing containers remain on the old storage pool.
+
 ## Troubleshooting
 
 ### "incus is not available"
