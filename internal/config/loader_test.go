@@ -61,7 +61,7 @@ image = "test-image"
 model = "test-model"
 
 [incus]
-claude_uid = 2000
+code_uid = 2000
 `
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -83,8 +83,8 @@ claude_uid = 2000
 		t.Errorf("Expected model 'test-model', got '%s'", cfg.Defaults.Model)
 	}
 
-	if cfg.Incus.ClaudeUID != 2000 {
-		t.Errorf("Expected ClaudeUID 2000, got %d", cfg.Incus.ClaudeUID)
+	if cfg.Incus.CodeUID != 2000 {
+		t.Errorf("Expected CodeUID 2000, got %d", cfg.Incus.CodeUID)
 	}
 }
 

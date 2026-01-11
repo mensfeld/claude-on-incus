@@ -148,8 +148,8 @@ func runCommand(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "Executing: %s\n", strings.Join(args, " "))
 
 	// Build incus exec command directly with proper args
-	incusArgs := []string{"exec", containerName, "--user", fmt.Sprintf("%d", container.ClaudeUID),
-		"--group", fmt.Sprintf("%d", container.ClaudeUID), "--cwd", "/workspace", "--"}
+	incusArgs := []string{"exec", containerName, "--user", fmt.Sprintf("%d", container.CodeUID),
+		"--group", fmt.Sprintf("%d", container.CodeUID), "--cwd", "/workspace", "--"}
 	incusArgs = append(incusArgs, args...)
 
 	// Execute and capture output and exit code

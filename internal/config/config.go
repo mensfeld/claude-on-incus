@@ -29,10 +29,10 @@ type PathsConfig struct {
 
 // IncusConfig contains Incus-specific settings
 type IncusConfig struct {
-	Project    string `toml:"project"`
-	Group      string `toml:"group"`
-	ClaudeUID  int    `toml:"claude_uid"`
-	ClaudeUser string `toml:"claude_user"`
+	Project  string `toml:"project"`
+	Group    string `toml:"group"`
+	CodeUID  int    `toml:"code_uid"`
+	CodeUser string `toml:"code_user"`
 }
 
 // ProfileConfig represents a named profile
@@ -62,10 +62,10 @@ func GetDefaultConfig() *Config {
 			LogsDir:     filepath.Join(baseDir, "logs"),
 		},
 		Incus: IncusConfig{
-			Project:    "default",
-			Group:      "incus-admin",
-			ClaudeUID:  1000,
-			ClaudeUser: "claude",
+			Project:  "default",
+			Group:    "incus-admin",
+			CodeUID:  1000,
+			CodeUser: "code",
 		},
 		Profiles: make(map[string]ProfileConfig),
 	}
@@ -139,11 +139,11 @@ func (c *Config) Merge(other *Config) {
 	if other.Incus.Group != "" {
 		c.Incus.Group = other.Incus.Group
 	}
-	if other.Incus.ClaudeUID != 0 {
-		c.Incus.ClaudeUID = other.Incus.ClaudeUID
+	if other.Incus.CodeUID != 0 {
+		c.Incus.CodeUID = other.Incus.CodeUID
 	}
-	if other.Incus.ClaudeUser != "" {
-		c.Incus.ClaudeUser = other.Incus.ClaudeUser
+	if other.Incus.CodeUser != "" {
+		c.Incus.CodeUser = other.Incus.CodeUser
 	}
 
 	// Merge profiles

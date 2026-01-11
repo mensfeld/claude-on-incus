@@ -119,16 +119,16 @@ func attachCommand(cmd *cobra.Command, args []string) error {
 }
 
 func attachToContainer(containerName string) error {
-	// Build the command to attach as claude user
+	// Build the command to attach as code user
 	// Use tmux attach which will auto-find the session
 	tmuxCmd := "tmux attach"
 
-	// Execute with incus exec, running as claude user
+	// Execute with incus exec, running as code user
 	args := []string{
 		"exec",
 		containerName,
 		"--",
-		"su", "-", "claude",
+		"su", "-", "code",
 		"-c", tmuxCmd,
 	}
 
@@ -159,12 +159,12 @@ func attachToContainer(containerName string) error {
 }
 
 func attachToContainerWithBash(containerName string) error {
-	// Execute bash as claude user
+	// Execute bash as code user
 	args := []string{
 		"exec",
 		containerName,
 		"--",
-		"su", "-", "claude",
+		"su", "-", "code",
 		"-c", "cd /workspace && exec bash",
 	}
 

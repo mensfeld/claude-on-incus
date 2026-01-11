@@ -319,7 +319,7 @@ func runClaude(result *session.SetupResult, sessionID string, useResumeFlag, res
 	}
 
 	// Execute in container
-	user := container.ClaudeUID
+	user := container.CodeUID
 	if result.RunAsRoot {
 		user = 0
 	}
@@ -393,7 +393,7 @@ func runClaudeInTmux(result *session.SetupResult, sessionID string, detached boo
 	}
 
 	// Build environment variables
-	user := container.ClaudeUID
+	user := container.CodeUID
 	if result.RunAsRoot {
 		user = 0
 	}

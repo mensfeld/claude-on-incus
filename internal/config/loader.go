@@ -120,8 +120,8 @@ logs_dir = "~/.coi/logs"
 [incus]
 project = "default"
 group = "incus-admin"
-claude_uid = 1000
-claude_user = "claude"
+code_uid = 1000
+code_user = "code"
 
 # Example profile for Rust development with persistent container
 # [profiles.rust]

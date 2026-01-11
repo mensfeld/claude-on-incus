@@ -12,8 +12,6 @@ import (
 const (
 	DefaultImage = "images:ubuntu/22.04"
 	CoiImage     = "coi"
-	ClaudeUser   = "claude"
-	ClaudeUID    = 1000
 )
 
 // SetupOptions contains options for setting up a session
@@ -80,7 +78,7 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 	if result.RunAsRoot {
 		result.HomeDir = "/root"
 	} else {
-		result.HomeDir = "/home/" + ClaudeUser
+		result.HomeDir = "/home/" + container.CodeUser
 	}
 
 	// 4. Check if container already exists
@@ -254,7 +252,7 @@ func restoreSessionData(mgr *container.Manager, resumeID, homeDir, sessionsDir s
 	// Fix ownership if running as claude user
 	if homeDir != "/root" {
 		claudePath := destClaudePath
-		if err := mgr.Chown(claudePath, ClaudeUID, ClaudeUID); err != nil {
+		if err := mgr.Chown(claudePath, container.CodeUID, container.CodeUID); err != nil {
 			return fmt.Errorf("failed to set ownership: %w", err)
 		}
 	}
@@ -281,7 +279,7 @@ func injectCredentials(mgr *container.Manager, hostClaudeConfigPath, homeDir str
 
 	// Fix ownership if running as claude user
 	if homeDir != "/root" {
-		if err := mgr.Chown(destCredentials, ClaudeUID, ClaudeUID); err != nil {
+		if err := mgr.Chown(destCredentials, container.CodeUID, container.CodeUID); err != nil {
 			return fmt.Errorf("failed to set credentials ownership: %w", err)
 		}
 	}
@@ -307,7 +305,7 @@ func injectCredentials(mgr *container.Manager, hostClaudeConfigPath, homeDir str
 
 			// Fix ownership if running as claude user
 			if homeDir != "/root" {
-				if err := mgr.Chown(claudeJsonDest, ClaudeUID, ClaudeUID); err != nil {
+				if err := mgr.Chown(claudeJsonDest, container.CodeUID, container.CodeUID); err != nil {
 					logger(fmt.Sprintf("Warning: Failed to set .claude.json ownership: %v", err))
 				}
 			}
@@ -395,16 +393,16 @@ func setupClaudeConfig(mgr *container.Manager, hostClaudePath, homeDir string, l
 
 		// Fix ownership if running as claude user
 		if homeDir != "/root" {
-			logger(fmt.Sprintf("Fixing ownership of .claude.json to %d:%d", ClaudeUID, ClaudeUID))
-			if err := mgr.Chown(claudeJsonDest, ClaudeUID, ClaudeUID); err != nil {
+			logger(fmt.Sprintf("Fixing ownership of .claude.json to %d:%d", container.CodeUID, container.CodeUID))
+			if err := mgr.Chown(claudeJsonDest, container.CodeUID, container.CodeUID); err != nil {
 				return fmt.Errorf("failed to set .claude.json ownership: %w", err)
 			}
 		}
 
 		// Fix ownership of entire .claude directory recursively
 		if homeDir != "/root" {
-			logger(fmt.Sprintf("Fixing ownership of entire .claude directory to %d:%d", ClaudeUID, ClaudeUID))
-			chownCmd := fmt.Sprintf("chown -R %d:%d %s", ClaudeUID, ClaudeUID, claudeDir)
+			logger(fmt.Sprintf("Fixing ownership of entire .claude directory to %d:%d", container.CodeUID, container.CodeUID))
+			chownCmd := fmt.Sprintf("chown -R %d:%d %s", container.CodeUID, container.CodeUID, claudeDir)
 			if _, err := mgr.ExecCommand(chownCmd, container.ExecCommandOptions{Capture: true}); err != nil {
 				return fmt.Errorf("failed to set .claude directory ownership: %w", err)
 			}

@@ -13,8 +13,6 @@ const (
 	BaseImage      = "images:ubuntu/22.04"
 	CoiAlias       = "coi"
 	BuildContainer = "coi-build"
-	ClaudeUser     = "claude"
-	ClaudeUID      = 1000
 )
 
 // BuildOptions contains options for building an image

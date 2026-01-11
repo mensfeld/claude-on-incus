@@ -99,10 +99,10 @@ func Cleanup(opts CleanupOptions) error {
 // saveSessionData saves the .claude directory from the container
 func saveSessionData(mgr *container.Manager, sessionID string, persistent bool, workspace string, sessionsDir string, logger func(string)) error {
 	// Determine home directory
-	// For coi images, we always use /home/claude
+	// For coi images, we always use /home/code
 	// For other images, we use /root
-	// Since we currently only support coi images, always use /home/claude
-	homeDir := "/home/" + ClaudeUser
+	// Since we currently only support coi images, always use /home/code
+	homeDir := "/home/" + container.CodeUser
 
 	claudeDir := filepath.Join(homeDir, ".claude")
 

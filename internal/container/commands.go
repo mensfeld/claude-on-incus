@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	ClaudeUID     = 1000
-	ClaudeUser    = "claude"
-	IncusGroup    = "incus-admin"
-	IncusProject  = "default"
+	CodeUID      = 1000
+	CodeUser     = "code"
+	IncusGroup   = "incus-admin"
+	IncusProject = "default"
 )
 
 // IncusExec executes an Incus command via sg wrapper for group permissions
@@ -137,12 +137,12 @@ func ContainerExec(containerName, command string, opts ContainerExecOptions) (st
 	}
 	args = append(args, "--cwd", opts.Cwd)
 
-	// User context: run as claude user by default
+	// User context: run as code user by default
 	var envFlags []string
 	if !opts.RunAsRoot {
-		args = append(args, "--user", fmt.Sprintf("%d", ClaudeUID))
-		args = append(args, "--group", fmt.Sprintf("%d", ClaudeUID))
-		envFlags = append(envFlags, "--env", "HOME=/home/claude")
+		args = append(args, "--user", fmt.Sprintf("%d", CodeUID))
+		args = append(args, "--group", fmt.Sprintf("%d", CodeUID))
+		envFlags = append(envFlags, "--env", "HOME=/home/code")
 	}
 
 	// Sandbox mode

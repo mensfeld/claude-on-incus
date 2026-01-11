@@ -23,7 +23,7 @@ def test_exec_with_user(coi_binary, cleanup_containers, workspace_dir):
     1. Launch a container
     2. Execute whoami with --user 0 (root)
     3. Verify output shows root
-    4. Execute whoami with --user 1000 (claude)
+    4. Execute whoami with --user 1000 (code)
     5. Cleanup
     """
     container_name = calculate_container_name(workspace_dir, 1)
@@ -58,7 +58,7 @@ def test_exec_with_user(coi_binary, cleanup_containers, workspace_dir):
     assert "root" in combined_output.strip(), \
         f"Should run as root. Got:\n{combined_output}"
 
-    # === Phase 3: Execute as claude (UID 1000) ===
+    # === Phase 3: Execute as code (UID 1000) ===
 
     result = subprocess.run(
         [coi_binary, "container", "exec", container_name, "--user", "1000", "--", "whoami"],
@@ -67,13 +67,13 @@ def test_exec_with_user(coi_binary, cleanup_containers, workspace_dir):
         timeout=30,
     )
 
-    # claude user exists in coi image with UID 1000
+    # code user exists in coi image with UID 1000
     assert result.returncode == 0, \
-        f"Exec as claude should succeed. stderr: {result.stderr}"
+        f"Exec as code should succeed. stderr: {result.stderr}"
 
     combined_output = result.stdout + result.stderr
-    assert "claude" in combined_output.strip(), \
-        f"Should run as claude. Got:\n{combined_output}"
+    assert "code" in combined_output.strip(), \
+        f"Should run as code. Got:\n{combined_output}"
 
     # === Phase 4: Cleanup ===
 

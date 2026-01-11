@@ -27,8 +27,8 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Errorf("Expected project 'default', got '%s'", cfg.Incus.Project)
 	}
 
-	if cfg.Incus.ClaudeUID != 1000 {
-		t.Errorf("Expected ClaudeUID 1000, got %d", cfg.Incus.ClaudeUID)
+	if cfg.Incus.CodeUID != 1000 {
+		t.Errorf("Expected CodeUID 1000, got %d", cfg.Incus.CodeUID)
 	}
 
 	// Check paths are set
@@ -88,7 +88,7 @@ func TestConfigMerge(t *testing.T) {
 			// Model not set - should not override
 		},
 		Incus: IncusConfig{
-			ClaudeUID: 2000, // Override
+			CodeUID: 2000, // Override
 		},
 	}
 
@@ -104,9 +104,9 @@ func TestConfigMerge(t *testing.T) {
 		t.Errorf("Expected model 'base-model', got '%s'", base.Defaults.Model)
 	}
 
-	// Check that ClaudeUID was overridden
-	if base.Incus.ClaudeUID != 2000 {
-		t.Errorf("Expected ClaudeUID 2000, got %d", base.Incus.ClaudeUID)
+	// Check that CodeUID was overridden
+	if base.Incus.CodeUID != 2000 {
+		t.Errorf("Expected CodeUID 2000, got %d", base.Incus.CodeUID)
 	}
 }
 
