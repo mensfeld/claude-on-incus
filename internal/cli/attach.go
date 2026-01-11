@@ -72,11 +72,6 @@ func attachCommand(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to list containers: %w", err)
 		}
 
-		if len(containers) == 0 {
-			fmt.Println("No active Claude sessions")
-			return nil
-		}
-
 		// If container name provided, use it
 		if len(args) > 0 {
 			targetContainer = args[0]
@@ -91,6 +86,10 @@ func attachCommand(cmd *cobra.Command, args []string) error {
 			if !found {
 				return fmt.Errorf("container %s not found or not running", targetContainer)
 			}
+		} else if len(containers) == 0 {
+			// No container name provided and no sessions running
+			fmt.Println("No active Claude sessions")
+			return nil
 		} else if len(containers) == 1 {
 			// Auto-attach if only one session
 			targetContainer = containers[0]
