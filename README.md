@@ -12,10 +12,6 @@ Run Claude Code (and other AI coding tools soon) in isolated, production-grade I
 
 *Think Docker for AI coding tools, but with system containers that actually work like real machines.*
 
-## Demo
-
-<!-- Placeholder for asciicast demo - to be added -->
-
 ## Features
 
 **Core Capabilities**
@@ -32,17 +28,10 @@ Run Claude Code (and other AI coding tools soon) in isolated, production-grade I
 - Project separation - Complete isolation between workspaces
 - **Credential protection** - No risk of SSH keys, `.env` files, or Git credentials being exposed to AI tools
 
-**Developer Experience**
-- 15+ CLI commands - shell, run, build, list, info, attach, images, clean, kill, shutdown, tmux, version, container, file, image
-- Shell completions - Built-in bash/zsh/fish completions via `coi completion`
-- Smart configuration - TOML-based with profiles and hierarchy
-- Tmux integration - Background processes and session management
-- CLI config mounting - Automatic `~/.claude` and `.claude.json` sync for Claude Code (enabled by default)
-
 **Safe `--dangerous` Flags**
 - Claude Code CLI uses `--dangerously-disable-sandbox` and `--dangerously-allow-write-to-root` flags
 - **These are safe inside containers** because the "root" is the container root, not your host system
-- Containers are ephemeral or isolated - any changes are contained and don't affect your host
+- Containers are ephemeral - any changes are contained and don't affect your host
 - This gives Claude full capabilities while keeping your system protected
 
 ## Quick Start
@@ -129,14 +118,6 @@ coi build custom my-image --base coi --script setup.sh
 - Common build tools
 
 **Custom images:** Build your own specialized images using build scripts that run on top of the base `coi` image.
-
-### Verify Installation
-
-```bash
-coi version        # Check version
-incus version      # Verify Incus access
-groups | grep incus-admin  # Confirm group membership
-```
 
 ## Usage
 
@@ -396,89 +377,6 @@ persistent = true
 4. Project config (`./.coi.toml`)
 5. CLI flags
 
-## Use Cases
-
-| Use Case | Problem | Solution |
-|----------|---------|----------|
-| **Individual Developers** | Multiple projects with different tool versions | Each project gets isolated container with specific tools |
-| **Teams** | "Works on my machine" syndrome | Share `.coi.toml`, everyone gets identical environment |
-| **AI/ML Development** | Need Docker inside container | Incus natively supports Docker-in-container, no DinD hacks |
-| **Security-Conscious** | Can't use Docker privileged mode | True isolation without privileged mode |
-
-## Requirements
-
-- **Incus** - Linux container manager
-- **Go 1.21+** - For building from source
-- **incus-admin group** - User must be in group
-
-## Performance: Fast Storage
-
-By default, Incus uses directory-based storage which copies entire filesystems when creating containers. For **instant container creation**, use ZFS or Btrfs which support copy-on-write cloning.
-
-### Setting Up ZFS Storage (Recommended)
-
-```bash
-# Install ZFS
-sudo apt install zfsutils-linux
-
-# Create a ZFS storage pool (50GB loopback file)
-sudo incus storage create zfs-pool zfs size=50GiB
-
-# Or use a dedicated partition for best performance
-# sudo incus storage create zfs-pool zfs source=/dev/nvme0n1p4
-
-# Update the default profile to use ZFS
-incus profile device set default root pool=zfs-pool
-```
-
-### Performance Comparison
-
-| Storage Type | Container Creation | Copy Mechanism |
-|--------------|-------------------|----------------|
-| **dir** (default) | ~10-30 seconds | Full filesystem copy |
-| **zfs** | < 1 second | Copy-on-write clone |
-| **btrfs** | < 1 second | Copy-on-write clone |
-
-After switching to ZFS, new containers use instant snapshots. Existing containers remain on the old storage pool.
-
-## Troubleshooting
-
-### "incus is not available"
-```bash
-sudo apt update && sudo apt install -y incus
-sudo incus admin init --auto
-sudo usermod -aG incus-admin $USER
-# Log out and back in
-```
-
-### "permission denied" errors
-```bash
-groups | grep incus-admin  # Check membership
-sudo usermod -aG incus-admin $USER  # Add yourself
-# Log out and back in
-```
-
-### Container won't start
-```bash
-incus info  # Check daemon status
-sudo systemctl start incus
-```
-
-## Project Status
-
-**Production Ready** - All core features are fully implemented and tested.
-
-**Implemented Features:**
-- Core commands: shell, run, build, list, info, attach, images, clean, kill, shutdown, tmux, version
-- Advanced operations: container (launch/start/stop/delete/exec/mount), file (push/pull), image (list/publish/delete/cleanup)
-- Multi-slot parallel sessions
-- Session resume with full conversation history and credentials restoration
-- Persistent containers with state preservation
-- Custom image building from user scripts
-- Low-level container and file transfer operations
-- Automatic UID mapping
-- TOML-based configuration with profiles
-- Comprehensive integration test suite (54 tests passing)
 
 ## Container Lifecycle & Session Persistence
 
