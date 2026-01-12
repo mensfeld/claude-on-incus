@@ -40,8 +40,7 @@ Each slot gets its own container but shares the workspace files.
 ### How much disk space do I need?
 
 - **Incus itself:** ~100MB
-- **coi-sandbox image:** ~800MB
-- **coi-privileged image:** ~1GB
+- **coi image:** ~500MB
 - **Per container (persistent):** ~200MB base + your tools
 
 **Recommendation:** 5GB free space for comfortable usage.
@@ -157,7 +156,7 @@ image = "ubuntu:24.04"
 This should **never** happen with `coi` - it's a core feature!
 
 If it does:
-1. Verify you're using `coi-sandbox` or `coi-privileged` images
+1. Verify you're using the `coi` image
 2. Check UID mapping: `incus config get <container> raw.idmap`
 3. Report as a bug
 

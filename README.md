@@ -230,8 +230,8 @@ Low-level container commands for advanced use cases:
 
 ```bash
 # Launch a new container
-coi container launch coi-sandbox my-container
-coi container launch coi-sandbox my-container --ephemeral
+coi container launch coi my-container
+coi container launch coi my-container --ephemeral
 
 # Start/stop/delete containers
 coi container start my-container
@@ -285,7 +285,7 @@ coi image publish my-container my-custom-image --description "Custom build"
 coi image delete my-custom-image
 
 # Check if image exists
-coi image exists coi-sandbox
+coi image exists coi
 
 # Clean up old image versions
 coi image cleanup claudeyard-node-42- --keep 3

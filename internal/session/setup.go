@@ -136,19 +136,23 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 			return nil, fmt.Errorf("failed to create container: %w", err)
 		}
 
-		// Configure UID/GID mapping for bind mounts in CI environments
-		// GitHub Actions runner uses UID 1001, map it to container UID 1000 (code user)
-		// This allows bind mounts to work without kernel idmap support
-		if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
+		// Configure UID/GID mapping for bind mounts based on environment
+		// Local: Use shift=true (kernel idmap support)
+		// CI: Use raw.idmap (kernel lacks idmap support, runner UID 1001 → container UID 1000)
+		useShift := true
+		isCI := os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
+
+		if isCI {
 			opts.Logger("Configuring UID/GID mapping for CI environment...")
 			if err := container.IncusExec("config", "set", result.ContainerName, "raw.idmap", "both 1001 1000"); err != nil {
 				opts.Logger(fmt.Sprintf("Warning: Failed to set raw.idmap: %v", err))
 			}
+			useShift = false // Don't use shift=true with raw.idmap
 		}
 
 		// Add disk devices BEFORE starting container
 		opts.Logger(fmt.Sprintf("Adding workspace mount: %s", opts.WorkspacePath))
-		if err := result.Manager.MountDisk("workspace", opts.WorkspacePath, "/workspace", false); err != nil {
+		if err := result.Manager.MountDisk("workspace", opts.WorkspacePath, "/workspace", useShift); err != nil {
 			return nil, fmt.Errorf("failed to add workspace device: %w", err)
 		}
 
@@ -158,7 +162,7 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 				return nil, fmt.Errorf("failed to create storage directory: %w", err)
 			}
 			opts.Logger(fmt.Sprintf("Adding storage mount: %s", opts.StoragePath))
-			if err := result.Manager.MountDisk("storage", opts.StoragePath, "/storage", false); err != nil {
+			if err := result.Manager.MountDisk("storage", opts.StoragePath, "/storage", useShift); err != nil {
 				return nil, fmt.Errorf("failed to add storage device: %w", err)
 			}
 		}

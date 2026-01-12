@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/mensfeld/claude-on-incus/internal/container"
 	"github.com/mensfeld/claude-on-incus/internal/session"
@@ -488,48 +487,21 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		fmt.Fprintf(os.Stderr, "Use 'coi tmux send %s \"<command>\"' to send commands\n", result.ContainerName)
 		return nil
 	} else {
-		// Interactive mode: Start tmux server explicitly, then create and attach
-		// This is the most robust approach for CI environments
+		// Interactive mode: create session and attach
 		// trap : INT prevents bash from exiting on Ctrl+C, exec bash replaces (no nested shells)
-
-		// Step 1: Ensure tmux server is running (idempotent - won't fail if already running)
-		startServerOpts := container.ExecCommandOptions{
-			User:    userPtr,
-			Capture: true,
-		}
-		if _, err := result.Manager.ExecCommand("tmux start-server", startServerOpts); err != nil {
-			// Ignore errors - server might already be running
-		}
-
-		// Step 2: Create detached session
-		// Simple approach - just create detached and hope it persists
 		createCmd := fmt.Sprintf(
-			"tmux new-session -d -s %s -c /workspace \"bash -c 'trap : INT; %s %s; exec bash'\"",
+			"tmux new-session -s %s -c /workspace \"bash -c 'trap : INT; %s %s; exec bash'\"",
 			tmuxSessionName,
 			envExports,
 			cliCmd,
 		)
-		createOpts := container.ExecCommandOptions{
-			User:    userPtr,
-			Cwd:     "/workspace",
-			Capture: true,
-		}
-		if _, err := result.Manager.ExecCommand(createCmd, createOpts); err != nil {
-			return fmt.Errorf("failed to create tmux session: %w", err)
-		}
-
-		// Small delay to let session initialize
-		time.Sleep(500 * time.Millisecond)
-
-		// Step 3: Attach to the session
-		attachCmd := fmt.Sprintf("tmux attach -t %s", tmuxSessionName)
-		attachOpts := container.ExecCommandOptions{
+		opts := container.ExecCommandOptions{
 			User:        userPtr,
 			Cwd:         "/workspace",
 			Interactive: true,
 			Env:         containerEnv,
 		}
-		_, err := result.Manager.ExecCommand(attachCmd, attachOpts)
+		_, err := result.Manager.ExecCommand(createCmd, opts)
 		return err
 	}
 }
