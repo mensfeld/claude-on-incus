@@ -63,7 +63,9 @@ def test_exec_poweroff_without_sudo(coi_binary, cleanup_containers, workspace_di
     )
 
     # sudo poweroff should succeed (exit code 0) without requiring a password
-    assert result.returncode == 0, f"sudo poweroff should succeed without password. stderr: {result.stderr}"
+    assert result.returncode == 0, (
+        f"sudo poweroff should succeed without password. stderr: {result.stderr}"
+    )
 
     # === Phase 3: Wait for container to stop ===
 
