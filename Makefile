@@ -57,6 +57,7 @@ integrations-setup:
 # Run integration tests (requires Incus)
 integrations: build
 	@echo "Running integration tests..."
+	@bash scripts/cleanup-pycache.sh
 	@if groups | grep -q incus-admin; then \
 		pytest tests/ -v; \
 	else \
@@ -67,6 +68,7 @@ integrations: build
 # Run integration tests with output (for debugging)
 integrations-debug: build
 	@echo "Running integration tests with output..."
+	@bash scripts/cleanup-pycache.sh
 	@if groups | grep -q incus-admin; then \
 		pytest tests/ -v -s; \
 	else \
