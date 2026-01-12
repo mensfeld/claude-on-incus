@@ -418,9 +418,9 @@ Understanding how containers and sessions work in `coi`:
 ### Stopping Containers
 
 From **inside** the container:
-- `exit` in bash → saves session, then deletes container (or keeps if `--persistent`)
-- `Ctrl+b d` → detaches, saves session, container stays running
-- `sudo shutdown 0` → stops container, session is saved, then container is deleted (or kept if `--persistent`)
+- `exit` in bash → exits bash but keeps container running (use for temporary shell exit)
+- `Ctrl+b d` → detaches from tmux, container stays running
+- `sudo shutdown 0` or `sudo poweroff` → stops container, session is saved, then container is deleted (or kept if `--persistent`)
 
 From **outside** (host):
 - `coi shutdown <name>` → graceful stop with session save, then delete (60s timeout by default)
@@ -437,9 +437,11 @@ From **outside** (host):
 ```bash
 coi shell                    # Start session
 # ... work with claude ...
-exit                         # Exit bash → session saved, container deleted
+sudo poweroff                # Shutdown container → session saved, container deleted
 coi shell --resume           # Continue conversation in fresh container
 ```
+
+**Note:** `exit` in bash keeps the container running - use `sudo poweroff` or `sudo shutdown 0` to properly end the session. Both require sudo but no password.
 
 **Long-running project (`--persistent`):**
 ```bash
@@ -447,7 +449,8 @@ coi shell --persistent       # Start persistent session
 # ... install tools, build things ...
 # Press Ctrl+b d to detach
 coi attach                   # Reconnect to same container with all tools
-coi shutdown --all           # When done, clean up
+sudo poweroff                # When done, shutdown and save
+coi shell --persistent --resume  # Resume with all installed tools intact
 ```
 
 **Parallel sessions (multi-slot):**
@@ -471,19 +474,7 @@ coi shell
 coi list
 #   coi-abc12345-1 (ephemeral)
 #   coi-abc12345-2 (ephemeral)
+
+# When done, shutdown all sessions
+coi shutdown --all
 ```
-
-## License
-
-MIT
-
-## Author
-
-Maciej Mensfeld ([@mensfeld](https://github.com/mensfeld))
-
-## See Also
-
-- [FAQ](FAQ.md) - Frequently asked questions
-- [CHANGELOG](CHANGELOG.md) - Version history and release notes
-- [Integration Tests](INTE.md) - Comprehensive E2E testing documentation
-- [Incus](https://linuxcontainers.org/incus/) - Linux container manager

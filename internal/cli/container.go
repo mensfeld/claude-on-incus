@@ -133,10 +133,8 @@ Examples:
 		}
 
 		if capture {
-			// For capture mode, use ExecCommand with bash -c
-			command := strings.Join(commandArgs, " ")
-
-			// Parse flags for ExecCommand
+			// For capture mode, use ExecArgsCapture (no bash -c wrapping, preserves whitespace)
+			// Parse flags
 			userFlag, _ := cmd.Flags().GetInt("user")
 			groupFlag, _ := cmd.Flags().GetInt("group")
 			envVars, _ := cmd.Flags().GetStringArray("env")
@@ -152,9 +150,8 @@ Examples:
 			}
 
 			opts := container.ExecCommandOptions{
-				Cwd:     cwd,
-				Env:     env,
-				Capture: true,
+				Cwd: cwd,
+				Env: env,
 			}
 
 			if cmd.Flags().Changed("user") {
@@ -164,7 +161,7 @@ Examples:
 				opts.Group = &groupFlag
 			}
 
-			output, err := mgr.ExecCommand(command, opts)
+			output, err := mgr.ExecArgsCapture(commandArgs, opts)
 
 			// Handle raw format - output stdout and exit with proper code
 			if format == "raw" {
