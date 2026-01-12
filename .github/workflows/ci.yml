@@ -286,9 +286,13 @@ jobs:
           echo "Captured output:"
           incus exec test-attach-debug --user 1000 --group 1000 -- tmux capture-pane -t test-session -p
 
-          # Try to attach to the session (non-interactive test with timeout)
-          echo "Testing if attach command works (will timeout after 5s)..."
-          timeout 5 incus exec test-attach-debug --user 1000 --group 1000 -- tmux attach -t test-session || echo "Attach command executed (exit code: $?)"
+          # Try to attach WITHOUT --force-interactive (should fail)
+          echo "Testing attach WITHOUT --force-interactive (expected to fail)..."
+          timeout 5 incus exec test-attach-debug --user 1000 --group 1000 -- tmux attach -t test-session || echo "FAILED as expected (exit code: $?)"
+
+          # Try to attach WITH --force-interactive (should work)
+          echo "Testing attach WITH --force-interactive (expected to work)..."
+          timeout 5 incus exec test-attach-debug --force-interactive --user 1000 --group 1000 -- tmux attach -t test-session || echo "Result (exit code: $?)"
 
           # Clean up
           incus delete test-attach-debug --force

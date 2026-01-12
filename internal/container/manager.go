@@ -97,6 +97,11 @@ func (m *Manager) Exec(args ...string) error {
 func (m *Manager) ExecArgs(commandArgs []string, opts ExecCommandOptions) error {
 	args := []string{"exec", m.ContainerName}
 
+	// Add force-interactive flag for interactive sessions (required for tmux attach)
+	if opts.Interactive {
+		args = append(args, "--force-interactive")
+	}
+
 	// Add environment variables
 	for k, v := range opts.Env {
 		args = append(args, "--env", fmt.Sprintf("%s=%s", k, v))
@@ -142,6 +147,11 @@ type ExecCommandOptions struct {
 // ExecCommand executes a bash command in the container with user context
 func (m *Manager) ExecCommand(command string, opts ExecCommandOptions) (string, error) {
 	args := []string{"exec", m.ContainerName}
+
+	// Add force-interactive flag for interactive sessions (required for tmux attach)
+	if opts.Interactive {
+		args = append(args, "--force-interactive")
+	}
 
 	// Add environment variables
 	for k, v := range opts.Env {
