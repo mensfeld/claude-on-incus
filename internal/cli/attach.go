@@ -119,10 +119,9 @@ func attachCommand(cmd *cobra.Command, args []string) error {
 func attachToContainer(containerName string) error {
 	// Calculate the tmux session name (consistent with shell command)
 	tmuxSessionName := fmt.Sprintf("coi-%s", containerName)
-	tmuxCmd := fmt.Sprintf("tmux attach -t %s", tmuxSessionName)
 
 	// Use container manager for proper user/environment handling
-	// This approach is more reliable than su, especially in CI with raw.idmap
+	// Direct command execution without bash -c wrapper for better terminal handling
 	mgr := container.NewManager(containerName)
 
 	// Execute as code user with proper environment setup
@@ -133,7 +132,10 @@ func attachToContainer(containerName string) error {
 		Interactive: true,
 	}
 
-	_, err := mgr.ExecCommand(tmuxCmd, opts)
+	// Use ExecArgs instead of ExecCommand to avoid bash -c wrapper
+	// tmux attach needs direct terminal access
+	commandArgs := []string{"tmux", "attach", "-t", tmuxSessionName}
+	err := mgr.ExecArgs(commandArgs, opts)
 	if err != nil {
 		errStr := err.Error()
 		// Exit status 143 = SIGTERM (128+15), happens when container shuts down

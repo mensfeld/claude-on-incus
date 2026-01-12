@@ -121,6 +121,11 @@ func (m *Manager) ExecArgs(commandArgs []string, opts ExecCommandOptions) error 
 	args = append(args, "--")
 	args = append(args, commandArgs...)
 
+	// Support interactive mode
+	if opts.Interactive {
+		return IncusExecInteractive(args...)
+	}
+
 	return IncusExec(args...)
 }
 

@@ -256,6 +256,33 @@ jobs:
           # Export image for caching
           incus image export coi /tmp/coi-image
 
+      - name: Debug tmux attach manually
+        run: |
+          echo "=== Testing tmux attach manually ==="
+          # Create a test container
+          incus launch images:ubuntu/22.04 test-attach-debug
+          sleep 5
+
+          # Configure raw.idmap for CI
+          incus config set test-attach-debug raw.idmap "both 1001 1000"
+          incus restart test-attach-debug
+          sleep 5
+
+          # Create a tmux session in the container
+          incus exec test-attach-debug --user 1000 --group 1000 -- tmux new-session -d -s test-session "bash"
+          sleep 2
+
+          # Check if session exists
+          echo "Checking for tmux session..."
+          incus exec test-attach-debug --user 1000 --group 1000 -- tmux list-sessions || echo "No sessions found"
+
+          # Try to attach to the session
+          echo "Attempting to attach..."
+          timeout 10 incus exec test-attach-debug --user 1000 --group 1000 -- tmux attach -t test-session || echo "Attach timed out or failed"
+
+          # Clean up
+          incus delete test-attach-debug --force
+
       - name: Run integration tests
         run: |
           # Run only the failing tests to validate fix
