@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 
@@ -118,26 +117,23 @@ func attachCommand(cmd *cobra.Command, args []string) error {
 }
 
 func attachToContainer(containerName string) error {
-	// Build the command to attach as code user
-	// Use tmux attach which will auto-find the session
-	tmuxCmd := "tmux attach"
+	// Calculate the tmux session name (consistent with shell command)
+	tmuxSessionName := fmt.Sprintf("coi-%s", containerName)
+	tmuxCmd := fmt.Sprintf("tmux attach -t %s", tmuxSessionName)
 
-	// Execute with incus exec, running as code user
-	args := []string{
-		"exec",
-		containerName,
-		"--",
-		"su", "-", "code",
-		"-c", tmuxCmd,
+	// Use container manager for proper user/environment handling
+	// This approach is more reliable than su, especially in CI with raw.idmap
+	mgr := container.NewManager(containerName)
+
+	// Execute as code user with proper environment setup
+	user := container.CodeUID
+	opts := container.ExecCommandOptions{
+		User:        &user,
+		Cwd:         "/workspace",
+		Interactive: true,
 	}
 
-	// Use incus command
-	incusCmd := exec.Command("incus", args...)
-	incusCmd.Stdin = os.Stdin
-	incusCmd.Stdout = os.Stdout
-	incusCmd.Stderr = os.Stderr
-
-	err := incusCmd.Run()
+	_, err := mgr.ExecCommand(tmuxCmd, opts)
 	if err != nil {
 		errStr := err.Error()
 		// Exit status 143 = SIGTERM (128+15), happens when container shuts down
@@ -158,22 +154,18 @@ func attachToContainer(containerName string) error {
 }
 
 func attachToContainerWithBash(containerName string) error {
+	// Use container manager for proper user/environment handling
+	mgr := container.NewManager(containerName)
+
 	// Execute bash as code user
-	args := []string{
-		"exec",
-		containerName,
-		"--",
-		"su", "-", "code",
-		"-c", "cd /workspace && exec bash",
+	user := container.CodeUID
+	opts := container.ExecCommandOptions{
+		User:        &user,
+		Cwd:         "/workspace",
+		Interactive: true,
 	}
 
-	// Use incus command
-	incusCmd := exec.Command("incus", args...)
-	incusCmd.Stdin = os.Stdin
-	incusCmd.Stdout = os.Stdout
-	incusCmd.Stderr = os.Stderr
-
-	err := incusCmd.Run()
+	_, err := mgr.ExecCommand("exec bash", opts)
 	if err != nil {
 		// Handle expected exit conditions gracefully
 		errStr := err.Error()
