@@ -128,6 +128,19 @@ jobs:
           incus network set incusbr0 ipv4.nat=true
           incus network set incusbr0 ipv6.nat=true
 
+      - name: Check kernel idmap support
+        run: |
+          echo "Kernel version:"
+          uname -r
+          echo "Checking for idmapped mount support:"
+          grep -i idmap /proc/filesystems || echo "No idmap in /proc/filesystems"
+          echo "Checking btrfs features:"
+          sudo btrfs filesystem df /var/lib/incus/storage-pools/default || true
+          echo "AppArmor status:"
+          sudo aa-status | grep incus || echo "No incus AppArmor profiles"
+          echo "Checking if AppArmor is blocking bind mounts:"
+          sudo dmesg | grep -i "apparmor.*denied" | tail -20 || echo "No recent AppArmor denials"
+
       - name: Configure networking for Incus
         run: |
           # Enable IP forwarding (required for container networking)
@@ -171,6 +184,45 @@ jobs:
         run: |
           go build -o coi ./cmd/coi
           ./coi version
+
+      - name: Test bind mount functionality
+        run: |
+          echo "Testing if bind mounts work with shift=true..."
+
+          # Create test directory and file
+          mkdir -p /tmp/test-bind-mount
+          echo "test-content" > /tmp/test-bind-mount/test-file.txt
+
+          # Launch test container
+          incus launch images:ubuntu/22.04 test-bind-mount-container
+          sleep 5
+
+          # Add bind mount with shift=true
+          incus config device add test-bind-mount-container testmount disk source=/tmp/test-bind-mount path=/mnt/test shift=true
+
+          # Check if file is visible inside container
+          echo "Files in container /mnt/test:"
+          incus exec test-bind-mount-container -- ls -la /mnt/test/
+
+          # Try to read the file
+          echo "Reading file from container:"
+          incus exec test-bind-mount-container -- cat /mnt/test/test-file.txt || echo "FAILED: Cannot read file in container"
+
+          # Try to create a file from inside container
+          incus exec test-bind-mount-container -- sh -c 'echo "created-from-container" > /mnt/test/created.txt'
+
+          # Check if file appears on host
+          if [ -f /tmp/test-bind-mount/created.txt ]; then
+            echo "SUCCESS: File created in container is visible on host"
+            cat /tmp/test-bind-mount/created.txt
+          else
+            echo "FAILED: File created in container NOT visible on host"
+            ls -la /tmp/test-bind-mount/
+          fi
+
+          # Cleanup
+          incus delete test-bind-mount-container --force
+          rm -rf /tmp/test-bind-mount
 
       - name: Cache COI image
         id: cache-coi-image
