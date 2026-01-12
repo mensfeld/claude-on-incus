@@ -258,15 +258,9 @@ jobs:
 
       - name: Run integration tests
         run: |
-          # Run bind mount tests (3 tests that now pass with raw.idmap fix)
-          # Attach tests are skipped in CI due to GitHub Actions environment limitation:
-          # tmux server dies when incus exec exits, even with various backgrounding approaches
-          # These tests pass locally but fail in CI due to strict process management
-          python -m pytest \
-            tests/shell/ephemeral/workspace_files_persist_ephemeral.py \
-            tests/shell/ephemeral/uid_mapping_correct_ephemeral.py \
-            tests/shell/persistent/custom_mount_persistent.py \
-            -v --tb=short
+          # Run all integration tests
+          # Tests marked with @pytest.mark.skipif will be automatically skipped in CI
+          python -m pytest tests/ -v --tb=short
         env:
           COI_BINARY: ./coi
 
