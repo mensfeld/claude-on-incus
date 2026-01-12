@@ -31,9 +31,7 @@ def test_list_format_text_default(coi_binary, cleanup_containers, workspace_dir)
     output = result.stdout
     assert "Active Containers:" in output, "Should have text header"
     assert container_name in output, "Should show container name"
-    assert (
-        "Running" in output or "Status:" in output
-    ), "Should show status information"
+    assert "Running" in output or "Status:" in output, "Should show status information"
 
     # Should NOT be JSON
     assert not output.strip().startswith("{"), "Should not output JSON by default"

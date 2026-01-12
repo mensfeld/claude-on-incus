@@ -33,9 +33,7 @@ def test_list_format_json_active(coi_binary, cleanup_containers, workspace_dir):
 
     # Verify structure
     assert "active_containers" in data, "Missing 'active_containers' key"
-    assert isinstance(
-        data["active_containers"], list
-    ), "active_containers should be a list"
+    assert isinstance(data["active_containers"], list), "active_containers should be a list"
     assert len(data["active_containers"]) > 0, "Should have at least one container"
 
     # Find our container

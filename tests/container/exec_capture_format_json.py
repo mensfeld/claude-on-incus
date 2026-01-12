@@ -47,9 +47,7 @@ def test_exec_capture_format_json(coi_binary, cleanup_containers, workspace_dir)
     assert "exit_code" in data, "Missing exit_code field"
 
     # Verify values
-    assert (
-        data["stdout"] == "test output\n"
-    ), f"Unexpected stdout: {data['stdout']}"
+    assert data["stdout"] == "test output\n", f"Unexpected stdout: {data['stdout']}"
     assert data["exit_code"] == 0, "Exit code should be 0"
 
     # Cleanup

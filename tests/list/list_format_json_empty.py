@@ -21,9 +21,5 @@ def test_list_format_json_empty(coi_binary):
 
     # Verify structure
     assert "active_containers" in data, "Missing 'active_containers' key"
-    assert isinstance(
-        data["active_containers"], list
-    ), "active_containers should be a list"
-    assert (
-        len(data["active_containers"]) == 0
-    ), "Should have no containers when none are running"
+    assert isinstance(data["active_containers"], list), "active_containers should be a list"
+    assert len(data["active_containers"]) == 0, "Should have no containers when none are running"

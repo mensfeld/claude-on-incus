@@ -38,9 +38,7 @@ def test_exec_capture_format_raw(coi_binary, cleanup_containers, workspace_dir):
 
     # Verify raw output
     assert result.returncode == 0, "Command should succeed"
-    assert (
-        result.stdout == "hello world\n"
-    ), f"Expected 'hello world\\n', got '{result.stdout}'"
+    assert result.stdout == "hello world\n", f"Expected 'hello world\\n', got '{result.stdout}'"
 
     # Should NOT be JSON
     assert not result.stdout.strip().startswith("{"), "Should not output JSON"
