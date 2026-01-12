@@ -137,8 +137,10 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 		}
 
 		// Add disk devices BEFORE starting container
+		// Note: shift=false because GitHub Actions kernel doesn't support idmapped mounts
+		// This means files will have container UIDs, but that's acceptable for testing
 		opts.Logger(fmt.Sprintf("Adding workspace mount: %s", opts.WorkspacePath))
-		if err := result.Manager.MountDisk("workspace", opts.WorkspacePath, "/workspace", true); err != nil {
+		if err := result.Manager.MountDisk("workspace", opts.WorkspacePath, "/workspace", false); err != nil {
 			return nil, fmt.Errorf("failed to add workspace device: %w", err)
 		}
 
@@ -148,7 +150,7 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 				return nil, fmt.Errorf("failed to create storage directory: %w", err)
 			}
 			opts.Logger(fmt.Sprintf("Adding storage mount: %s", opts.StoragePath))
-			if err := result.Manager.MountDisk("storage", opts.StoragePath, "/storage", true); err != nil {
+			if err := result.Manager.MountDisk("storage", opts.StoragePath, "/storage", false); err != nil {
 				return nil, fmt.Errorf("failed to add storage device: %w", err)
 			}
 		}
@@ -157,13 +159,6 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 		opts.Logger("Starting container...")
 		if err := result.Manager.Start(); err != nil {
 			return nil, fmt.Errorf("failed to start container: %w", err)
-		}
-
-		// Debug: verify mounts are actually active after start
-		if output, err := result.Manager.ExecCommand("mount | grep workspace", container.ExecCommandOptions{Capture: true}); err == nil {
-			opts.Logger(fmt.Sprintf("[DEBUG] Mount check: %s", output))
-		} else {
-			opts.Logger(fmt.Sprintf("[DEBUG] No workspace mount found! Error: %v", err))
 		}
 	}
 
