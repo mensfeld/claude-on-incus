@@ -290,9 +290,9 @@ jobs:
           echo "Testing attach WITHOUT --force-interactive (expected to fail)..."
           timeout 5 incus exec test-attach-debug --user 1000 --group 1000 -- tmux attach -t test-session || echo "FAILED as expected (exit code: $?)"
 
-          # Try to attach WITH --force-interactive (should work)
-          echo "Testing attach WITH --force-interactive (expected to work)..."
-          timeout 5 incus exec test-attach-debug --force-interactive --user 1000 --group 1000 -- tmux attach -t test-session || echo "Result (exit code: $?)"
+          # Try to attach WITH --force-interactive and TERM set (should work)
+          echo "Testing attach WITH --force-interactive and TERM (expected to work)..."
+          timeout 5 incus exec test-attach-debug --force-interactive --env TERM=xterm-256color --user 1000 --group 1000 -- tmux attach -t test-session || echo "Result (exit code: $?)"
 
           # Clean up
           incus delete test-attach-debug --force

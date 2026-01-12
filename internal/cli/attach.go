@@ -124,12 +124,21 @@ func attachToContainer(containerName string) error {
 	// Direct command execution without bash -c wrapper for better terminal handling
 	mgr := container.NewManager(containerName)
 
+	// Get TERM with fallback (same as shell command)
+	termEnv := os.Getenv("TERM")
+	if termEnv == "" {
+		termEnv = "xterm-256color" // Fallback to widely compatible terminal
+	}
+
 	// Execute as code user with proper environment setup
 	user := container.CodeUID
 	opts := container.ExecCommandOptions{
 		User:        &user,
 		Cwd:         "/workspace",
 		Interactive: true,
+		Env: map[string]string{
+			"TERM": termEnv,
+		},
 	}
 
 	// Use ExecArgs instead of ExecCommand to avoid bash -c wrapper
