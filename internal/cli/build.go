@@ -26,7 +26,7 @@ The coi image includes:
   - Docker
   - GitHub CLI
   - tmux
-  - test-claude (for testing)
+  - dummy (test stub for testing)
 
 Examples:
   coi build

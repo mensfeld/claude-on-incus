@@ -139,12 +139,22 @@ func (b *Builder) waitForNetwork() error {
 
 	maxAttempts := 180 // 3 minutes - increased for slower CI environments
 	for i := 0; i < maxAttempts; i++ {
-		// Use ping instead of curl (curl not installed in fresh ubuntu containers)
-		_, err := b.mgr.ExecCommand("ping -c 1 -W 2 archive.ubuntu.com", container.ExecCommandOptions{
+		// Try TCP connection (works even when ICMP/ping is blocked in CI)
+		// Using /dev/tcp bash feature to test HTTP connectivity without curl
+		_, err := b.mgr.ExecCommand("timeout 3 bash -c 'exec 3<>/dev/tcp/archive.ubuntu.com/80 && echo connected >&3' 2>/dev/null", container.ExecCommandOptions{
 			Capture: true,
 		})
 		if err == nil {
-			b.opts.Logger(fmt.Sprintf("Network ready after %d seconds", i+1))
+			b.opts.Logger(fmt.Sprintf("Network ready (HTTP) after %d seconds", i+1))
+			return nil
+		}
+
+		// Fallback to ping (works in most environments but not GitHub Actions)
+		_, pingErr := b.mgr.ExecCommand("ping -c 1 -W 2 archive.ubuntu.com", container.ExecCommandOptions{
+			Capture: true,
+		})
+		if pingErr == nil {
+			b.opts.Logger(fmt.Sprintf("Network ready (ICMP) after %d seconds", i+1))
 			return nil
 		}
 
@@ -217,14 +227,14 @@ func (b *Builder) runBuildScript(scriptPath string) error {
 
 	b.opts.Logger(fmt.Sprintf("Using build script: %s", scriptPath))
 
-	// Push test-claude to /tmp (required for build scripts)
-	testClaudePath := "testdata/fake-claude/claude"
-	if _, err := os.Stat(testClaudePath); err != nil {
-		return fmt.Errorf("test-claude not found at %s (run from project root)", testClaudePath)
+	// Push dummy to /tmp (required for build scripts)
+	dummyPath := "testdata/dummy/dummy"
+	if _, err := os.Stat(dummyPath); err != nil {
+		return fmt.Errorf("dummy not found at %s (run from project root)", dummyPath)
 	}
-	b.opts.Logger("Pushing test-claude to container...")
-	if err := b.mgr.PushFile(testClaudePath, "/tmp/test-claude"); err != nil {
-		return fmt.Errorf("failed to push test-claude: %w", err)
+	b.opts.Logger("Pushing dummy to container...")
+	if err := b.mgr.PushFile(dummyPath, "/tmp/dummy"); err != nil {
+		return fmt.Errorf("failed to push dummy: %w", err)
 	}
 
 	// Push build script to container

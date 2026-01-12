@@ -2,13 +2,13 @@
 # Build script for coi image
 # This script runs INSIDE the container during image build
 #
-# It installs all dependencies needed for Claude Code execution:
+# It installs all dependencies needed for CLI tool execution:
 # - Base development tools
 # - Node.js LTS
 # - Claude CLI
 # - Docker
 # - GitHub CLI
-# - test-claude (fake Claude for testing)
+# - dummy (test stub for testing)
 
 set -euo pipefail
 
@@ -86,23 +86,23 @@ install_claude_cli() {
 }
 
 #######################################
-# Install test-claude (fake Claude for testing)
+# Install dummy (test stub for testing)
 #######################################
-install_test_claude() {
-    log "Installing test-claude (fake Claude for testing)..."
+install_dummy() {
+    log "Installing dummy (test stub for testing)..."
 
-    # test-claude MUST be pushed to /tmp/test-claude before running this script
-    if [[ ! -f /tmp/test-claude ]]; then
-        log "ERROR: /tmp/test-claude not found!"
-        log "The test-claude script must be pushed to the container before building."
+    # dummy MUST be pushed to /tmp/dummy before running this script
+    if [[ ! -f /tmp/dummy ]]; then
+        log "ERROR: /tmp/dummy not found!"
+        log "The dummy script must be pushed to the container before building."
         log "Make sure you're running the build from the project root directory."
         exit 1
     fi
 
-    cp /tmp/test-claude /usr/local/bin/test-claude
-    chmod +x /usr/local/bin/test-claude
-    rm /tmp/test-claude
-    log "test-claude $(test-claude --version 2>/dev/null || echo 'installed')"
+    cp /tmp/dummy /usr/local/bin/dummy
+    chmod +x /usr/local/bin/dummy
+    rm /tmp/dummy
+    log "dummy $(dummy --version 2>/dev/null || echo 'installed')"
 }
 
 #######################################
@@ -171,7 +171,7 @@ main() {
     install_nodejs
     create_code_user
     install_claude_cli
-    install_test_claude
+    install_dummy
     install_docker
     install_github_cli
     cleanup

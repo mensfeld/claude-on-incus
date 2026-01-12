@@ -65,29 +65,29 @@ def cleanup_containers(workspace_dir, coi_binary):
 
 
 @pytest.fixture(scope="session")
-def fake_claude_path():
-    """Return path to fake Claude CLI for testing.
+def dummy_path():
+    """Return path to dummy CLI for testing.
 
-    This allows tests to run without requiring a real Claude Code license.
-    The fake Claude simulates basic Claude behavior for testing container
+    This allows tests to run without requiring actual software licenses.
+    The dummy simulates basic interactive CLI behavior for testing container
     orchestration logic.
     """
-    fake_path = os.path.join(os.path.dirname(__file__), "..", "testdata", "fake-claude")
-    if not os.path.exists(os.path.join(fake_path, "claude")):
-        pytest.skip("fake-claude not found")
-    return os.path.abspath(fake_path)
+    dummy_dir = os.path.join(os.path.dirname(__file__), "..", "testdata", "dummy")
+    if not os.path.exists(os.path.join(dummy_dir, "dummy")):
+        pytest.skip("dummy not found")
+    return os.path.abspath(dummy_dir)
 
 
 @pytest.fixture(scope="session")
-def fake_claude_image(coi_binary):
-    """Build and return a test image with fake Claude pre-installed.
+def dummy_image(coi_binary):
+    """Build and return a test image with dummy pre-installed.
 
-    This image includes fake Claude at /usr/local/bin/claude, allowing
-    tests to run 10x+ faster without requiring a real Claude Code license.
+    This image includes dummy at /usr/local/bin/dummy, allowing
+    tests to run 10x+ faster without requiring actual software licenses.
 
     The image is built once per test session and reused across all tests.
     """
-    image_name = "coi-test-fake-claude"
+    image_name = "coi-test-dummy"
 
     # Check if image already exists
     result = subprocess.run(
@@ -98,19 +98,19 @@ def fake_claude_image(coi_binary):
     if result.returncode == 0:
         return image_name  # Already built
 
-    # Build image with fake Claude
+    # Build image with dummy
     script_path = os.path.join(
         os.path.dirname(__file__),
         "..",
         "testdata",
-        "fake-claude",
+        "dummy",
         "install.sh"
     )
 
     if not os.path.exists(script_path):
-        pytest.skip(f"Fake Claude install script not found: {script_path}")
+        pytest.skip(f"Dummy install script not found: {script_path}")
 
-    print(f"\nBuilding test image with fake Claude (one-time setup)...")
+    print(f"\nBuilding test image with dummy (one-time setup)...")
 
     result = subprocess.run(
         [coi_binary, "build", "custom", image_name,
@@ -121,7 +121,20 @@ def fake_claude_image(coi_binary):
     )
 
     if result.returncode != 0:
-        pytest.skip(f"Could not build fake Claude image: {result.stderr}")
+        pytest.skip(f"Could not build dummy image: {result.stderr}")
 
     print(f"✓ Test image '{image_name}' built successfully")
     return image_name
+
+
+# Backwards compatibility aliases (deprecated)
+@pytest.fixture(scope="session")
+def fake_claude_path(dummy_path):
+    """Deprecated: Use dummy_path instead."""
+    return dummy_path
+
+
+@pytest.fixture(scope="session")
+def fake_claude_image(dummy_image):
+    """Deprecated: Use dummy_image instead."""
+    return dummy_image

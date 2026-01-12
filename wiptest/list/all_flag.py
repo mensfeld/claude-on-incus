@@ -29,7 +29,7 @@ from support.helpers import (
 )
 
 
-def test_list_all_flag(coi_binary, cleanup_containers, workspace_dir, fake_claude_path):
+def test_list_all_flag(coi_binary, cleanup_containers, workspace_dir, dummy_path):
     """Test that coi list --all includes stopped containers."""
     # Clean up any existing test containers first
     cleanup_all_test_containers()
@@ -37,7 +37,7 @@ def test_list_all_flag(coi_binary, cleanup_containers, workspace_dir, fake_claud
 
     # Use fake Claude for faster testing
     env = os.environ.copy()
-    env["PATH"] = f"{fake_claude_path}:{env.get('PATH', '')}"
+    env["PATH"] = f"{dummy_path}:{env.get('PATH', '')}"
 
     container_name = calculate_container_name(workspace_dir, 4)
 

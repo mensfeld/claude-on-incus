@@ -247,7 +247,7 @@ def wait_for_prompt(child, timeout=90):
 
     Automatically uses terminal emulator if available, otherwise falls back to raw expect().
     """
-    # Check for any valid prompt: real Claude shows "Tips for getting started", fake-claude shows "You:"
+    # Check for any valid prompt: real CLI shows "Tips for getting started", dummy shows "You:"
     prompt_patterns = ["Tips for getting started", "You:", "bypass"]
 
     if isinstance(child.logfile_read, TerminalEmulator):

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Fake Claude CLI for testing - simulates Claude Code behavior
-# This allows tests to run without requiring a Claude license
-# Creates proper .claude directory structure for resume testing
+# Dummy CLI for testing - simulates interactive CLI tool behavior
+# This allows tests to run without requiring actual software licenses
+# Creates proper state directory structure for resume testing
 
 set -euo pipefail
 
@@ -19,14 +19,14 @@ VERBOSE=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --version)
-            echo "Claude Code CLI 1.0.0-fake (test stub)"
+            echo "Dummy CLI 1.0.0 (test stub)"
             exit 0
             ;;
         --help)
             cat << 'HELP'
-Fake Claude CLI for testing
+Dummy CLI for testing
 
-Usage: claude [options]
+Usage: dummy [options]
 
 Options:
   --version              Show version
@@ -36,7 +36,7 @@ Options:
   --permission-mode      Permission mode (bypassPermissions skips setup)
   --verbose              Verbose output
 
-This is a test stub that simulates Claude Code behavior.
+This is a test stub that simulates interactive CLI tool behavior.
 HELP
             exit 0
             ;;
@@ -88,8 +88,8 @@ generate_uuid() {
     fi
 }
 
-# Create proper .claude directory structure
-setup_claude_dir() {
+# Create proper state directory structure
+setup_state_dir() {
     mkdir -p "$STATE_DIR"
     mkdir -p "$PROJECTS_DIR"
     mkdir -p "$STATE_DIR/cache"
@@ -139,7 +139,7 @@ init_session() {
 }
 
 # Main execution
-setup_claude_dir
+setup_state_dir
 
 # Determine session ID
 if [ "$RESUME_MODE" = true ]; then
@@ -185,7 +185,7 @@ else
     if [ "$BYPASS_PERMISSIONS" != true ]; then
         if [ ! -f "$STATE_DIR/.setup_complete" ]; then
             echo ""
-            echo "Welcome to Claude Code (fake for testing)"
+            echo "Welcome to Dummy CLI (test stub for testing)"
             touch "$STATE_DIR/.setup_complete"
         fi
     fi
