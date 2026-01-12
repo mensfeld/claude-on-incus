@@ -487,23 +487,35 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		fmt.Fprintf(os.Stderr, "Use 'coi tmux send %s \"<command>\"' to send commands\n", result.ContainerName)
 		return nil
 	} else {
-		// Interactive mode: create session and attach
-		// Use setsid to detach tmux server from incus exec process tree
-		// This prevents the tmux server from being killed when incus exec exits
+		// Interactive mode: create session detached FIRST, then attach separately
+		// This prevents tmux server lifecycle from being tied to incus exec
 		// trap : INT prevents bash from exiting on Ctrl+C, exec bash replaces (no nested shells)
+
+		// Step 1: Create detached session (starts tmux server independently)
 		createCmd := fmt.Sprintf(
-			"setsid tmux new-session -s %s -c /workspace \"bash -c 'trap : INT; %s %s; exec bash'\"",
+			"tmux new-session -d -s %s -c /workspace \"bash -c 'trap : INT; %s %s; exec bash'\"",
 			tmuxSessionName,
 			envExports,
 			cliCmd,
 		)
-		opts := container.ExecCommandOptions{
+		createOpts := container.ExecCommandOptions{
+			User:    userPtr,
+			Cwd:     "/workspace",
+			Capture: true,
+		}
+		if _, err := result.Manager.ExecCommand(createCmd, createOpts); err != nil {
+			return fmt.Errorf("failed to create tmux session: %w", err)
+		}
+
+		// Step 2: Attach to the session (separate process)
+		attachCmd := fmt.Sprintf("tmux attach -t %s", tmuxSessionName)
+		attachOpts := container.ExecCommandOptions{
 			User:        userPtr,
 			Cwd:         "/workspace",
 			Interactive: true,
 			Env:         containerEnv,
 		}
-		_, err := result.Manager.ExecCommand(createCmd, opts)
+		_, err := result.Manager.ExecCommand(attachCmd, attachOpts)
 		return err
 	}
 }
