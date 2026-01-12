@@ -197,15 +197,14 @@ jobs:
 
       - name: Run integration tests
         run: |
-          # Temporarily run only failing tests for faster iteration
+          # Run only the failing tests to validate privileged container fix
           python -m pytest \
-            tests/shell/persistent/custom_mount_persistent.py::test_custom_mount_persistent \
-            tests/attach/attach_to_persistent.py::test_attach_to_persistent \
-            tests/shell/ephemeral/workspace_files_persist_ephemeral.py::test_workspace_files_persist_ephemeral \
-            tests/shell/ephemeral/uid_mapping_correct_ephemeral.py::test_uid_mapping_correct \
-            tests/attach/attach_after_detach.py::test_attach_after_detach \
+            tests/shell/ephemeral/workspace_files_persist_ephemeral.py \
+            tests/shell/ephemeral/uid_mapping_correct_ephemeral.py \
+            tests/shell/persistent/custom_mount_persistent.py \
+            tests/shell/attach/attach_to_persistent.py \
+            tests/shell/attach/attach_after_detach.py \
             -v --tb=short
-          # TODO: Once these pass, restore to: python -m pytest tests/ -v --tb=short
         env:
           COI_BINARY: ./coi
 

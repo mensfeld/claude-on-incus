@@ -8,6 +8,7 @@ Tests that:
 4. Verify file still exists on host
 """
 
+import os
 import subprocess
 import time
 

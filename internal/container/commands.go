@@ -185,12 +185,26 @@ func ContainerExec(containerName, command string, opts ContainerExecOptions) (st
 
 // LaunchContainer launches an ephemeral container
 func LaunchContainer(imageAlias, containerName string) error {
-	return IncusExec("launch", imageAlias, containerName, "--ephemeral")
+	args := []string{"launch", imageAlias, containerName, "--ephemeral"}
+
+	// Use privileged containers in CI to work around GitHub Actions bind mount restrictions
+	if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
+		args = append(args, "-c", "security.privileged=true")
+	}
+
+	return IncusExec(args...)
 }
 
 // LaunchContainerPersistent launches a non-ephemeral container
 func LaunchContainerPersistent(imageAlias, containerName string) error {
-	return IncusExec("launch", imageAlias, containerName)
+	args := []string{"launch", imageAlias, containerName}
+
+	// Use privileged containers in CI to work around GitHub Actions bind mount restrictions
+	if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
+		args = append(args, "-c", "security.privileged=true")
+	}
+
+	return IncusExec(args...)
 }
 
 // StopContainer stops a container
