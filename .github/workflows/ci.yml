@@ -259,8 +259,8 @@ jobs:
       - name: Debug tmux attach manually
         run: |
           echo "=== Testing tmux attach manually ==="
-          # Create a test container
-          incus launch images:ubuntu/22.04 test-attach-debug
+          # Create a test container from coi image (has tmux installed)
+          incus launch coi test-attach-debug
           sleep 5
 
           # Configure raw.idmap for CI
@@ -268,7 +268,8 @@ jobs:
           incus restart test-attach-debug
           sleep 5
 
-          # Create a tmux session in the container
+          # Create a tmux session in the container as code user
+          echo "Creating tmux session..."
           incus exec test-attach-debug --user 1000 --group 1000 -- tmux new-session -d -s test-session "bash"
           sleep 2
 
@@ -276,9 +277,18 @@ jobs:
           echo "Checking for tmux session..."
           incus exec test-attach-debug --user 1000 --group 1000 -- tmux list-sessions || echo "No sessions found"
 
-          # Try to attach to the session
-          echo "Attempting to attach..."
-          timeout 10 incus exec test-attach-debug --user 1000 --group 1000 -- tmux attach -t test-session || echo "Attach timed out or failed"
+          # Send a test command to the session
+          echo "Sending test command..."
+          incus exec test-attach-debug --user 1000 --group 1000 -- tmux send-keys -t test-session "echo 'test message'" Enter
+          sleep 1
+
+          # Capture the pane content
+          echo "Captured output:"
+          incus exec test-attach-debug --user 1000 --group 1000 -- tmux capture-pane -t test-session -p
+
+          # Try to attach to the session (non-interactive test with timeout)
+          echo "Testing if attach command works (will timeout after 5s)..."
+          timeout 5 incus exec test-attach-debug --user 1000 --group 1000 -- tmux attach -t test-session || echo "Attach command executed (exit code: $?)"
 
           # Clean up
           incus delete test-attach-debug --force
