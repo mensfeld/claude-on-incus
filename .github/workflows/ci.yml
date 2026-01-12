@@ -88,6 +88,15 @@ jobs:
           sudo systemctl start incus.socket || true
           sleep 5
 
+          # Configure subuid/subgid for UID mapping (needed for raw.idmap)
+          # Map runner UID 1001 to be available for container remapping
+          echo "root:1001:1" | sudo tee -a /etc/subuid
+          echo "root:1001:1" | sudo tee -a /etc/subgid
+
+          # Restart Incus to pick up subuid/subgid changes
+          sudo systemctl restart incus || true
+          sleep 5
+
           # Initialize Incus with btrfs storage (faster than default dir storage)
           # Using preseed for explicit configuration
           cat <<EOF | sudo incus admin init --preseed
