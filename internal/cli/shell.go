@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/mensfeld/claude-on-incus/internal/container"
 	"github.com/mensfeld/claude-on-incus/internal/session"
@@ -500,11 +501,10 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 			// Ignore errors - server might already be running
 		}
 
-		// Step 2: Create detached session with nohup to truly background it
-		// The & at the end runs it in background, and we immediately wait for it to complete
-		// This ensures the tmux server isn't tied to any parent process
+		// Step 2: Create detached session
+		// Simple approach - just create detached and hope it persists
 		createCmd := fmt.Sprintf(
-			"nohup tmux new-session -d -s %s -c /workspace \"bash -c 'trap : INT; %s %s; exec bash'\" >/dev/null 2>&1 & sleep 0.5",
+			"tmux new-session -d -s %s -c /workspace \"bash -c 'trap : INT; %s %s; exec bash'\"",
 			tmuxSessionName,
 			envExports,
 			cliCmd,
@@ -517,6 +517,9 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		if _, err := result.Manager.ExecCommand(createCmd, createOpts); err != nil {
 			return fmt.Errorf("failed to create tmux session: %w", err)
 		}
+
+		// Small delay to let session initialize
+		time.Sleep(500 * time.Millisecond)
 
 		// Step 3: Attach to the session
 		attachCmd := fmt.Sprintf("tmux attach -t %s", tmuxSessionName)
