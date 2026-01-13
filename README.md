@@ -12,6 +12,8 @@ Run Claude Code (and other AI coding tools soon) in isolated, production-grade I
 
 *Think Docker for AI coding tools, but with system containers that actually work like real machines.*
 
+![Demo](misc/demo.gif)
+
 ## Features
 
 **Core Capabilities**
