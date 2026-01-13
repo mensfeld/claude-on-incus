@@ -12,6 +12,8 @@ Add machine-readable output formats to enable programmatic integration with clau
 - [Enhancement] Enable programmatic integration between coi and claude_yard projects
 - [Enhancement] Add 5 integration tests for new output formats (3 for list, 2 for exec)
 - [Enhancement] Update README with --format flag documentation and examples
+- [Enhancement] Normalize all "fake-claude" references to "dummy" throughout codebase (tests, docs, scripts)
+- [Enhancement] Remove FAQ.md - content no longer relevant after refactoring
 
 ## 0.2.0 (2025-01-12)
 
