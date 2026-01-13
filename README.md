@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="misc/logo.png" alt="Claude on Incus Logo" width="350">
+</p>
+
 # claude-on-incus (`coi`)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
