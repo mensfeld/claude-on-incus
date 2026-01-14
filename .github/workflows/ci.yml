@@ -13,6 +13,7 @@ permissions:
   contents: read
 
 jobs:
+  # Go unit tests run independently and quickly
   build:
     name: Build & Unit Tests
     runs-on: ubuntu-24.04
@@ -32,10 +33,10 @@ jobs:
       - name: Run unit tests
         run: go test -v ./...
 
+  # Integration tests run in parallel with unit tests (no dependency)
   integration:
     name: Integration Tests
     runs-on: ubuntu-24.04
-    needs: build
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
