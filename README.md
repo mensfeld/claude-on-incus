@@ -62,80 +62,6 @@ coi shell
 # - No access to your host SSH keys, env vars, or credentials
 ```
 
-## Network Isolation
-
-COI provides three network isolation modes to balance security and development flexibility:
-
-```bash
-# Restricted mode (default): Blocks local networks, allows internet
-coi shell
-
-# Allowlist mode: Only allow specific domains (high security)
-coi shell --network=allowlist
-
-# Open mode: No restrictions (trusted projects only)
-coi shell --network=open
-```
-
-### What's Blocked by Default
-
-- **Private networks (RFC1918)**: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-- **Cloud metadata endpoints**: 169.254.0.0/16 (AWS, GCP, Azure credentials)
-
-### What's Allowed
-
-- **All public internet traffic**: npm, pypi, GitHub, APIs, etc.
-- **Ingress from host**: Access web servers running in containers
-
-### Configuration
-
-```toml
-# ~/.config/coi/config.toml
-[network]
-mode = "restricted"  # restricted | open | allowlist (default: restricted)
-block_private_networks = true
-block_metadata_endpoint = true
-
-# Allowlist mode configuration
-allowed_domains = ["github.com", "api.anthropic.com"]
-refresh_interval_minutes = 30
-```
-
-**Profile-based network policies:**
-```toml
-[profiles.secure]
-# High-security: Only specific domains
-network.mode = "allowlist"
-network.allowed_domains = ["github.com", "api.anthropic.com"]
-network.refresh_interval_minutes = 15
-
-[profiles.development]
-# Moderate security: Common development domains
-network.mode = "allowlist"
-network.allowed_domains = [
-    "github.com",
-    "api.github.com",
-    "registry.npmjs.org",
-    "pypi.org",
-    "files.pythonhosted.org"
-]
-
-[profiles.restricted]
-# Default security: Block local networks only
-network.mode = "restricted"
-
-[profiles.trusted]
-# No security: For fully trusted projects
-network.mode = "open"
-```
-
-**Allowlist mode features:**
-- DNS resolution to IPs with automatic refresh
-- IP caching for DNS failure resilience
-- Always blocks RFC1918 private networks
-- Requires explicit subdomain listing (e.g., both `github.com` and `api.github.com`)
-
-For technical details, see [NETWORK.md](NETWORK.md).
 
 ## Why Incus Over Docker?
 
@@ -577,3 +503,48 @@ coi list
 # When done, shutdown all sessions
 coi shutdown --all
 ```
+
+## Network Isolation
+
+COI provides network isolation to protect your host and private networks from container access.
+
+### Network Modes
+
+**Restricted mode (default)** - Blocks local networks, allows internet:
+```bash
+coi shell  # Default behavior
+```
+- Blocks: RFC1918 private networks (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+- Blocks: Cloud metadata endpoints (169.254.0.0/16)
+- Allows: All public internet (npm, pypi, GitHub, APIs, etc.)
+
+**Allowlist mode** - Only specific domains allowed:
+```bash
+coi shell --network=allowlist
+```
+- Requires configuration with `allowed_domains` list
+- DNS resolution with automatic IP refresh every 30 minutes
+- Always blocks RFC1918 private networks
+- IP caching for DNS failure resilience
+
+**Open mode** - No restrictions (trusted projects only):
+```bash
+coi shell --network=open
+```
+
+### Configuration
+
+```toml
+# ~/.config/coi/config.toml
+[network]
+mode = "restricted"  # restricted | open | allowlist
+
+# Allowlist mode configuration
+allowed_domains = ["github.com", "api.anthropic.com", "registry.npmjs.org"]
+refresh_interval_minutes = 30  # IP refresh interval (0 to disable)
+```
+
+**Important for allowlist mode:**
+- Subdomains must be listed explicitly (`github.com` ≠ `api.github.com`)
+- Domains behind CDNs may have many IPs that change frequently
+- DNS failures use cached IPs from previous successful resolution
