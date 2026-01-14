@@ -8,9 +8,6 @@ The tests below are placeholders for future automated testing once we have
 proper config file injection support in the test framework.
 """
 
-import subprocess
-import time
-
 
 def test_allowlist_mode_allows_only_specified_domains(
     coi_binary, workspace_dir, cleanup_containers
