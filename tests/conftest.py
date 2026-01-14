@@ -5,7 +5,6 @@ Pytest configuration and fixtures for CLI integration tests.
 import os
 import subprocess
 import sys
-import time
 
 import pytest
 
@@ -141,28 +140,21 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_report_teststatus(report, config):
     """Customize test status output to include duration inline."""
-    if report.when == "call":
-        # Get the outcome (passed, failed, skipped, etc.)
-        cat, letter, word = "", "", ""
+    if report.when == "call" and hasattr(report, "duration"):
+        duration = report.duration
+        # Format duration nicely
+        duration_str = f"{duration:.2f}s" if duration < 1 else f"{duration:.1f}s"
 
-        if hasattr(report, "duration"):
-            duration = report.duration
-            # Format duration nicely
-            if duration < 1:
-                duration_str = f"{duration:.2f}s"
-            else:
-                duration_str = f"{duration:.1f}s"
+        # Append duration to the word (status)
+        if report.passed:
+            word = f"PASSED ({duration_str})"
+        elif report.failed:
+            word = f"FAILED ({duration_str})"
+        elif report.skipped:
+            word = f"SKIPPED ({duration_str})"
+        else:
+            word = f"{report.outcome.upper()} ({duration_str})"
 
-            # Append duration to the word (status)
-            if report.passed:
-                word = f"PASSED ({duration_str})"
-            elif report.failed:
-                word = f"FAILED ({duration_str})"
-            elif report.skipped:
-                word = f"SKIPPED ({duration_str})"
-            else:
-                word = f"{report.outcome.upper()} ({duration_str})"
-
-            return report.outcome, letter, word
+        return report.outcome, "", word
 
     return None  # Use default formatting
