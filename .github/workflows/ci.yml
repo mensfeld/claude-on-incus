@@ -291,7 +291,8 @@ jobs:
         run: |
           # Run all integration tests
           # Tests marked with @pytest.mark.skipif will be automatically skipped in CI
-          python -m pytest tests/ -v --tb=short
+          # --durations=0 shows timing for all tests to help identify slow tests
+          python -m pytest tests/ -v --tb=short --durations=0
         env:
           COI_BINARY: ./coi
 
