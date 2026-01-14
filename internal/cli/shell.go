@@ -234,7 +234,8 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Run CLI tool
-	fmt.Fprintf(os.Stderr, "\nStarting %s session...\n", toolInstance.Name())
+	toolNameCapitalized := strings.Title(toolInstance.Name())
+	fmt.Fprintf(os.Stderr, "\nStarting %s session...\n", toolNameCapitalized)
 	fmt.Fprintf(os.Stderr, "Session ID: %s\n", sessionID)
 	fmt.Fprintf(os.Stderr, "Container: %s\n", result.ContainerName)
 	fmt.Fprintf(os.Stderr, "Workspace: %s\n", absWorkspace)
