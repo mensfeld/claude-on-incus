@@ -11,6 +11,7 @@ type Config struct {
 	Paths    PathsConfig              `toml:"paths"`
 	Incus    IncusConfig              `toml:"incus"`
 	Network  NetworkConfig            `toml:"network"`
+	Tool     ToolConfig               `toml:"tool"`
 	Profiles map[string]ProfileConfig `toml:"profiles"`
 }
 
@@ -71,6 +72,12 @@ type ProfileConfig struct {
 	Persistent  bool              `toml:"persistent"`
 }
 
+// ToolConfig represents AI coding tool configuration
+type ToolConfig struct {
+	Name   string `toml:"name"`   // Tool name: "claude", "aider", "cursor", etc.
+	Binary string `toml:"binary"` // Override binary name (optional)
+}
+
 // GetDefaultConfig returns the default configuration
 func GetDefaultConfig() *Config {
 	homeDir, err := os.UserHomeDir()
@@ -106,6 +113,10 @@ func GetDefaultConfig() *Config {
 				Enabled: true,
 				Path:    filepath.Join(baseDir, "logs", "network.log"),
 			},
+		},
+		Tool: ToolConfig{
+			Name:   "claude",
+			Binary: "", // Empty means use tool's default binary name
 		},
 		Profiles: make(map[string]ProfileConfig),
 	}
@@ -209,6 +220,14 @@ func (c *Config) Merge(other *Config) {
 		c.Network.Logging.Path = ExpandPath(other.Network.Logging.Path)
 	}
 	c.Network.Logging.Enabled = other.Network.Logging.Enabled
+
+	// Merge Tool settings
+	if other.Tool.Name != "" {
+		c.Tool.Name = other.Tool.Name
+	}
+	if other.Tool.Binary != "" {
+		c.Tool.Binary = other.Tool.Binary
+	}
 
 	// Merge profiles
 	for name, profile := range other.Profiles {
