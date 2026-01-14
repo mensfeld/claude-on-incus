@@ -234,10 +234,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Run CLI tool
-	// Capitalize tool name for display (e.g., "claude" -> "Claude")
-	toolName := toolInstance.Name()
-	toolNameCapitalized := strings.ToUpper(toolName[:1]) + toolName[1:]
-	fmt.Fprintf(os.Stderr, "\nStarting %s session...\n", toolNameCapitalized)
+	fmt.Fprintf(os.Stderr, "\nStarting session...\n")
 	fmt.Fprintf(os.Stderr, "Session ID: %s\n", sessionID)
 	fmt.Fprintf(os.Stderr, "Container: %s\n", result.ContainerName)
 	fmt.Fprintf(os.Stderr, "Workspace: %s\n", absWorkspace)
