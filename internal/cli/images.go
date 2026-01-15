@@ -11,9 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	showAll bool
-)
+var showAll bool
 
 // imageCmd is the parent command for all image operations
 var imageCmd = &cobra.Command{
@@ -179,7 +177,7 @@ func init() {
 
 	// Add flags to cleanup command
 	imageCleanupCmd.Flags().Int("keep", 0, "Number of versions to keep (required)")
-	imageCleanupCmd.MarkFlagRequired("keep")
+	_ = imageCleanupCmd.MarkFlagRequired("keep") // Always succeeds for valid flag names.
 
 	// Add subcommands to image command
 	imageCmd.AddCommand(imageListCmd)

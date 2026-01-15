@@ -68,13 +68,20 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("incus is not available - please install Incus and ensure you're in the incus-admin group")
 	}
 
-	// Get sessions directory
+	// Get configured tool (needed to determine tool-specific sessions directory)
+	toolInstance, err := getConfiguredTool(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Get sessions directory (tool-specific: sessions-claude, sessions-aider, etc.)
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-	sessionsDir := filepath.Join(homeDir, ".coi", "sessions")
-	if err := os.MkdirAll(sessionsDir, 0755); err != nil {
+	baseDir := filepath.Join(homeDir, ".coi")
+	sessionsDir := session.GetSessionsDir(baseDir, toolInstance)
+	if err := os.MkdirAll(sessionsDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create sessions directory: %w", err)
 	}
 
@@ -164,12 +171,6 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		networkConfig.Mode = config.NetworkMode(networkMode)
 	}
 
-	// Get configured tool
-	toolInstance, err := getConfiguredTool(cfg)
-	if err != nil {
-		return err
-	}
-
 	// Determine CLI config path based on tool
 	// For ENV-based tools (ConfigDirName returns ""), this will be empty
 	var cliConfigPath string
@@ -180,15 +181,15 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 
 	// Setup session
 	setupOpts := session.SetupOptions{
-		WorkspacePath:    absWorkspace,
-		Image:            imageName,
-		Persistent:       persistent,
-		ResumeFromID:     resumeID,
-		Slot:             slotNum,
-		SessionsDir:      sessionsDir,
-		CLIConfigPath:    cliConfigPath,
-		Tool:             toolInstance,
-		NetworkConfig:    &networkConfig,
+		WorkspacePath: absWorkspace,
+		Image:         imageName,
+		Persistent:    persistent,
+		ResumeFromID:  resumeID,
+		Slot:          slotNum,
+		SessionsDir:   sessionsDir,
+		CLIConfigPath: cliConfigPath,
+		Tool:          toolInstance,
+		NetworkConfig: &networkConfig,
 	}
 
 	if storage != "" {
@@ -477,7 +478,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		Capture: true,
 		User:    userPtr,
 	}
-	result.Manager.ExecCommand(serverStartCmd, serverOpts)
+	_, _ = result.Manager.ExecCommand(serverStartCmd, serverOpts) // Best-effort server start.
 
 	// Poll to ensure server is ready (up to 2 seconds)
 	for i := 0; i < 20; i++ {
@@ -486,7 +487,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		if err == nil {
 			break // Server is ready
 		}
-		result.Manager.ExecCommand("sleep 0.1", serverOpts)
+		_, _ = result.Manager.ExecCommand("sleep 0.1", serverOpts) // Best-effort sleep.
 	}
 
 	// Check if tmux session already exists
@@ -568,7 +569,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 			User:    userPtr,
 			Capture: true,
 		}
-		result.Manager.ExecCommand(serverStartCmd, serverOpts)
+		_, _ = result.Manager.ExecCommand(serverStartCmd, serverOpts) // Best-effort server start.
 
 		// Poll to ensure server is ready (up to 2 seconds)
 		// This prevents race conditions in CI where the server takes time to initialize
@@ -579,7 +580,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 				break // Server is ready (even if no sessions exist)
 			}
 			// Wait 100ms before next attempt
-			result.Manager.ExecCommand("sleep 0.1", serverOpts)
+			_, _ = result.Manager.ExecCommand("sleep 0.1", serverOpts) // Best-effort sleep.
 		}
 
 		// Step 1: Check if session already exists

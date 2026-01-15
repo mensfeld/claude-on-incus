@@ -256,7 +256,7 @@ func (m *Manager) PullDirectory(containerPath, localPath string) error {
 
 	// Move the pulled directory to the desired location
 	pulledDir := filepath.Join(tempDir, entries[0].Name())
-	if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
 		return err
 	}
 
@@ -271,7 +271,7 @@ func (m *Manager) PullDirectory(containerPath, localPath string) error {
 func (m *Manager) PushDirectory(localPath, containerPath string) error {
 	// Check if source directory exists
 	if info, err := os.Stat(localPath); err != nil || !info.IsDir() {
-		return nil // Skip if not a directory
+		return nil // Skip if not a directory (intentional nilerr)
 	}
 
 	// Incus creates a subdirectory when pushing, so we push to the parent
@@ -329,7 +329,7 @@ func ImageExistsGlobal(imageAlias string) (bool, error) {
 func (m *Manager) CreateFile(containerPath, content string) error {
 	// Create temp file locally
 	tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("coi-%s", filepath.Base(containerPath)))
-	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(content), 0o644); err != nil {
 		return err
 	}
 	defer os.Remove(tmpFile)

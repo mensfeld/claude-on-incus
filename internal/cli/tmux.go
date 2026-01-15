@@ -7,11 +7,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	tmuxSessionName string
-	tmuxCommand     string
-)
-
 var tmuxCmd = &cobra.Command{
 	Use:   "tmux",
 	Short: "Interact with tmux sessions in containers",
