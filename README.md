@@ -397,7 +397,9 @@ name = "claude"  # AI coding tool to use (currently supports: claude)
 # binary = "claude"  # Optional: override binary name
 
 [paths]
-sessions_dir = "~/.coi/sessions"  # Base directory for tool-specific sessions
+# Note: sessions_dir is deprecated - tool-specific dirs are now used automatically
+# (e.g., ~/.coi/sessions-claude/, ~/.coi/sessions-aider/)
+sessions_dir = "~/.coi/sessions"  # Legacy path (not used for new sessions)
 storage_dir = "~/.coi/storage"
 
 [incus]
