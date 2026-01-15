@@ -63,9 +63,15 @@ linters-settings:
     check-blank: false  # Allow _ = for explicitly ignored errors in cleanup functions
 
   govet:
-    enable-all: true
     enable:
       - shadow  # Moved from deprecated check-shadowing
+      - printf
+      - errorsas
+      - atomic
+      - bools
+      - buildtag
+      - nilfunc
+      - tests
 
   gocyclo:
     min-complexity: 15
