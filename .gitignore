@@ -28,6 +28,7 @@ __pycache__/
 dist/
 build/
 !scripts/build
+!tests/build
 
 # Test artifacts
 tmp/

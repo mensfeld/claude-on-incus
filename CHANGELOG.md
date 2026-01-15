@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.5.1 (TBD)
+
+### Bug Fixes
+
+- [Bug Fix] Suppress spurious "Error: The instance is already stopped" message during successful image builds. The error was appearing during cleanup when the container was already stopped by the imaging process. Now checks if container is running before attempting to stop it.
+
+### Testing
+
+- [Testing] Added integration test `tests/build/no_spurious_errors.py` to verify no spurious errors appear during successful builds
+
 ## 0.5.0 (2026-01-15)
 
 **Major architectural refactoring to support multiple AI coding tools**
