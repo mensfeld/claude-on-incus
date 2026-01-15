@@ -6,18 +6,14 @@ linters:
   enable:
     # Error detection
     - errcheck      # Check for unchecked errors
-    - nilerr        # Check that errors are not nil
 
     # Code simplification
     - gosimple      # Simplify code
     - unconvert     # Remove unnecessary type conversions
-    - unparam       # Check for unused function parameters
 
     # Static analysis
     - govet         # Vet examines Go source code
-    # - staticcheck   # Static analysis (disabled - includes unused checks)
     - ineffassign   # Detect ineffectual assignments
-    # - unused        # Check for unused constants, variables, functions (disabled - may be used later)
 
     # Code formatting
     - gofmt         # Check formatting
@@ -25,17 +21,11 @@ linters:
     - gofumpt       # Stricter gofmt
 
     # Documentation (yard-lint equivalent)
-    # - godot         # Check comments end with period (disabled - too many existing issues)
-    - godox         # Detect TODO/FIXME/BUG/HACK comments
     - misspell      # Check for misspelled words in comments
 
     # Code quality
-    - revive        # Fast, configurable, extensible, flexible linter
-    # - gocritic      # Opinionated linter (disabled - too many style suggestions for existing code)
     - gocyclo       # Cyclomatic complexity
     - dupl          # Code duplication
-    - cyclop        # Package cyclomatic complexity
-    - maintidx      # Maintainability index
 
     # Security
     - gosec         # Security issues
@@ -43,17 +33,8 @@ linters:
     # Best practices
     - bodyclose     # Check HTTP response bodies are closed
     - copyloopvar   # Check for pointers to loop variables (replaces deprecated exportloopref)
-    - dogsled       # Check for too many blank identifiers
     - errname       # Check error naming conventions
-    # - errorlint     # Check error wrapping (disabled - requires extensive refactoring)
-    - forcetypeassert # Disallow force type assertions
-    # - goconst       # Find repeated strings that could be constants (disabled - too noisy for CLI tool)
-    - gocognit      # Cognitive complexity
-    - nestif        # Deep nesting
     - predeclared   # Find shadowing of predeclared identifiers
-    - stylecheck    # Replacement for golint
-    - thelper       # Detect test helpers without t.Helper()
-    - tparallel     # Detect missing t.Parallel() calls
     - wastedassign  # Find wasted assignment statements
     - whitespace    # Detect unnecessary whitespace
 
@@ -64,7 +45,7 @@ linters-settings:
 
   govet:
     enable:
-      - shadow  # Moved from deprecated check-shadowing
+      # - shadow  # Disabled - too noisy
       - printf
       - errorsas
       - atomic

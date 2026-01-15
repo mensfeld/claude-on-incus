@@ -271,7 +271,7 @@ func (m *Manager) PullDirectory(containerPath, localPath string) error {
 func (m *Manager) PushDirectory(localPath, containerPath string) error {
 	// Check if source directory exists
 	if info, err := os.Stat(localPath); err != nil || !info.IsDir() {
-		return nil // Skip if not a directory
+		return nil // Skip if not a directory (intentional nilerr)
 	}
 
 	// Incus creates a subdirectory when pushing, so we push to the parent

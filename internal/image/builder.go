@@ -388,21 +388,3 @@ func getImageFingerprint(alias string) (string, error) {
 
 	return "", fmt.Errorf("image not found: %s", alias)
 }
-
-// execInContainer executes a command in the build container
-func (b *Builder) execInContainer(command string, streamOutput bool) error {
-	opts := container.ExecCommandOptions{
-		Capture: !streamOutput,
-	}
-
-	output, err := b.mgr.ExecCommand(command, opts)
-	if err != nil {
-		return fmt.Errorf("command failed: %s: %w", command, err)
-	}
-
-	if streamOutput && output != "" {
-		b.opts.Logger(output)
-	}
-
-	return nil
-}
