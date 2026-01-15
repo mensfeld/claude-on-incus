@@ -580,7 +580,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 				break // Server is ready (even if no sessions exist)
 			}
 			// Wait 100ms before next attempt
-			result.Manager.ExecCommand("sleep 0.1", serverOpts)
+			_, _ = result.Manager.ExecCommand("sleep 0.1", serverOpts) // Best-effort sleep.
 		}
 
 		// Step 1: Check if session already exists
