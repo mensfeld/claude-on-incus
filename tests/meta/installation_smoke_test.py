@@ -14,6 +14,7 @@ This validates the complete setup process from scratch.
 Note: This test requires nested Incus support and takes longer to run.
 """
 
+import os
 import subprocess
 import time
 
@@ -157,12 +158,19 @@ def test_full_installation_process(meta_container, coi_binary):
     assert "go version" in result.stdout, "Go installation verification failed"
 
     # Phase 3: Clone repository and build coi
+    # In CI (pull requests), use the PR branch instead of master
+    github_branch = os.environ.get("GITHUB_HEAD_REF", "")
+    if github_branch:
+        clone_cmd = f"git clone -b {github_branch} https://github.com/mensfeld/claude-on-incus.git"
+    else:
+        clone_cmd = "git clone https://github.com/mensfeld/claude-on-incus.git"
+
     result = exec_in_container(
         container_name,
-        """
+        f"""
         set -e
         cd /root
-        git clone https://github.com/mensfeld/claude-on-incus.git
+        {clone_cmd}
         cd claude-on-incus
         /usr/local/go/bin/go build -o coi ./cmd/coi
         ./coi version
