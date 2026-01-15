@@ -26,7 +26,9 @@ def test_invalid_command(coi_binary):
         timeout=10,
     )
 
-    assert result.returncode != 0, f"Invalid command should fail. Got exit code: {result.returncode}"
+    assert result.returncode != 0, (
+        f"Invalid command should fail. Got exit code: {result.returncode}"
+    )
 
     # Error message should appear in stderr
     error_output = result.stderr
