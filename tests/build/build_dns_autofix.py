@@ -113,9 +113,16 @@ fi
         # Build custom image from fresh Ubuntu base (not coi) to trigger DNS fix
         # Using --base images:ubuntu/22.04 ensures we start with broken DNS
         result = subprocess.run(
-            [coi_binary, "build", "custom", image_name,
-             "--base", "images:ubuntu/22.04",
-             "--script", str(build_script)],
+            [
+                coi_binary,
+                "build",
+                "custom",
+                image_name,
+                "--base",
+                "images:ubuntu/22.04",
+                "--script",
+                str(build_script),
+            ],
             capture_output=True,
             text=True,
             timeout=600,  # Longer timeout for DNS fix + build
@@ -131,9 +138,10 @@ fi
         )
 
         # Verify DNS auto-fix was applied
-        assert "Detected DNS misconfiguration" in combined_output or "DNS configuration fixed" in combined_output, (
-            f"Build should show DNS auto-fix message. Output:\n{combined_output}"
-        )
+        assert (
+            "Detected DNS misconfiguration" in combined_output
+            or "DNS configuration fixed" in combined_output
+        ), f"Build should show DNS auto-fix message. Output:\n{combined_output}"
 
         # Verify the build script's DNS check passed
         assert "DNS resolution works!" in combined_output, (
@@ -211,8 +219,7 @@ echo "Build with working DNS"
 
         # Build should succeed
         assert result.returncode == 0, (
-            f"Build should succeed. Exit code: {result.returncode}\n"
-            f"Output:\n{combined_output}"
+            f"Build should succeed. Exit code: {result.returncode}\nOutput:\n{combined_output}"
         )
 
         # Should NOT see DNS fix messages (DNS was already working)
