@@ -11,6 +11,7 @@ the DNS misconfiguration that occurs on Ubuntu systems with systemd-resolved.
 """
 
 import subprocess
+import time
 
 import pytest
 
@@ -151,6 +152,156 @@ fi
     finally:
         # Always restore DNS configuration
         restore_dns_config(network_name)
+
+        # Cleanup test image
+        subprocess.run(
+            [coi_binary, "image", "delete", image_name],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+
+
+def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
+    """
+    Test that containers started from a DNS-fixed image have working DNS.
+
+    This verifies that the permanent DNS fix in scripts/build/coi.sh correctly
+    persists static DNS configuration into the built image.
+
+    Flow:
+    1. Break DNS config (set 127.0.0.53)
+    2. Build custom image from fresh Ubuntu base (triggers DNS auto-fix)
+    3. Launch a container from that image
+    4. Test DNS resolution inside the container
+    5. Verify it works (image has static DNS from coi.sh fix)
+    """
+    network_name = get_incus_network()
+    if not network_name:
+        pytest.skip("Could not determine Incus network name")
+
+    image_name = "coi-test-dns-persistence"
+    container_name = "coi-test-dns-container"
+
+    # Create build script that configures static DNS (simulates what coi.sh does)
+    build_script = tmp_path / "build.sh"
+    build_script.write_text(
+        """#!/bin/bash
+set -e
+echo "Configuring static DNS for persistence test..."
+
+# Check if DNS works, if not configure static DNS (like coi.sh does)
+if ! getent hosts archive.ubuntu.com > /dev/null 2>&1; then
+    echo "DNS broken, configuring static DNS..."
+    # Disable systemd-resolved if present
+    systemctl disable systemd-resolved 2>/dev/null || true
+    systemctl stop systemd-resolved 2>/dev/null || true
+    systemctl mask systemd-resolved 2>/dev/null || true
+
+    # Configure static DNS
+    rm -f /etc/resolv.conf
+    cat > /etc/resolv.conf << 'DNSEOF'
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+nameserver 1.1.1.1
+DNSEOF
+    echo "Static DNS configured."
+else
+    echo "DNS already works."
+fi
+"""
+    )
+
+    try:
+        # Break DNS configuration
+        if not break_dns_config(network_name):
+            pytest.skip("Could not modify Incus network configuration (permission denied?)")
+
+        # Clean up any existing build container and test container
+        subprocess.run(
+            ["incus", "delete", "--force", "coi-build"],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        subprocess.run(
+            ["incus", "delete", "--force", container_name],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+
+        # Build custom image from fresh Ubuntu base
+        result = subprocess.run(
+            [
+                coi_binary,
+                "build",
+                "custom",
+                image_name,
+                "--base",
+                "images:ubuntu/22.04",
+                "--script",
+                str(build_script),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+
+        assert result.returncode == 0, (
+            f"Build should succeed. Exit code: {result.returncode}\n"
+            f"Output:\n{result.stdout + result.stderr}"
+        )
+
+        # Launch a container from the built image
+        # DNS is STILL broken at network level, but image has static DNS
+        result = subprocess.run(
+            ["incus", "launch", image_name, container_name],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert result.returncode == 0, (
+            f"Container launch should succeed. Output:\n{result.stdout + result.stderr}"
+        )
+
+        # Wait for container to be ready
+        time.sleep(5)
+
+        # Test DNS resolution inside the container
+        result = subprocess.run(
+            [
+                "incus",
+                "exec",
+                container_name,
+                "--",
+                "getent",
+                "hosts",
+                "archive.ubuntu.com",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        # DNS should work because the IMAGE has static DNS configured
+        assert result.returncode == 0, (
+            f"DNS should work in container from fixed image. "
+            f"Exit code: {result.returncode}\n"
+            f"Output:\n{result.stdout + result.stderr}"
+        )
+
+    finally:
+        # Always restore DNS configuration
+        restore_dns_config(network_name)
+
+        # Cleanup test container
+        subprocess.run(
+            ["incus", "delete", "--force", container_name],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
 
         # Cleanup test image
         subprocess.run(
