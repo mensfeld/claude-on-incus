@@ -222,10 +222,9 @@ func (b *Builder) tryFixDNS() bool {
 
 	// We can reach IPs but not hostnames - this is a DNS issue
 	// Check for the common systemd-resolved stub resolver issue (127.0.0.53)
-	routeOutput, _ := b.mgr.ExecCommand("ip route show", container.ExecCommandOptions{Capture: true})
 	resolvConf, _ := b.mgr.ExecCommand("cat /etc/resolv.conf 2>/dev/null", container.ExecCommandOptions{Capture: true})
 
-	hasStubResolver := strings.Contains(routeOutput, "127.0.0.53") || strings.Contains(resolvConf, "127.0.0.53")
+	hasStubResolver := strings.Contains(resolvConf, "127.0.0.53")
 	hasEmptyDNS := strings.TrimSpace(resolvConf) == "" || !strings.Contains(resolvConf, "nameserver")
 
 	if hasStubResolver || hasEmptyDNS {
