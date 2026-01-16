@@ -233,7 +233,7 @@ func (b *Builder) tryFixDNS() bool {
 
 		// Inject working DNS servers
 		// First, remove resolv.conf if it's a symlink (common with systemd-resolved)
-		b.mgr.ExecCommand("rm -f /etc/resolv.conf 2>/dev/null", container.ExecCommandOptions{Capture: true})
+		_, _ = b.mgr.ExecCommand("rm -f /etc/resolv.conf 2>/dev/null", container.ExecCommandOptions{Capture: true})
 
 		// Write a working resolv.conf with public DNS servers
 		_, err := b.mgr.ExecCommand(`cat > /etc/resolv.conf << 'EOF'
@@ -242,7 +242,6 @@ nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
 EOF`, container.ExecCommandOptions{Capture: true})
-
 		if err != nil {
 			b.opts.Logger(fmt.Sprintf("Failed to fix DNS: %v", err))
 			return false
