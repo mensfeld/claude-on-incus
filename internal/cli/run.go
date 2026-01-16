@@ -122,8 +122,11 @@ func runCommand(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Cleaning up container %s...\n", containerName)
 			_ = mgr.Delete(true) // Best effort cleanup
 		} else {
-			fmt.Fprintf(os.Stderr, "Stopping persistent container %s...\n", containerName)
-			_ = mgr.Stop(false) // Best effort stop
+			// Only stop if container is running (avoids spurious error messages)
+			if running, _ := mgr.Running(); running {
+				fmt.Fprintf(os.Stderr, "Stopping persistent container %s...\n", containerName)
+				_ = mgr.Stop(false) // Best effort stop
+			}
 		}
 	}()
 

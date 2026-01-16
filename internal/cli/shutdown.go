@@ -126,9 +126,14 @@ func shutdownCommand(cmd *cobra.Command, args []string) error {
 					fmt.Printf("  Graceful shutdown successful\n")
 				}
 			case <-time.After(time.Duration(shutdownTimeout) * time.Second):
-				fmt.Printf("  Timeout reached, force-killing...\n")
-				if err := mgr.Stop(true); err != nil {
-					fmt.Fprintf(os.Stderr, "  Warning: Force stop failed: %v\n", err)
+				// Check if container stopped during timeout (avoids spurious errors)
+				if stillRunning, _ := mgr.Running(); stillRunning {
+					fmt.Printf("  Timeout reached, force-killing...\n")
+					if err := mgr.Stop(true); err != nil {
+						fmt.Fprintf(os.Stderr, "  Warning: Force stop failed: %v\n", err)
+					}
+				} else {
+					fmt.Printf("  Container stopped during timeout\n")
 				}
 			}
 		}
