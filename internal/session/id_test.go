@@ -26,7 +26,7 @@ func TestGenerateSessionID(t *testing.T) {
 		if i == 8 || i == 13 || i == 18 || i == 23 {
 			continue // Skip dashes
 		}
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("GenerateSessionID() char at %d is not hex: %c", i, c)
 		}
 	}

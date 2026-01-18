@@ -1,170 +1,179 @@
 version: "2"
-
 run:
-  timeout: 5m
   modules-download-mode: readonly
-
 linters:
   enable:
-    # Error detection
-    - errcheck      # Check for unchecked errors
-
-    # Code simplification
-    - gosimple      # Simplify code
-    - unconvert     # Remove unnecessary type conversions
-
-    # Static analysis
-    - govet         # Vet examines Go source code
-    - ineffassign   # Detect ineffectual assignments
-
-    # Code formatting
-    - gofmt         # Check formatting
-    - goimports     # Check import formatting
-    - gofumpt       # Stricter gofmt
-
-    # Documentation (yard-lint equivalent)
-    - misspell      # Check for misspelled words in comments
-
-    # Code quality
-    - gocyclo       # Cyclomatic complexity
-    - dupl          # Code duplication
-
-    # Security
-    - gosec         # Security issues
-
-    # Best practices
-    - bodyclose     # Check HTTP response bodies are closed
-    - copyloopvar   # Check for pointers to loop variables (replaces deprecated exportloopref)
-    - errname       # Check error naming conventions
-    - predeclared   # Find shadowing of predeclared identifiers
-    - wastedassign  # Find wasted assignment statements
-    - whitespace    # Detect unnecessary whitespace
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: false  # Allow _ = for explicitly ignored errors in cleanup functions
-
-  govet:
-    enable:
-      # - shadow  # Disabled - too noisy
-      - printf
-      - errorsas
-      - atomic
-      - bools
-      - buildtag
-      - nilfunc
-      - tests
-
-  gocyclo:
-    min-complexity: 50  # Relaxed to accommodate existing complex functions.
-
-  cyclop:
-    max-complexity: 50  # Relaxed to match gocyclo threshold.
-    package-average: 20  # Relaxed to accommodate existing code.
-
-  gocognit:
-    min-complexity: 90  # Relaxed to accommodate existing complex functions.
-
-  maintidx:
-    under: 40  # Relaxed from 80 - test functions are naturally verbose
-
-  dupl:
-    threshold: 200  # Allows reasonable duplication in similar CLI commands (kill/shutdown).
-
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-      - experimental
-      - opinionated
-    disabled-checks:
-      - whyNoLint
-      - commentedOutCode
-
-  gosec:
-    excludes:
-      - G204 # Subprocess launched with variable - we need this for container commands
-      - G306 # WriteFile with 0644 permissions - acceptable for non-sensitive files
-
-  # Documentation linters (yard-lint equivalent)
-  godot:
-    scope: all
-    capital: true
-    period: true
-
-  godox:
-    keywords:
-      - TODO
-      - FIXME
-      - BUG
-      - HACK
-      - OPTIMIZE
-      - XXX
-
-  revive:
+    - bodyclose
+    - copyloopvar
+    - dupl
+    - errname
+    - gocyclo
+    - gosec
+    - misspell
+    - predeclared
+    - unconvert
+    - wastedassign
+    - whitespace
+  settings:
+    cyclop:
+      max-complexity: 50
+      package-average: 20
+    dogsled:
+      max-blank-identifiers: 2
+    dupl:
+      threshold: 200
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    gocognit:
+      min-complexity: 90
+    gocritic:
+      disabled-checks:
+        - whyNoLint
+        - commentedOutCode
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - experimental
+        - opinionated
+    gocyclo:
+      min-complexity: 50
+    godot:
+      scope: all
+      capital: true
+      period: true
+    godox:
+      keywords:
+        - TODO
+        - FIXME
+        - BUG
+        - HACK
+        - OPTIMIZE
+        - XXX
+    gosec:
+      excludes:
+        - G204
+        - G306
+    govet:
+      enable:
+        - printf
+        - errorsas
+        - atomic
+        - bools
+        - buildtag
+        - nilfunc
+        - tests
+    maintidx:
+      under: 40
+    nestif:
+      min-complexity: 8
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+            - disableStutteringCheck
+        - name: package-comments
+        - name: unexported-return
+        - name: comment-spacings
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+      initialisms:
+        - ACL
+        - API
+        - ASCII
+        - CPU
+        - CSS
+        - DNS
+        - EOF
+        - GUID
+        - HTML
+        - HTTP
+        - HTTPS
+        - ID
+        - IP
+        - JSON
+        - QPS
+        - RAM
+        - RPC
+        - SLA
+        - SMTP
+        - SQL
+        - SSH
+        - TCP
+        - TLS
+        - TTL
+        - UDP
+        - UI
+        - GID
+        - UID
+        - UUID
+        - URI
+        - URL
+        - UTF8
+        - VM
+        - XML
+        - XMPP
+        - XSRF
+        - XSS
+      dot-import-whitelist:
+        - fmt
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      # Documentation rules (similar to yard-lint)
-      - name: exported
-        arguments:
-          - "checkPrivateReceivers"
-          - "disableStutteringCheck"
-      - name: package-comments
-      - name: unexported-return
-      - name: comment-spacings
-
-      # Code quality rules
-      - name: blank-imports
-      - name: context-as-argument
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: if-return
-      - name: increment-decrement
-      # - name: var-naming  # Disabled - existing naming conventions (e.g., stateJsonDest)
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      # - name: indent-error-flow  # Disabled - existing code uses if-else patterns
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      # - name: unused-parameter  # Disabled - parameters often kept for interface compatibility
-      - name: unreachable-code
-      - name: redefines-builtin-id
-
-  stylecheck:
-    checks: ["all", "-ST1000", "-ST1003"]
-    dot-import-whitelist:
-      - fmt
-    initialisms: ["ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "QPS", "RAM", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "GID", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"]
-
-  dogsled:
-    max-blank-identifiers: 2
-
-  nestif:
-    min-complexity: 8  # Relaxed from 5 - some nested logic is unavoidable
-
+      - linters:
+          - dupl
+          - errcheck
+          - gocyclo
+          - gosec
+        path: _test\.go
+      - linters:
+          - revive
+        text: line-length-limit
+        source: 'Long:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-
-    # Ignore long lines in CLI help text
-    - linters:
-        - revive
-      text: "line-length-limit"
-      source: "Long:"
-
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
