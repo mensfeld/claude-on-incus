@@ -1,5 +1,5 @@
 """
-Test for coi attach --slot with wrong workspace.
+Test for cci attach --slot with wrong workspace.
 
 Tests that:
 1. Start a container in workspace A
@@ -23,13 +23,13 @@ from support.helpers import (
 
 def test_attach_wrong_workspace_slot(coi_binary, cleanup_containers, workspace_dir, tmp_path):
     """
-    Test that coi attach --slot fails when workspace doesn't match.
+    Test that cci attach --slot fails when workspace doesn't match.
 
     Flow:
-    1. Start coi shell --persistent in workspace_dir (slot 1)
+    1. Start cci shell --persistent in workspace_dir (slot 1)
     2. Detach
     3. Create a different workspace directory
-    4. Try coi attach --slot=1 --workspace=<different>
+    4. Try cci attach --slot=1 --workspace=<different>
     5. Verify it fails (different workspace = different container name)
     6. Cleanup
     """

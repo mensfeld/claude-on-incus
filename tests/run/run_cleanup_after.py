@@ -1,5 +1,5 @@
 """
-Test for coi run - container cleanup after command.
+Test for cci run - container cleanup after command.
 
 Tests that:
 1. Run a command
@@ -17,7 +17,7 @@ def test_run_cleanup_after(coi_binary, cleanup_containers, workspace_dir):
     Test that container is cleaned up after run completes.
 
     Flow:
-    1. Run coi run with specific slot
+    1. Run cci run with specific slot
     2. After completion, verify container doesn't exist
     """
     # Use a specific slot so we know the container name

@@ -1,8 +1,8 @@
 """
-Test for coi list --all - shows saved sessions section.
+Test for cci list --all - shows saved sessions section.
 
 Tests that:
-1. Run coi list --all
+1. Run cci list --all
 2. Verify it shows both Active Containers and Saved Sessions sections
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_list_all_flag(coi_binary, cleanup_containers):
     """
-    Test that coi list --all shows Saved Sessions section.
+    Test that cci list --all shows Saved Sessions section.
 
     Flow:
-    1. Run coi list --all
+    1. Run cci list --all
     2. Verify both sections appear
     """
     result = subprocess.run(

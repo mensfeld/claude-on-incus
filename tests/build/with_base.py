@@ -2,7 +2,7 @@
 Integration tests for custom image building.
 
 Tests:
-- coi build custom with script
+- cci build custom with script
 - Custom image with base specified
 - Custom image with privileged base
 """
@@ -13,7 +13,7 @@ import subprocess
 
 def test_build_custom_with_base(coi_binary, tmp_path):
     """Test building a custom image with explicit base."""
-    image_name = "coi-test-custom-base"
+    image_name = "cci-test-custom-base"
 
     # Create build script
     build_script = tmp_path / "build_base.sh"

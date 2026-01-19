@@ -18,7 +18,7 @@ type CleanupOptions struct {
 	ContainerName  string
 	SessionID      string    // COI session ID for saving tool config data
 	Persistent     bool      // If true, stop but don't delete container
-	SessionsDir    string    // e.g., ~/.coi/sessions-claude
+	SessionsDir    string    // e.g., ~/.cci/sessions-claude
 	SaveSession    bool      // Whether to save tool config directory
 	Workspace      string    // Workspace directory path
 	Tool           tool.Tool // AI coding tool being used
@@ -62,7 +62,7 @@ func Cleanup(opts CleanupOptions) error {
 	if opts.Persistent {
 		// Persistent mode: keep container for reuse (with all its data/modifications)
 		if exists {
-			opts.Logger("Container kept running - use 'coi attach' to reconnect, 'coi shutdown' to stop, or 'coi kill' to force stop")
+			opts.Logger("Container kept running - use 'cci attach' to reconnect, 'cci shutdown' to stop, or 'cci kill' to force stop")
 		} else {
 			opts.Logger("Container was stopped but kept for reuse")
 		}
@@ -84,7 +84,7 @@ func Cleanup(opts CleanupOptions) error {
 
 			if running {
 				// Container still running - user exited normally, keep it for potential re-attach
-				opts.Logger("Container kept running - use 'coi attach' to reconnect, 'coi shutdown' to stop, or 'coi kill' to force stop")
+				opts.Logger("Container kept running - use 'cci attach' to reconnect, 'cci shutdown' to stop, or 'cci kill' to force stop")
 			} else {
 				// Container stopped (user did 'sudo shutdown 0') - delete it
 				opts.Logger("Container was stopped, removing...")
@@ -113,9 +113,9 @@ func Cleanup(opts CleanupOptions) error {
 // saveSessionData saves the tool config directory from the container
 func saveSessionData(mgr *container.Manager, sessionID string, persistent bool, workspace string, sessionsDir string, t tool.Tool, logger func(string)) error {
 	// Determine home directory
-	// For coi images, we always use /home/code
+	// For cci images, we always use /home/code
 	// For other images, we use /root
-	// Since we currently only support coi images, always use /home/code
+	// Since we currently only support cci images, always use /home/code
 	homeDir := "/home/" + container.CodeUser
 
 	configDirName := t.ConfigDirName()
@@ -198,7 +198,7 @@ func getCurrentTime() string {
 	return time.Now().Format(time.RFC3339)
 }
 
-// SaveMetadataEarly saves session metadata at session start so coi list can show correct status
+// SaveMetadataEarly saves session metadata at session start so cci list can show correct status
 func SaveMetadataEarly(sessionsDir, sessionID, containerName, workspace string, persistent bool) error {
 	// Create session directory if it doesn't exist
 	sessionDir := filepath.Join(sessionsDir, sessionID)
@@ -388,7 +388,7 @@ func extractJSONValue(line string) string {
 	return value
 }
 
-// GetCLISessionID extracts the CLI tool's session ID from a saved coi session.
+// GetCLISessionID extracts the CLI tool's session ID from a saved cci session.
 // CLI tools store sessions in .claude/projects/-workspace/<session-id>.jsonl
 // Returns empty string if no session found.
 func GetCLISessionID(sessionsDir, coiSessionID string) string {

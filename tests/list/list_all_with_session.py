@@ -1,9 +1,9 @@
 """
-Test for coi list --all - shows session details.
+Test for cci list --all - shows session details.
 
 Tests that:
 1. Create a session
-2. Run coi list --all
+2. Run cci list --all
 3. Verify session appears with ID, saved time, workspace
 """
 
@@ -23,11 +23,11 @@ from support.helpers import (
 
 def test_list_all_with_session(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi list --all shows saved session details.
+    Test that cci list --all shows saved session details.
 
     Flow:
     1. Start a shell session and exit (saves session)
-    2. Run coi list --all
+    2. Run cci list --all
     3. Verify session appears with details
     4. Cleanup
     """

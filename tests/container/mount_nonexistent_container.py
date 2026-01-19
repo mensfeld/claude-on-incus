@@ -1,5 +1,5 @@
 """
-Test for coi container mount - fails for nonexistent container.
+Test for cci container mount - fails for nonexistent container.
 
 Tests that:
 1. Try to mount into nonexistent container
@@ -25,7 +25,7 @@ def test_mount_nonexistent_container(coi_binary, cleanup_containers):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # === Phase 2: Try to mount into nonexistent container ===
-        # Syntax: coi container mount <name> <device-name> <source> <path>
+        # Syntax: cci container mount <name> <device-name> <source> <path>
 
         result = subprocess.run(
             [coi_binary, "container", "mount", nonexistent_name, "test-mount", tmpdir, "/mnt/test"],

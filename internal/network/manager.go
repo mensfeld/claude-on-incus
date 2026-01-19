@@ -64,7 +64,7 @@ func (m *Manager) setupRestricted(ctx context.Context, containerName string) err
 	log.Println("Network mode: restricted (blocking local/internal networks)")
 
 	// Generate ACL name
-	m.aclName = fmt.Sprintf("coi-%s-restricted", containerName)
+	m.aclName = fmt.Sprintf("cci-%s-restricted", containerName)
 
 	// 1. Create ACL with block rules
 	if err := m.acl.Create(m.aclName, m.config); err != nil {
@@ -94,7 +94,7 @@ func (m *Manager) setupRestricted(ctx context.Context, containerName string) err
 // setupAllowlist configures allowlist mode with DNS resolution and refresh
 func (m *Manager) setupAllowlist(ctx context.Context, containerName string) error {
 	log.Println("Network mode: allowlist (domain-based filtering)")
-	m.aclName = fmt.Sprintf("coi-%s-allowlist", containerName)
+	m.aclName = fmt.Sprintf("cci-%s-allowlist", containerName)
 
 	// Validate configuration
 	if len(m.config.AllowedDomains) == 0 {
@@ -254,9 +254,9 @@ func (m *Manager) Teardown(ctx context.Context, containerName string) error {
 	if aclName == "" {
 		// Fallback if aclName wasn't set - try both modes
 		if m.config.Mode == config.NetworkModeAllowlist {
-			aclName = fmt.Sprintf("coi-%s-allowlist", containerName)
+			aclName = fmt.Sprintf("cci-%s-allowlist", containerName)
 		} else {
-			aclName = fmt.Sprintf("coi-%s-restricted", containerName)
+			aclName = fmt.Sprintf("cci-%s-restricted", containerName)
 		}
 	}
 

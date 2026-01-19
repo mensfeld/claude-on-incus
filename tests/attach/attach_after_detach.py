@@ -1,10 +1,10 @@
 """
-Test for coi attach - reconnect after detach.
+Test for cci attach - reconnect after detach.
 
 Tests that:
 1. Start a shell session
 2. Detach using Ctrl+b d
-3. Run coi attach
+3. Run cci attach
 4. Verify we reconnect to the same tmux session
 """
 
@@ -27,13 +27,13 @@ from support.helpers import (
 
 def test_attach_after_detach(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach reconnects after tmux detach.
+    Test that cci attach reconnects after tmux detach.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Send a message to dummy
     3. Detach with Ctrl+b d
-    4. Run coi attach
+    4. Run cci attach
     5. Verify we're back in the same session
     6. Cleanup
     """

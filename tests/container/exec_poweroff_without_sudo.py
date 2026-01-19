@@ -1,5 +1,5 @@
 """
-Test for coi container exec - poweroff without password.
+Test for cci container exec - poweroff without password.
 
 Tests that:
 1. Launch a container
@@ -32,7 +32,7 @@ def test_exec_poweroff_without_sudo(coi_binary, cleanup_containers, workspace_di
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

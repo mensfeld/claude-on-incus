@@ -86,7 +86,7 @@ def test_open_allows_local_gateway(coi_binary, workspace_dir, cleanup_containers
     )
 
     assert result.returncode == 0, f"Should be able to reach internet. stderr: {result.stderr}"
-    # Note: coi container exec outputs to stderr, not stdout
+    # Note: cci container exec outputs to stderr, not stdout
     assert "Example Domain" in result.stderr, "Should receive example.com content"
 
     # Discover the gateway IP from inside the container
@@ -100,7 +100,7 @@ def test_open_allows_local_gateway(coi_binary, workspace_dir, cleanup_containers
     assert result.returncode == 0, f"Should be able to run ip route. stderr: {result.stderr}"
 
     # Parse gateway IP from output like: "default via 10.0.3.1 dev eth0 ..."
-    # Note: coi container exec outputs to stderr, not stdout
+    # Note: cci container exec outputs to stderr, not stdout
     output = result.stderr.strip()
     gateway_ip = None
 

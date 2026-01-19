@@ -1,5 +1,5 @@
 """
-Test for coi run - executes with UID 1000.
+Test for cci run - executes with UID 1000.
 
 Tests that:
 1. Run id command
@@ -14,7 +14,7 @@ def test_run_uid_1000(coi_binary, cleanup_containers, workspace_dir):
     Test that commands run with UID 1000.
 
     Flow:
-    1. Run coi run id
+    1. Run cci run id
     2. Verify UID is 1000
     """
     result = subprocess.run(

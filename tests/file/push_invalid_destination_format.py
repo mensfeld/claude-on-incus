@@ -1,5 +1,5 @@
 """
-Test for coi file push - invalid destination format.
+Test for cci file push - invalid destination format.
 
 Tests that:
 1. Create a local file

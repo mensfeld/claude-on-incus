@@ -1,5 +1,5 @@
 """
-Test for coi tmux capture - capture output from a tmux session.
+Test for cci tmux capture - capture output from a tmux session.
 
 Tests that:
 1. Launch a container
@@ -22,7 +22,7 @@ def test_tmux_capture_output(coi_binary, cleanup_containers, workspace_dir):
     1. Launch a container
     2. Create a tmux session
     3. Execute command in tmux to generate output
-    4. Use coi tmux capture to capture output
+    4. Use cci tmux capture to capture output
     5. Verify output is correct
     6. Cleanup
     """
@@ -31,7 +31,7 @@ def test_tmux_capture_output(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -43,7 +43,7 @@ def test_tmux_capture_output(coi_binary, cleanup_containers, workspace_dir):
 
     # === Phase 2: Create tmux session ===
 
-    tmux_session = f"coi-{container_name}"
+    tmux_session = f"cci-{container_name}"
 
     result = subprocess.run(
         [
@@ -93,7 +93,7 @@ def test_tmux_capture_output(coi_binary, cleanup_containers, workspace_dir):
 
     time.sleep(1)
 
-    # === Phase 4: Capture output via coi tmux capture ===
+    # === Phase 4: Capture output via cci tmux capture ===
 
     result = subprocess.run(
         [coi_binary, "tmux", "capture", container_name],

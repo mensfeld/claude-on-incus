@@ -1,5 +1,5 @@
 """
-Test for coi container stop - fails for nonexistent container.
+Test for cci container stop - fails for nonexistent container.
 
 Tests that:
 1. Try to stop a container that doesn't exist

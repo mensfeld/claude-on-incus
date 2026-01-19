@@ -9,8 +9,8 @@ import subprocess
 
 
 def test_main_help_shorthand(coi_binary):
-    """Test that coi -h works as shorthand for --help."""
+    """Test that cci -h works as shorthand for --help."""
     result = subprocess.run([coi_binary, "-h"], capture_output=True, text=True, timeout=5)
 
     assert result.returncode == 0
-    assert "code-on-incus" in result.stdout.lower()
+    assert "claude-code-isolated" in result.stdout.lower()

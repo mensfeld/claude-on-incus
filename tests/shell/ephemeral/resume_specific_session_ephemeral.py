@@ -1,5 +1,5 @@
 """
-Test for coi shell --resume=<session-id> - resume a specific session by ID.
+Test for cci shell --resume=<session-id> - resume a specific session by ID.
 
 Tests that:
 1. Start a session and create some state

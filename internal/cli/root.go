@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Version is the current version of coi (injected via ldflags at build time)
+// Version is the current version of cci (injected via ldflags at build time)
 var Version = "dev"
 
 var (
@@ -29,20 +29,18 @@ var (
 
 // rootCmd represents the base command
 var rootCmd = &cobra.Command{
-	Use:   "coi",
-	Short: "Code on Incus - Run AI coding tools in isolated Incus containers",
-	Long: `code-on-incus (coi) is a CLI tool for running AI coding assistants in Incus containers
+	Use:   "cci",
+	Short: "Claude Code Isolated - Run Claude Code in isolated Incus containers",
+	Long: `claude-code-isolated (cci) is a CLI tool for running Claude Code in isolated Incus containers
 with session persistence, workspace isolation, and multi-slot support.
 
-By default runs Claude Code. Other tools can be configured via the tool.name config option.
-
 Examples:
-  coi                          # Start interactive AI coding session (same as 'coi shell')
-  coi shell --slot 2           # Use specific slot
-  coi run "npm test"           # Run command in container
-  coi build                    # Build coi image
-  coi images                   # List available images
-  coi list                     # List active sessions
+  cci                          # Start Claude Code session (same as 'cci shell')
+  cci shell --slot 2           # Use specific slot
+  cci run "npm test"           # Run command in container
+  cci build                    # Build cci image
+  cci images                   # List available images
+  cci list                     # List active sessions
 `,
 	Version: Version,
 	// When called without subcommand, run shell command
@@ -75,8 +73,8 @@ Examples:
 }
 
 // Execute runs the root command
-func Execute(isCoi bool) error {
-	if !isCoi {
+func Execute(isCci bool) error {
+	if !isCci {
 		rootCmd.Use = "claude-code-isolated"
 	}
 	return rootCmd.Execute()
@@ -86,7 +84,7 @@ func init() {
 	// Global flags available to all commands
 	rootCmd.PersistentFlags().StringVarP(&workspace, "workspace", "w", ".", "Workspace directory to mount")
 	rootCmd.PersistentFlags().IntVar(&slot, "slot", 0, "Slot number for parallel sessions (0 = auto-allocate)")
-	rootCmd.PersistentFlags().StringVar(&imageName, "image", "", "Custom image to use (default: coi)")
+	rootCmd.PersistentFlags().StringVar(&imageName, "image", "", "Custom image to use (default: cci)")
 	rootCmd.PersistentFlags().BoolVar(&persistent, "persistent", false, "Reuse container across sessions")
 	rootCmd.PersistentFlags().StringVar(&resume, "resume", "", "Resume from session ID (omit value to auto-detect)")
 	rootCmd.PersistentFlags().Lookup("resume").NoOptDefVal = "auto"
@@ -103,10 +101,10 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(infoCmd)
 	rootCmd.AddCommand(buildCmd)
-	rootCmd.AddCommand(imagesCmd)    // Legacy: coi images
-	rootCmd.AddCommand(imageCmd)     // New: coi image <subcommand>
-	rootCmd.AddCommand(containerCmd) // New: coi container <subcommand>
-	rootCmd.AddCommand(fileCmd)      // New: coi file <subcommand>
+	rootCmd.AddCommand(imagesCmd)    // Legacy: cci images
+	rootCmd.AddCommand(imageCmd)     // New: cci image <subcommand>
+	rootCmd.AddCommand(containerCmd) // New: cci container <subcommand>
+	rootCmd.AddCommand(fileCmd)      // New: cci file <subcommand>
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(killCmd)
 	rootCmd.AddCommand(tmuxCmd)
@@ -117,7 +115,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("code-on-incus (coi) v%s\n", Version)
+		fmt.Printf("claude-code-isolated (cci) v%s\n", Version)
 		fmt.Println("https://github.com/thomas/claude-code-isolated")
 	},
 }

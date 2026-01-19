@@ -1,5 +1,5 @@
 """
-Test for coi attach - state is preserved after detach/attach.
+Test for cci attach - state is preserved after detach/attach.
 
 Tests that:
 1. Start a shell session
@@ -30,7 +30,7 @@ def test_attach_preserves_state(coi_binary, cleanup_containers, workspace_dir):
     Test that container state is preserved after detach/attach.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Exit claude to bash, create a file
     3. Detach with Ctrl+b d
     4. Attach again with --bash

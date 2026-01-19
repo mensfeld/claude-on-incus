@@ -1,5 +1,5 @@
 """
-Test for coi run - shell command with pipes.
+Test for cci run - shell command with pipes.
 
 Tests that:
 1. Run command with pipes
@@ -14,7 +14,7 @@ def test_run_pipe_command(coi_binary, cleanup_containers, workspace_dir):
     Test running command with pipes.
 
     Flow:
-    1. Run coi run with a pipe command
+    1. Run cci run with a pipe command
     2. Verify output is correct
     """
     result = subprocess.run(

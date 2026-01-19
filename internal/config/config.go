@@ -84,11 +84,11 @@ func GetDefaultConfig() *Config {
 	if err != nil {
 		homeDir = "/tmp" // Fallback if home dir cannot be determined
 	}
-	baseDir := filepath.Join(homeDir, ".coi")
+	baseDir := filepath.Join(homeDir, ".cci")
 
 	return &Config{
 		Defaults: DefaultsConfig{
-			Image:      "coi",
+			Image:      "cci",
 			Persistent: false,
 			Model:      "claude-sonnet-4-5",
 		},
@@ -134,9 +134,9 @@ func GetConfigPaths() []string {
 	}
 
 	return []string{
-		"/etc/coi/config.toml",                            // System config
-		filepath.Join(homeDir, ".config/coi/config.toml"), // User config
-		filepath.Join(workDir, ".coi.toml"),               // Project config
+		"/etc/cci/config.toml",                            // System config
+		filepath.Join(homeDir, ".config/cci/config.toml"), // User config
+		filepath.Join(workDir, ".cci.toml"),               // Project config
 	}
 }
 

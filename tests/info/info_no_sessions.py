@@ -1,8 +1,8 @@
 """
-Test for coi info - no sessions exist.
+Test for cci info - no sessions exist.
 
 Tests that:
-1. Run coi info without arguments when no sessions exist
+1. Run cci info without arguments when no sessions exist
 2. Verify it fails with appropriate error message
 
 Note: This test requires a clean state with no saved sessions.
@@ -14,10 +14,10 @@ import subprocess
 
 def test_info_no_sessions(coi_binary, cleanup_containers):
     """
-    Test that coi info without args fails when no sessions exist.
+    Test that cci info without args fails when no sessions exist.
 
     Flow:
-    1. Run coi info (no args)
+    1. Run cci info (no args)
     2. If no sessions exist, should fail with "no sessions found"
     3. If sessions exist (from other tests), behavior is acceptable
 

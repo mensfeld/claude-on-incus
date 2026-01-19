@@ -26,8 +26,8 @@ var listCmd = &cobra.Command{
 By default, shows only active containers. Use --all to also show saved sessions.
 
 Examples:
-  coi list
-  coi list --all
+  cci list
+  cci list --all
 `,
 	RunE: listCommand,
 }
@@ -59,7 +59,7 @@ func listCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-	baseDir := filepath.Join(homeDir, ".coi")
+	baseDir := filepath.Join(homeDir, ".cci")
 	sessionsDir := session.GetSessionsDir(baseDir, toolInstance)
 
 	// List active containers

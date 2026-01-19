@@ -19,15 +19,15 @@ var killCmd = &cobra.Command{
 	Long: `Force stop and delete one or more containers by name.
 
 This immediately force-kills containers without waiting for graceful shutdown.
-For graceful shutdown, use 'coi shutdown' instead.
+For graceful shutdown, use 'cci shutdown' instead.
 
-Use 'coi list' to see active containers.
+Use 'cci list' to see active containers.
 
 Examples:
-  coi kill claude-abc12345-1           # Force kill specific container
-  coi kill claude-abc12345-1 claude-xyz78901-2  # Force kill multiple containers
-  coi kill --all                       # Force kill all containers (with confirmation)
-  coi kill --all --force               # Force kill all without confirmation
+  cci kill claude-abc12345-1           # Force kill specific container
+  cci kill claude-abc12345-1 claude-xyz78901-2  # Force kill multiple containers
+  cci kill --all                       # Force kill all containers (with confirmation)
+  cci kill --all --force               # Force kill all without confirmation
 `,
 	RunE: killCommand,
 }
@@ -76,7 +76,7 @@ func killCommand(cmd *cobra.Command, args []string) error {
 	} else {
 		// Use containers from args
 		if len(args) == 0 {
-			return fmt.Errorf("no container names provided - use 'coi list' to see active containers")
+			return fmt.Errorf("no container names provided - use 'cci list' to see active containers")
 		}
 		containerNames = args
 

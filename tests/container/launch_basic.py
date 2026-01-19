@@ -1,5 +1,5 @@
 """
-Test for coi container launch - basic container launch.
+Test for cci container launch - basic container launch.
 
 Tests that:
 1. Launch a container with image and name
@@ -20,7 +20,7 @@ def test_launch_basic(coi_binary, cleanup_containers, workspace_dir):
     Test basic container launch with image and name.
 
     Flow:
-    1. Launch a container with coi image
+    1. Launch a container with cci image
     2. Verify container is running
     3. Cleanup
     """
@@ -29,7 +29,7 @@ def test_launch_basic(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

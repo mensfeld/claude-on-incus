@@ -1,5 +1,5 @@
 """
-Test for coi shutdown - shutdown a specific container.
+Test for cci shutdown - shutdown a specific container.
 
 Tests that:
 1. Launch a container
@@ -19,7 +19,7 @@ def test_shutdown_specific_container(coi_binary, cleanup_containers, workspace_d
 
     Flow:
     1. Launch a container
-    2. Run coi shutdown <container-name>
+    2. Run cci shutdown <container-name>
     3. Verify container is deleted
     """
     slot = 1
@@ -27,7 +27,7 @@ def test_shutdown_specific_container(coi_binary, cleanup_containers, workspace_d
 
     # Launch a container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

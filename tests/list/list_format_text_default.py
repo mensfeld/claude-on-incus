@@ -1,4 +1,4 @@
-"""Test that coi list defaults to text format"""
+"""Test that cci list defaults to text format"""
 
 import subprocess
 
@@ -6,12 +6,12 @@ from support.helpers import calculate_container_name
 
 
 def test_list_format_text_default(coi_binary, cleanup_containers, workspace_dir):
-    """Test that coi list without --format outputs human-readable text."""
+    """Test that cci list without --format outputs human-readable text."""
     container_name = calculate_container_name(workspace_dir, 1)
 
     # Launch container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

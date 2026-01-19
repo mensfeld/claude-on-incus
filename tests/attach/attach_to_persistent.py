@@ -1,5 +1,5 @@
 """
-Test for coi attach - attach to persistent container.
+Test for cci attach - attach to persistent container.
 
 Tests that:
 1. Start a persistent shell session
@@ -27,10 +27,10 @@ from support.helpers import (
 
 def test_attach_to_persistent(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach works with persistent containers.
+    Test that cci attach works with persistent containers.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Detach with Ctrl+b d (claude keeps running)
     3. Attach to container
     4. Verify we can still interact with CLI

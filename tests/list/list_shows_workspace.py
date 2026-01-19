@@ -1,9 +1,9 @@
 """
-Test for coi list - shows workspace for containers with session metadata.
+Test for cci list - shows workspace for containers with session metadata.
 
 Tests that:
 1. Start a shell (creates session metadata with workspace)
-2. Run coi list while container running
+2. Run cci list while container running
 3. Verify it shows Workspace field
 """
 
@@ -22,11 +22,11 @@ from support.helpers import (
 
 def test_list_shows_workspace(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi list shows workspace for containers.
+    Test that cci list shows workspace for containers.
 
     Flow:
     1. Start a shell session (creates metadata)
-    2. Run coi list while container running
+    2. Run cci list while container running
     3. Verify Workspace field appears
     4. Cleanup
     """

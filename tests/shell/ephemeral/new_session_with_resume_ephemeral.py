@@ -1,5 +1,5 @@
 """
-Test for coi shell - ephemeral session with resume.
+Test for cci shell - ephemeral session with resume.
 
 Tests the resume lifecycle:
 1. Start dummy in ephemeral mode
@@ -7,7 +7,7 @@ Tests the resume lifecycle:
 3. Exit to bash shell
 4. Issue sudo poweroff
 5. Verify container is removed
-6. Run coi shell --resume
+6. Run cci shell --resume
 7. Verify session was resumed (dummy shows "Resuming session")
 8. Cleanup
 """
@@ -36,11 +36,11 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
     Test ephemeral session resume after shutdown.
 
     Flow:
-    1. Start coi shell (ephemeral mode)
+    1. Start cci shell (ephemeral mode)
     2. Interact with dummy
     3. Exit claude to bash, then poweroff
     4. Verify container deleted
-    5. Run coi shell --resume
+    5. Run cci shell --resume
     6. Verify resume worked
     7. Cleanup
     """

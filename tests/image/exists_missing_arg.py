@@ -1,8 +1,8 @@
 """
-Test for coi image exists - missing argument.
+Test for cci image exists - missing argument.
 
 Tests that:
-1. Run coi image exists without image name
+1. Run cci image exists without image name
 2. Verify it shows usage error
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_exists_missing_arg(coi_binary, cleanup_containers):
     """
-    Test that coi image exists without argument shows error.
+    Test that cci image exists without argument shows error.
 
     Flow:
-    1. Run coi image exists (no alias)
+    1. Run cci image exists (no alias)
     2. Verify it fails with usage message
     """
     # === Phase 1: Run without argument ===

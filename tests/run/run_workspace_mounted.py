@@ -1,5 +1,5 @@
 """
-Test for coi run - workspace is mounted at /workspace.
+Test for cci run - workspace is mounted at /workspace.
 
 Tests that:
 1. Create a file in local workspace
@@ -17,7 +17,7 @@ def test_run_workspace_mounted(coi_binary, cleanup_containers, workspace_dir):
 
     Flow:
     1. Create a test file in workspace
-    2. Run coi run to cat the file
+    2. Run cci run to cat the file
     3. Verify file content is accessible
     """
     # Create a test file in workspace

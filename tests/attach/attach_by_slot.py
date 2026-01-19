@@ -1,10 +1,10 @@
 """
-Test for coi attach --slot - attach by slot number.
+Test for cci attach --slot - attach by slot number.
 
 Tests that:
 1. Start a shell session on slot 1
 2. Detach from session
-3. Run coi attach --slot=1
+3. Run cci attach --slot=1
 4. Verify it attaches to slot 1
 """
 
@@ -24,12 +24,12 @@ from support.helpers import (
 
 def test_attach_by_slot(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach --slot attaches to the specified slot.
+    Test that cci attach --slot attaches to the specified slot.
 
     Flow:
-    1. Start coi shell --persistent --slot=1
+    1. Start cci shell --persistent --slot=1
     2. Detach from session
-    3. Run coi attach --slot=1
+    3. Run cci attach --slot=1
     4. Verify it attaches and shows "Attaching to ... (slot 1)"
     5. Cleanup
     """
@@ -79,7 +79,7 @@ def test_attach_by_slot(coi_binary, cleanup_containers, workspace_dir):
     containers = get_container_list()
     assert container_name in containers, f"Container {container_name} should still be running"
 
-    # === Phase 3: Test coi attach --slot=1 ===
+    # === Phase 3: Test cci attach --slot=1 ===
 
     result = subprocess.run(
         [coi_binary, "attach", "--slot=1", f"--workspace={workspace_dir}"],

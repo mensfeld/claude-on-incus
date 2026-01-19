@@ -1,8 +1,8 @@
 """
-Test for coi image cleanup - keep=0 should fail.
+Test for cci image cleanup - keep=0 should fail.
 
 Tests that:
-1. Run coi image cleanup with --keep 0
+1. Run cci image cleanup with --keep 0
 2. Verify it fails with error message
 """
 
@@ -14,7 +14,7 @@ def test_cleanup_keep_zero_fails(coi_binary, cleanup_containers):
     Test that cleanup with --keep 0 fails.
 
     Flow:
-    1. Run coi image cleanup prefix --keep 0
+    1. Run cci image cleanup prefix --keep 0
     2. Verify it fails with appropriate error
     """
     result = subprocess.run(

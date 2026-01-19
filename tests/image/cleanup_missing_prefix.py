@@ -1,8 +1,8 @@
 """
-Test for coi image cleanup - missing prefix argument.
+Test for cci image cleanup - missing prefix argument.
 
 Tests that:
-1. Run coi image cleanup without prefix
+1. Run cci image cleanup without prefix
 2. Verify it fails with usage error
 """
 
@@ -14,7 +14,7 @@ def test_cleanup_missing_prefix(coi_binary, cleanup_containers):
     Test that cleanup without prefix argument fails.
 
     Flow:
-    1. Run coi image cleanup --keep 1 (no prefix)
+    1. Run cci image cleanup --keep 1 (no prefix)
     2. Verify it fails with usage message
     """
     result = subprocess.run(

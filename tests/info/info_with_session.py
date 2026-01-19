@@ -1,9 +1,9 @@
 """
-Test for coi info - show info for a session.
+Test for cci info - show info for a session.
 
 Tests that:
 1. Create a session (by running shell briefly)
-2. Run coi info with the session ID
+2. Run cci info with the session ID
 3. Verify output contains expected fields
 """
 
@@ -27,8 +27,8 @@ def test_info_with_session(coi_binary, cleanup_containers, workspace_dir):
 
     Flow:
     1. Start a shell session and exit
-    2. Get the session ID from coi list
-    3. Run coi info <session-id>
+    2. Get the session ID from cci list
+    3. Run cci info <session-id>
     4. Verify output contains expected fields
     5. Cleanup
     """
@@ -70,7 +70,7 @@ def test_info_with_session(coi_binary, cleanup_containers, workspace_dir):
 
     time.sleep(5)
 
-    # === Phase 2: Get session ID from coi list ===
+    # === Phase 2: Get session ID from cci list ===
 
     result = subprocess.run(
         [coi_binary, "list", "--all"],
@@ -113,7 +113,7 @@ def test_info_with_session(coi_binary, cleanup_containers, workspace_dir):
 
     assert session_id is not None, f"Should find a session ID. List output:\n{result.stdout}"
 
-    # === Phase 3: Run coi info with session ID ===
+    # === Phase 3: Run cci info with session ID ===
 
     result = subprocess.run(
         [coi_binary, "info", session_id],

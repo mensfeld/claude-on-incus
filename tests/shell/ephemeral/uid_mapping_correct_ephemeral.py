@@ -1,5 +1,5 @@
 """
-Test for coi shell - UID mapping ensures correct file ownership.
+Test for cci shell - UID mapping ensures correct file ownership.
 
 Tests that:
 1. Start shell
@@ -28,7 +28,7 @@ def test_uid_mapping_correct(coi_binary, cleanup_containers, workspace_dir):
     Test that files created inside container have correct UID on host.
 
     Flow:
-    1. Start coi shell
+    1. Start cci shell
     2. Exit claude to bash
     3. Create a file in /workspace
     4. Exit container

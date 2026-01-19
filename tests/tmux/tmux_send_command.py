@@ -1,5 +1,5 @@
 """
-Test for coi tmux send - send commands to a tmux session.
+Test for cci tmux send - send commands to a tmux session.
 
 Tests that:
 1. Launch a container
@@ -21,7 +21,7 @@ def test_tmux_send_command(coi_binary, cleanup_containers, workspace_dir):
     Flow:
     1. Launch a container
     2. Create a tmux session inside container
-    3. Use coi tmux send to send a command
+    3. Use cci tmux send to send a command
     4. Capture tmux output to verify command executed
     5. Cleanup
     """
@@ -30,7 +30,7 @@ def test_tmux_send_command(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -42,7 +42,7 @@ def test_tmux_send_command(coi_binary, cleanup_containers, workspace_dir):
 
     # === Phase 2: Create tmux session inside container ===
 
-    tmux_session = f"coi-{container_name}"
+    tmux_session = f"cci-{container_name}"
 
     # Start a tmux session with a shell
     result = subprocess.run(
@@ -68,7 +68,7 @@ def test_tmux_send_command(coi_binary, cleanup_containers, workspace_dir):
 
     time.sleep(1)
 
-    # === Phase 3: Send command via coi tmux send ===
+    # === Phase 3: Send command via cci tmux send ===
 
     result = subprocess.run(
         [coi_binary, "tmux", "send", container_name, "echo TMUX_TEST_MARKER"],

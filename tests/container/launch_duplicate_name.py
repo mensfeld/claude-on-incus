@@ -1,5 +1,5 @@
 """
-Test for coi container launch - fails with duplicate container name.
+Test for cci container launch - fails with duplicate container name.
 
 Tests that:
 1. Launch a container
@@ -31,7 +31,7 @@ def test_launch_duplicate_name(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch first container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -48,7 +48,7 @@ def test_launch_duplicate_name(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 2: Try to launch duplicate ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=60,

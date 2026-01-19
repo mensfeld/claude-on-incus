@@ -1,5 +1,5 @@
 """
-Test for coi container start - starts a stopped container.
+Test for cci container start - starts a stopped container.
 
 Tests that:
 1. Launch a container
@@ -32,7 +32,7 @@ def test_start_stopped_container(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

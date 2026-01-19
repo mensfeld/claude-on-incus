@@ -79,7 +79,7 @@ def test_open_mode_allows_all(coi_binary, workspace_dir, cleanup_containers):
     )
 
     assert result.returncode == 0, f"Should be able to reach example.com. stderr: {result.stderr}"
-    # Note: coi container exec outputs to stderr, not stdout
+    # Note: cci container exec outputs to stderr, not stdout
     assert "Example Domain" in result.stderr, "Should receive example.com HTML content"
 
     # Test 2: Private networks should NOT be blocked by ACL

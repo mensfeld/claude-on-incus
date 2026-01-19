@@ -17,8 +17,8 @@ var infoCmd = &cobra.Command{
 	Long: `Show detailed information about a saved session.
 
 Examples:
-  coi info abc123
-  coi info
+  cci info abc123
+  cci info
 `,
 	Args: cobra.MaximumNArgs(1),
 	RunE: infoCommand,
@@ -41,7 +41,7 @@ func infoCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-	baseDir := filepath.Join(homeDir, ".coi")
+	baseDir := filepath.Join(homeDir, ".cci")
 	sessionsDir := session.GetSessionsDir(baseDir, toolInstance)
 
 	// Get session ID
@@ -52,7 +52,7 @@ func infoCommand(cmd *cobra.Command, args []string) error {
 		// Get latest session
 		sessionID, err = session.GetLatestSession(sessionsDir)
 		if err != nil {
-			return fmt.Errorf("no sessions found (specify session ID or use 'coi list --all')")
+			return fmt.Errorf("no sessions found (specify session ID or use 'cci list --all')")
 		}
 	}
 
@@ -112,7 +112,7 @@ func infoCommand(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\nSession Path:   %s\n", sessionDir)
 
 	// Show resumability
-	fmt.Printf("\nResume:         coi shell --resume %s\n", sessionID)
+	fmt.Printf("\nResume:         cci shell --resume %s\n", sessionID)
 
 	return nil
 }

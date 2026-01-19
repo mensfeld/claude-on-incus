@@ -1,5 +1,5 @@
 """
-Test for coi tmux send - error when missing required arguments.
+Test for cci tmux send - error when missing required arguments.
 
 Tests that:
 1. Try to use tmux send with missing arguments
@@ -14,8 +14,8 @@ def test_tmux_send_missing_args(coi_binary, cleanup_containers):
     Test tmux send fails when arguments are missing.
 
     Flow:
-    1. Try coi tmux send with no args
-    2. Try coi tmux send with only session name (no command)
+    1. Try cci tmux send with no args
+    2. Try cci tmux send with only session name (no command)
     3. Verify both show usage/error
     """
 

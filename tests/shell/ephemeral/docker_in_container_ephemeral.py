@@ -1,5 +1,5 @@
 """
-Test for coi shell - Docker works inside container.
+Test for cci shell - Docker works inside container.
 
 Tests that:
 1. Start shell
@@ -27,7 +27,7 @@ def test_docker_in_container(coi_binary, cleanup_containers, workspace_dir):
     Test that Docker works inside the container.
 
     Flow:
-    1. Start coi shell
+    1. Start cci shell
     2. Exit claude to bash
     3. Run 'docker --version' to verify Docker is installed
     4. Run 'docker ps' to verify Docker daemon is accessible

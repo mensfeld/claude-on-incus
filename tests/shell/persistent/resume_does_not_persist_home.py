@@ -1,5 +1,5 @@
 """
-Test for coi shell --persistent - resume does NOT persist home directory files.
+Test for cci shell --persistent - resume does NOT persist home directory files.
 
 Verifies that:
 1. Start dummy in persistent mode, exit to bash
@@ -10,7 +10,7 @@ Verifies that:
 6. The file ~/test.txt should NOT exist (only .claude is restored, not home dir)
 
 This tests that --resume restores session data, not container state.
-For container state preservation, use coi attach on a kept container.
+For container state preservation, use cci attach on a kept container.
 """
 
 import subprocess
@@ -38,7 +38,7 @@ def test_persistent_resume_does_not_persist_home_files(
     Test that persistent resume only restores .claude, not other home files.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Exit claude to bash
     3. Create ~/test.txt file
     4. Poweroff (container kept)

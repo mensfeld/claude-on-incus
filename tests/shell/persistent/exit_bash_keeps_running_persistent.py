@@ -1,17 +1,17 @@
 """
-Test for coi shell --persistent - exit bash keeps container running.
+Test for cci shell --persistent - exit bash keeps container running.
 
 Tests the behavior:
 1. Start dummy in persistent mode
 2. Exit claude to bash
 3. Exit bash (not poweroff)
 4. Verify container is still running
-5. Verify can attach with coi attach --bash
+5. Verify can attach with cci attach --bash
 6. Cleanup: kill the container
 
 Expected:
 - Exiting bash (not poweroff) keeps container running
-- coi attach --bash works to reconnect
+- cci attach --bash works to reconnect
 - Container can be killed for cleanup
 """
 
@@ -39,12 +39,12 @@ def test_persistent_exit_bash_keeps_container_running(
     Test that exiting bash (not poweroff) keeps persistent container running.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Interact with dummy
     3. Exit claude to get to bash
     4. Exit bash (should keep container running)
     5. Verify container is still running
-    6. Attach with coi attach --bash
+    6. Attach with cci attach --bash
     7. Verify we can interact
     8. Kill container for cleanup
     """
@@ -93,7 +93,7 @@ def test_persistent_exit_bash_keeps_container_running(
     time.sleep(0.3)
     child.send("\x0d")
 
-    # Wait for coi shell to exit
+    # Wait for cci shell to exit
     try:
         child.expect(EOF, timeout=30)
     except TIMEOUT:
@@ -121,7 +121,7 @@ def test_persistent_exit_bash_keeps_container_running(
     )
 
     # Verify output mentions container kept running
-    assert "Container kept running" in output1 or "coi attach" in output1.lower(), (
+    assert "Container kept running" in output1 or "cci attach" in output1.lower(), (
         f"Should mention container kept running. Got:\n{output1}"
     )
 

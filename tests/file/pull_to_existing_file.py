@@ -1,5 +1,5 @@
 """
-Test for coi file pull - pull to existing local file (overwrite).
+Test for cci file pull - pull to existing local file (overwrite).
 
 Tests that:
 1. Launch a container
@@ -33,7 +33,7 @@ def test_pull_to_existing_file(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

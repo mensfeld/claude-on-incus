@@ -1,8 +1,8 @@
 """
-Test for coi version - with extra arguments.
+Test for cci version - with extra arguments.
 
 Tests that:
-1. Run coi version with extra arguments
+1. Run cci version with extra arguments
 2. Verify extra arguments are ignored
 3. Verify normal version output
 """
@@ -15,7 +15,7 @@ def test_version_with_extra_arguments(coi_binary):
     Test version command with extra arguments.
 
     Flow:
-    1. Run coi version with extra arguments
+    1. Run cci version with extra arguments
     2. Verify exit code is 0
     3. Verify output is same as without arguments
     """

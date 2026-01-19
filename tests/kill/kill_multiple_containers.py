@@ -1,5 +1,5 @@
 """
-Test for coi kill - kill multiple containers at once.
+Test for cci kill - kill multiple containers at once.
 
 Tests that:
 1. Launch multiple containers
@@ -29,7 +29,7 @@ def test_kill_multiple_containers(coi_binary, cleanup_containers, workspace_dir)
 
     for container_name in [container1, container2]:
         result = subprocess.run(
-            [coi_binary, "container", "launch", "coi", container_name],
+            [coi_binary, "container", "launch", "cci", container_name],
             capture_output=True,
             text=True,
             timeout=120,

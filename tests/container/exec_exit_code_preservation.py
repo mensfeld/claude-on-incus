@@ -11,7 +11,7 @@ def test_exec_exit_code_preservation_raw(coi_binary, cleanup_containers, workspa
 
     # Launch container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -92,7 +92,7 @@ def test_exec_exit_code_preservation_json(coi_binary, cleanup_containers, worksp
 
     # Launch container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -117,7 +117,7 @@ def test_exec_exit_code_preservation_json(coi_binary, cleanup_containers, worksp
         text=True,
         timeout=30,
     )
-    assert result.returncode == 0, "JSON format should return 0 for coi itself"
+    assert result.returncode == 0, "JSON format should return 0 for cci itself"
 
     # Parse JSON and check exit_code field
     import json

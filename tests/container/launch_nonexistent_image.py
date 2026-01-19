@@ -1,5 +1,5 @@
 """
-Test for coi container launch - fails with nonexistent image.
+Test for cci container launch - fails with nonexistent image.
 
 Tests that:
 1. Try to launch with a nonexistent image

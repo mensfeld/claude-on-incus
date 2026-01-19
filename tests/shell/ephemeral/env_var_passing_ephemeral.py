@@ -1,5 +1,5 @@
 """
-Test for coi shell --env - passing environment variables to container.
+Test for cci shell --env - passing environment variables to container.
 
 Tests that:
 1. Start shell with --env KEY=VALUE
@@ -26,7 +26,7 @@ def test_env_var_passing(coi_binary, cleanup_containers, workspace_dir):
     Test that --env flag passes environment variables to container.
 
     Flow:
-    1. Start coi shell --env TEST_VAR=hello123
+    1. Start cci shell --env TEST_VAR=hello123
     2. Exit claude to bash
     3. Echo $TEST_VAR and verify it's set
     4. Cleanup

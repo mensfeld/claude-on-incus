@@ -1,9 +1,9 @@
 """
-Test for coi list - ephemeral containers should not show as persistent.
+Test for cci list - ephemeral containers should not show as persistent.
 
 Tests that:
 1. Start an ephemeral session with dummy
-2. Run coi list
+2. Run cci list
 3. Verify container is NOT marked as (persistent)
 4. Cleanup container
 """
@@ -27,12 +27,12 @@ from support.helpers import (
 
 def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that ephemeral containers are not marked as persistent in coi list.
+    Test that ephemeral containers are not marked as persistent in cci list.
 
     Flow:
-    1. Start coi shell (ephemeral mode, default)
+    1. Start cci shell (ephemeral mode, default)
     2. Verify container is running
-    3. Run coi list and verify container is NOT marked as (persistent)
+    3. Run cci list and verify container is NOT marked as (persistent)
     4. Cleanup
     """
     env = {"COI_USE_DUMMY": "1"}
@@ -63,7 +63,7 @@ def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
         responded = wait_for_text_in_monitor(monitor, "test message-BACK", timeout=30)
         assert responded, "Dummy CLI should respond"
 
-    # === Phase 2: Run coi list and check output ===
+    # === Phase 2: Run cci list and check output ===
 
     list_result = subprocess.run(
         [coi_binary, "list"],
@@ -73,7 +73,7 @@ def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
         cwd=workspace_dir,
     )
 
-    assert list_result.returncode == 0, f"coi list should succeed. stderr: {list_result.stderr}"
+    assert list_result.returncode == 0, f"cci list should succeed. stderr: {list_result.stderr}"
 
     list_output = list_result.stdout
 

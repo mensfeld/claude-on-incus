@@ -1,5 +1,5 @@
 """
-Test for coi run - current working directory is /workspace.
+Test for cci run - current working directory is /workspace.
 
 Tests that:
 1. Run pwd command
@@ -14,7 +14,7 @@ def test_run_cwd_is_workspace(coi_binary, cleanup_containers, workspace_dir):
     Test that current working directory is /workspace.
 
     Flow:
-    1. Run coi run pwd
+    1. Run cci run pwd
     2. Verify output shows /workspace
     """
     result = subprocess.run(

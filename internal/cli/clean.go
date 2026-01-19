@@ -25,10 +25,10 @@ var cleanCmd = &cobra.Command{
 By default, cleans only stopped containers. Use flags to control what gets cleaned.
 
 Examples:
-  coi clean                    # Clean stopped containers
-  coi clean --sessions         # Clean saved session data
-  coi clean --all              # Clean everything
-  coi clean --all --force      # Clean without confirmation
+  cci clean                    # Clean stopped containers
+  cci clean --sessions         # Clean saved session data
+  cci clean --all              # Clean everything
+  cci clean --all --force      # Clean without confirmation
 `,
 	RunE: cleanCommand,
 }
@@ -56,7 +56,7 @@ func cleanCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-	baseDir := filepath.Join(homeDir, ".coi")
+	baseDir := filepath.Join(homeDir, ".cci")
 	sessionsDir := session.GetSessionsDir(baseDir, toolInstance)
 
 	cleaned := 0

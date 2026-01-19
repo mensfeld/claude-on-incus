@@ -1,5 +1,5 @@
 """
-Test for coi file push - push to nonexistent container.
+Test for cci file push - push to nonexistent container.
 
 Tests that:
 1. Create a local file

@@ -1,8 +1,8 @@
 """
-Test for coi info --help - help text validation.
+Test for cci info --help - help text validation.
 
 Tests that:
-1. Run coi info --help
+1. Run cci info --help
 2. Verify help text contains expected sections
 3. Verify exit code is 0
 """
@@ -15,7 +15,7 @@ def test_info_help(coi_binary):
     Test info command help output.
 
     Flow:
-    1. Run coi info --help
+    1. Run cci info --help
     2. Verify exit code is 0
     3. Verify output contains usage and description
     """

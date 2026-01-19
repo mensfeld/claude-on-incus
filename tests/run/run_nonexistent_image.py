@@ -1,5 +1,5 @@
 """
-Test for coi run - with nonexistent image.
+Test for cci run - with nonexistent image.
 
 Tests that:
 1. Run with --image pointing to nonexistent image
@@ -14,7 +14,7 @@ def test_run_nonexistent_image(coi_binary, cleanup_containers, workspace_dir):
     Test that run with nonexistent image fails gracefully.
 
     Flow:
-    1. Run coi run --image nonexistent-xyz
+    1. Run cci run --image nonexistent-xyz
     2. Verify it fails with image not found error
     """
     result = subprocess.run(

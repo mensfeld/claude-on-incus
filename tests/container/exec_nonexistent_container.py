@@ -1,5 +1,5 @@
 """
-Test for coi container exec - fails for nonexistent container.
+Test for cci container exec - fails for nonexistent container.
 
 Tests that:
 1. Try to exec in a nonexistent container

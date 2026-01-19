@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 REPO="thomas/claude-code-isolated"
-BINARY_NAME="coi"
+BINARY_NAME="cci"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 VERSION="${VERSION:-latest}"
 
@@ -101,9 +101,9 @@ download_binary() {
     trap "rm -rf '$tmp_dir'" EXIT
 
     if [ "$VERSION" = "latest" ]; then
-        download_url="https://github.com/${REPO}/releases/latest/download/coi-${OS}-${ARCH}"
+        download_url="https://github.com/${REPO}/releases/latest/download/cci-${OS}-${ARCH}"
     else
-        download_url="https://github.com/${REPO}/releases/download/${VERSION}/coi-${OS}-${ARCH}"
+        download_url="https://github.com/${REPO}/releases/download/${VERSION}/cci-${OS}-${ARCH}"
     fi
 
     binary_path="${tmp_dir}/${BINARY_NAME}"
@@ -229,13 +229,13 @@ post_install() {
     echo "Next steps:"
     echo ""
     echo "  1. Build the COI image:"
-    echo "     ${BLUE}coi build${NC}"
+    echo "     ${BLUE}cci build${NC}"
     echo ""
     echo "  2. Start your first session:"
-    echo "     ${BLUE}coi shell${NC}"
+    echo "     ${BLUE}cci shell${NC}"
     echo ""
     echo "  3. View available commands:"
-    echo "     ${BLUE}coi --help${NC}"
+    echo "     ${BLUE}cci --help${NC}"
     echo ""
 
     if ! groups | grep -q incus-admin; then
@@ -253,7 +253,7 @@ post_install() {
 main() {
     echo ""
     echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  claude-code-isolated (coi) installer${NC}"
+    echo -e "${BLUE}  claude-code-isolated (cci) installer${NC}"
     echo -e "${BLUE}════════════════════════════════════════${NC}"
     echo ""
 

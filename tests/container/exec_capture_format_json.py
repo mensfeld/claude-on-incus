@@ -1,4 +1,4 @@
-"""Test coi container exec --capture (JSON format, default)"""
+"""Test cci container exec --capture (JSON format, default)"""
 
 import json
 import subprocess
@@ -12,7 +12,7 @@ def test_exec_capture_format_json(coi_binary, cleanup_containers, workspace_dir)
 
     # Launch container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

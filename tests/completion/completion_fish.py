@@ -1,8 +1,8 @@
 """
-Test for coi completion fish - fish completion generation.
+Test for cci completion fish - fish completion generation.
 
 Tests that:
-1. Run coi completion fish
+1. Run cci completion fish
 2. Verify it generates valid fish completion script
 3. Verify exit code is 0
 """
@@ -15,7 +15,7 @@ def test_completion_fish(coi_binary):
     Test fish completion script generation.
 
     Flow:
-    1. Run coi completion fish
+    1. Run cci completion fish
     2. Verify exit code is 0
     3. Verify output contains fish completion directives
     """
@@ -40,4 +40,4 @@ def test_completion_fish(coi_binary):
     assert len(lines) > 5, f"Should generate completion script. Got {len(lines)} lines"
 
     # Should mention the binary name
-    assert "coi" in output, f"Should mention coi binary. Got:\n{output[:200]}..."
+    assert "cci" in output, f"Should mention cci binary. Got:\n{output[:200]}..."

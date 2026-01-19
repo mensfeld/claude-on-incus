@@ -1,9 +1,9 @@
 """
-Test for coi attach <container-name> - attach to specific container.
+Test for cci attach <container-name> - attach to specific container.
 
 Tests that:
 1. Start a shell session and detach
-2. Run coi attach <container-name>
+2. Run cci attach <container-name>
 3. Verify it attaches to the specified container
 """
 
@@ -23,12 +23,12 @@ from support.helpers import (
 
 def test_attach_specific_container(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach <name> attaches to the specified container.
+    Test that cci attach <name> attaches to the specified container.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Detach from session
-    3. Run coi attach <container-name>
+    3. Run cci attach <container-name>
     4. Verify it attaches to that specific container
     5. Cleanup
     """
@@ -78,7 +78,7 @@ def test_attach_specific_container(coi_binary, cleanup_containers, workspace_dir
     containers = get_container_list()
     assert container_name in containers, f"Container {container_name} should still be running"
 
-    # === Phase 3: Test coi attach <container-name> ===
+    # === Phase 3: Test cci attach <container-name> ===
 
     # Use subprocess with a short timeout - we just want to verify it starts attaching
     result = subprocess.run(

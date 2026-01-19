@@ -1,10 +1,10 @@
 """
-Test for coi clean --all - removes containers and sessions.
+Test for cci clean --all - removes containers and sessions.
 
 Tests that:
 1. Create a stopped container
 2. Create a session
-3. Run coi clean --all --force
+3. Run cci clean --all --force
 4. Verify both are removed
 """
 
@@ -27,12 +27,12 @@ from support.helpers import (
 
 def test_clean_all_removes_everything(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi clean --all removes containers and sessions.
+    Test that cci clean --all removes containers and sessions.
 
     Flow:
     1. Start a session, poweroff (creates session data)
     2. Launch and stop another container
-    3. Run coi clean --all --force
+    3. Run cci clean --all --force
     4. Verify both container and session are gone
     """
     env = {"COI_USE_DUMMY": "1"}
@@ -80,7 +80,7 @@ def test_clean_all_removes_everything(coi_binary, cleanup_containers, workspace_
     # === Phase 2: Create a stopped container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name_2],
+        [coi_binary, "container", "launch", "cci", container_name_2],
         capture_output=True,
         text=True,
         timeout=120,
@@ -106,7 +106,7 @@ def test_clean_all_removes_everything(coi_binary, cleanup_containers, workspace_
         timeout=120,
     )
 
-    assert result.returncode == 0, f"coi clean --all should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci clean --all should succeed. stderr: {result.stderr}"
 
     time.sleep(3)
 

@@ -1,5 +1,5 @@
 """
-Test for coi run - with --slot flag.
+Test for cci run - with --slot flag.
 
 Tests that:
 1. Run command with --slot flag
@@ -14,7 +14,7 @@ def test_run_with_slot(coi_binary, cleanup_containers, workspace_dir):
     Test running command with specific slot.
 
     Flow:
-    1. Run coi run --slot 5 "echo hello"
+    1. Run cci run --slot 5 "echo hello"
     2. Verify command succeeds
     """
     result = subprocess.run(

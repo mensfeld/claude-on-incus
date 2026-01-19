@@ -1,11 +1,11 @@
 """
-Test for coi shell --persistent - new session is NOT resumed without --resume flag.
+Test for cci shell --persistent - new session is NOT resumed without --resume flag.
 
 Verifies that:
 1. Start dummy in persistent mode, interact with it
 2. Poweroff container (container kept in persistent mode)
 3. Delete container for clean slate
-4. Start coi shell --persistent again WITHOUT --resume
+4. Start cci shell --persistent again WITHOUT --resume
 5. Verify it's a NEW session (not resuming the old one)
 """
 
@@ -31,10 +31,10 @@ def test_persistent_new_session_not_resumed(coi_binary, cleanup_containers, work
     Test that without --resume, a new persistent session is started.
 
     Flow:
-    1. Start coi shell --persistent, interact with dummy
+    1. Start cci shell --persistent, interact with dummy
     2. Poweroff container (kept in persistent mode)
     3. Delete container to ensure clean slate
-    4. Start coi shell --persistent again (no --resume)
+    4. Start cci shell --persistent again (no --resume)
     5. Verify dummy shows new session, not resuming
     6. Cleanup
     """

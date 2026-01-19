@@ -1,5 +1,5 @@
 """
-Test for coi image publish - running container.
+Test for cci image publish - running container.
 
 Tests that:
 1. Launch a container (running state)
@@ -29,7 +29,7 @@ def test_publish_running_container(coi_binary, cleanup_containers, workspace_dir
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

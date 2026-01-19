@@ -1,5 +1,5 @@
 """
-Test for coi shutdown - verifies container is deleted.
+Test for cci shutdown - verifies container is deleted.
 
 Tests that:
 1. Launch a container
@@ -19,16 +19,16 @@ def test_shutdown_verifies_deletion(coi_binary, cleanup_containers, workspace_di
 
     Flow:
     1. Launch a container
-    2. Run coi shutdown <container>
+    2. Run cci shutdown <container>
     3. Verify with 'container exists' that it's gone
-    4. Verify it doesn't appear in 'coi list'
+    4. Verify it doesn't appear in 'cci list'
     """
     slot = 1
     container_name = calculate_container_name(workspace_dir, slot)
 
     # Launch a container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

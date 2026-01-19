@@ -1,8 +1,8 @@
 """
-Test for coi version - basic functionality.
+Test for cci version - basic functionality.
 
 Tests that:
-1. Run coi version
+1. Run cci version
 2. Verify version string format
 3. Verify repository URL is present
 """
@@ -15,7 +15,7 @@ def test_version_basic(coi_binary):
     Test basic version command output.
 
     Flow:
-    1. Run coi version
+    1. Run cci version
     2. Verify exit code is 0
     3. Verify output contains version string
     4. Verify output contains repository URL
@@ -32,7 +32,7 @@ def test_version_basic(coi_binary):
     output = result.stdout
 
     # Should contain version identifier
-    assert "code-on-incus (coi) v" in output, f"Should contain version identifier. Got:\n{output}"
+    assert "claude-code-isolated (cci) v" in output, f"Should contain version identifier. Got:\n{output}"
 
     # Should contain repository URL
     assert "https://github.com/thomas/claude-code-isolated" in output, (

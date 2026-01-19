@@ -1,5 +1,5 @@
 """
-Test for coi tmux capture - error when container doesn't exist.
+Test for cci tmux capture - error when container doesn't exist.
 
 Tests that:
 1. Try to capture from nonexistent container
@@ -14,10 +14,10 @@ def test_tmux_capture_nonexistent_container(coi_binary, cleanup_containers):
     Test tmux capture fails gracefully when container doesn't exist.
 
     Flow:
-    1. Try to use coi tmux capture on nonexistent container
+    1. Try to use cci tmux capture on nonexistent container
     2. Verify error message
     """
-    fake_container = "coi-nonexistent-tmux-test-88888"
+    fake_container = "cci-nonexistent-tmux-test-88888"
 
     # === Phase 1: Try to capture from nonexistent container ===
 

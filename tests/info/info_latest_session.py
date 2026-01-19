@@ -1,9 +1,9 @@
 """
-Test for coi info - show info for latest session (no args).
+Test for cci info - show info for latest session (no args).
 
 Tests that:
 1. Create a session
-2. Run coi info without arguments
+2. Run cci info without arguments
 3. Verify it shows the latest session
 """
 
@@ -27,7 +27,7 @@ def test_info_latest_session(coi_binary, cleanup_containers, workspace_dir):
 
     Flow:
     1. Start a shell session and exit
-    2. Run coi info (no args)
+    2. Run cci info (no args)
     3. Verify it shows session information
     4. Cleanup
     """
@@ -69,7 +69,7 @@ def test_info_latest_session(coi_binary, cleanup_containers, workspace_dir):
 
     time.sleep(5)
 
-    # === Phase 2: Run coi info without arguments ===
+    # === Phase 2: Run cci info without arguments ===
 
     result = subprocess.run(
         [coi_binary, "info"],

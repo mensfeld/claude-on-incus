@@ -1,9 +1,9 @@
 """
-Test for coi image publish - missing arguments.
+Test for cci image publish - missing arguments.
 
 Tests that:
-1. Run coi image publish without arguments
-2. Run coi image publish with only one argument
+1. Run cci image publish without arguments
+2. Run cci image publish with only one argument
 3. Verify usage errors
 """
 
@@ -12,10 +12,10 @@ import subprocess
 
 def test_publish_no_args(coi_binary, cleanup_containers):
     """
-    Test that coi image publish without arguments shows error.
+    Test that cci image publish without arguments shows error.
 
     Flow:
-    1. Run coi image publish (no args)
+    1. Run cci image publish (no args)
     2. Verify it fails with usage message
     """
     result = subprocess.run(
@@ -35,10 +35,10 @@ def test_publish_no_args(coi_binary, cleanup_containers):
 
 def test_publish_one_arg(coi_binary, cleanup_containers):
     """
-    Test that coi image publish with only container shows error.
+    Test that cci image publish with only container shows error.
 
     Flow:
-    1. Run coi image publish container-name (missing alias)
+    1. Run cci image publish container-name (missing alias)
     2. Verify it fails with usage message
     """
     result = subprocess.run(

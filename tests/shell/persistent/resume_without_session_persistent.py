@@ -1,5 +1,5 @@
 """
-Test for coi shell --persistent --resume when no saved session exists.
+Test for cci shell --persistent --resume when no saved session exists.
 
 Tests that:
 1. Running --persistent --resume with no saved session errors gracefully
@@ -23,7 +23,7 @@ def test_persistent_resume_without_session(coi_binary, cleanup_containers, works
     Test that --persistent --resume with no saved session errors gracefully.
 
     Flow:
-    1. Run coi shell --persistent --resume in fresh workspace (no saved sessions)
+    1. Run cci shell --persistent --resume in fresh workspace (no saved sessions)
     2. Verify it exits with error
     3. Verify error message is helpful
     4. Verify no containers were created

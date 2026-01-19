@@ -1,8 +1,8 @@
 """
-Test for coi list - without --all doesn't show sessions.
+Test for cci list - without --all doesn't show sessions.
 
 Tests that:
-1. Run coi list (without --all)
+1. Run cci list (without --all)
 2. Verify it does NOT show Saved Sessions section
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_list_without_all_no_sessions(coi_binary, cleanup_containers):
     """
-    Test that coi list without --all doesn't show Saved Sessions.
+    Test that cci list without --all doesn't show Saved Sessions.
 
     Flow:
-    1. Run coi list (no --all flag)
+    1. Run cci list (no --all flag)
     2. Verify Saved Sessions section is NOT shown
     """
     result = subprocess.run(

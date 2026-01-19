@@ -1,6 +1,6 @@
 # Binaries (in root only)
-/coi
-/claude-on-incus
+/cci
+/claude-code-isolated
 *.exe
 *.dll
 *.so
@@ -45,8 +45,8 @@ tmp/
 Thumbs.db
 
 # Config files (for local testing)
-.claude-on-incus.toml
+.cci.toml
 test-config.toml
 
 # Session data (for local testing)
-.claude-on-incus/
+.cci/

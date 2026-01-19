@@ -1,5 +1,5 @@
 """
-Test for coi shell --persistent - container kept after poweroff.
+Test for cci shell --persistent - container kept after poweroff.
 
 Tests that in persistent mode:
 1. Start dummy in persistent mode
@@ -33,7 +33,7 @@ def test_persistent_container_kept_after_poweroff(coi_binary, cleanup_containers
     Test persistent session keeps container after poweroff.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Interact with dummy
     3. Exit claude to get to bash
     4. Run sudo poweroff to stop container

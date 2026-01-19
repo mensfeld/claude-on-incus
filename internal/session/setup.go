@@ -17,7 +17,7 @@ import (
 
 const (
 	DefaultImage = "images:ubuntu/22.04"
-	CoiImage     = "coi"
+	CoiImage     = "cci"
 )
 
 // buildJSONFromSettings converts a settings map to a properly escaped JSON string
@@ -38,7 +38,7 @@ type SetupOptions struct {
 	ResumeFromID  string
 	Slot          int
 	StoragePath   string
-	SessionsDir   string    // e.g., ~/.coi/sessions-claude
+	SessionsDir   string    // e.g., ~/.cci/sessions-claude
 	CLIConfigPath string    // e.g., ~/.claude (host CLI config to copy credentials from)
 	Tool          tool.Tool // AI coding tool being used
 	NetworkConfig *config.NetworkConfig
@@ -86,11 +86,11 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 		return nil, fmt.Errorf("failed to check image: %w", err)
 	}
 	if !exists {
-		return nil, fmt.Errorf("image '%s' not found - run 'coi build' first", image)
+		return nil, fmt.Errorf("image '%s' not found - run 'cci build' first", image)
 	}
 
 	// 3. Determine execution context
-	// coi image has the claude user pre-configured, so run as that user
+	// cci image has the claude user pre-configured, so run as that user
 	// Other images don't have this setup, so run as root
 	usingCoiImage := image == CoiImage
 	result.RunAsRoot = !usingCoiImage

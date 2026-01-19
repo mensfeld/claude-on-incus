@@ -1,8 +1,8 @@
 """
-Test for coi <invalid-command> - error handling.
+Test for cci <invalid-command> - error handling.
 
 Tests that:
-1. Run coi with an invalid command
+1. Run cci with an invalid command
 2. Verify it returns non-zero exit code
 3. Verify error message is helpful
 """
@@ -15,7 +15,7 @@ def test_invalid_command(coi_binary):
     Test behavior with invalid command.
 
     Flow:
-    1. Run coi with non-existent command
+    1. Run cci with non-existent command
     2. Verify exit code is non-zero
     3. Verify error message mentions the invalid command
     """

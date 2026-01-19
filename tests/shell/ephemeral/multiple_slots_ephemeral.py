@@ -1,5 +1,5 @@
 """
-Test for coi shell - multiple slots running in parallel with isolation.
+Test for cci shell - multiple slots running in parallel with isolation.
 
 Tests that:
 1. Start session on slot 1, create marker file in ~/
@@ -33,10 +33,10 @@ def test_multiple_slots_parallel(coi_binary, cleanup_containers, workspace_dir):
     Test that multiple slots can run in parallel with isolated home directories.
 
     Flow:
-    1. Start coi shell (slot 1 auto-allocated)
+    1. Start cci shell (slot 1 auto-allocated)
     2. Interact with dummy, create marker file in ~/
     3. Exit claude, exit bash (detach - container stays running)
-    4. Start coi shell again (slot 2 auto-allocated)
+    4. Start cci shell again (slot 2 auto-allocated)
     5. Verify both containers are running
     6. Create marker file in slot 2, verify slot 1's file is NOT visible (isolation)
     7. Cleanup both containers

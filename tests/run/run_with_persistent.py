@@ -1,5 +1,5 @@
 """
-Test for coi run - with --persistent flag.
+Test for cci run - with --persistent flag.
 
 Tests that:
 1. Run with --persistent flag
@@ -18,7 +18,7 @@ def test_run_with_persistent(coi_binary, cleanup_containers, workspace_dir):
     Test running with --persistent flag.
 
     Flow:
-    1. Run coi run --persistent --slot N
+    1. Run cci run --persistent --slot N
     2. Verify command succeeds
     3. Verify container still exists (stopped)
     4. Run again and verify it reuses container

@@ -6,10 +6,10 @@ import subprocess
 
 
 def test_build_sandbox_exists_check(coi_binary):
-    """Test that coi-sandbox image exists or can be built."""
+    """Test that cci-sandbox image exists or can be built."""
     # Check if image already exists
     result = subprocess.run(
-        [coi_binary, "image", "exists", "coi-sandbox"],
+        [coi_binary, "image", "exists", "cci-sandbox"],
         capture_output=True,
     )
 
@@ -19,7 +19,7 @@ def test_build_sandbox_exists_check(coi_binary):
     else:
         # Image doesn't exist - this is expected in a fresh install
         # The test documents that sandbox needs to be built
-        assert True, "coi-sandbox not found - run 'coi build sandbox' to create it"
+        assert True, "cci-sandbox not found - run 'cci build sandbox' to create it"
 
 
 def test_build_sandbox_skip_if_exists(coi_binary):

@@ -1,11 +1,11 @@
-"""Test coi list --format=json with no containers"""
+"""Test cci list --format=json with no containers"""
 
 import json
 import subprocess
 
 
 def test_list_format_json_empty(coi_binary):
-    """Test that coi list --format=json outputs valid JSON with no containers."""
+    """Test that cci list --format=json outputs valid JSON with no containers."""
 
     # Run list with JSON format (no containers running)
     result = subprocess.run(

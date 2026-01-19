@@ -66,7 +66,7 @@ def test_restricted_allows_internet(coi_binary, workspace_dir, cleanup_container
     )
 
     assert result.returncode == 0, f"Should be able to reach example.com. stderr: {result.stderr}"
-    # Note: coi container exec outputs to stderr, not stdout
+    # Note: cci container exec outputs to stderr, not stdout
     assert "Example Domain" in result.stderr, "Should receive example.com HTML content"
 
     # Test 2: Curl registry.npmjs.org (should work)
@@ -91,7 +91,7 @@ def test_restricted_allows_internet(coi_binary, workspace_dir, cleanup_container
     assert result.returncode == 0, (
         f"Should be able to reach registry.npmjs.org. stderr: {result.stderr}"
     )
-    # Note: coi container exec outputs to stderr, not stdout
+    # Note: cci container exec outputs to stderr, not stdout
     # NPM registry returns JSON (may be {} at root endpoint)
     assert "{" in result.stderr and "}" in result.stderr, (
         "Should receive NPM registry JSON response"

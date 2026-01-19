@@ -1,8 +1,8 @@
 """
-Test for coi shutdown --all when no containers exist.
+Test for cci shutdown --all when no containers exist.
 
 Tests that:
-1. Ensure no coi containers exist
+1. Ensure no cci containers exist
 2. Run shutdown --all
 3. Verify appropriate message
 """
@@ -16,7 +16,7 @@ def test_shutdown_all_no_containers(coi_binary, cleanup_containers):
 
     Flow:
     1. First clean up any existing containers
-    2. Run coi shutdown --all --force again
+    2. Run cci shutdown --all --force again
     3. Verify it shows "No containers to shutdown"
     """
     # First, clean up any containers that may exist from other tests

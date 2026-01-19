@@ -1,9 +1,9 @@
 """
-Test for coi attach - suggests --bash when no tmux session.
+Test for cci attach - suggests --bash when no tmux session.
 
 Tests that:
 1. Start a container directly (without tmux session)
-2. Run coi attach
+2. Run cci attach
 3. Verify it suggests using --bash
 """
 
@@ -18,11 +18,11 @@ from support.helpers import (
 
 def test_attach_no_tmux_suggests_bash(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach suggests --bash when tmux session is gone.
+    Test that cci attach suggests --bash when tmux session is gone.
 
     Flow:
     1. Launch a container directly (no tmux)
-    2. Run coi attach
+    2. Run cci attach
     3. Verify it suggests using --bash
     4. Cleanup
     """
@@ -32,7 +32,7 @@ def test_attach_no_tmux_suggests_bash(coi_binary, cleanup_containers, workspace_
 
     # Launch container using low-level command
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

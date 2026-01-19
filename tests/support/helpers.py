@@ -149,10 +149,10 @@ def spawn_coi(
     show_screen_updates=None,
 ):
     """
-    Spawn a coi command with the given arguments.
+    Spawn a cci command with the given arguments.
 
     Args:
-        binary_path: Path to coi binary
+        binary_path: Path to cci binary
         args: List of arguments (e.g., ["shell", "--persistent"])
         timeout: Default timeout for expect operations
         env: Optional environment variables dict
@@ -424,7 +424,7 @@ def exit_claude(child, timeout=60, use_ctrl_c=False):
         child.expect(EOF, timeout=timeout)
 
         # Give monitor/output time to capture cleanup messages
-        # The coi process prints cleanup messages before exiting,
+        # The cci process prints cleanup messages before exiting,
         # but we need to give the monitor thread time to read and display them
         time.sleep(2)
 
@@ -470,19 +470,19 @@ def wait_for_specific_container_deletion(container_name, timeout=30, poll_interv
     return False
 
 
-def wait_for_container_deletion(prefix="coi-test-", timeout=30, poll_interval=0.5):
+def wait_for_container_deletion(prefix="cci-test-", timeout=30, poll_interval=0.5):
     """
     Wait for all containers matching prefix to be deleted.
 
     This is useful after exit_claude() to ensure the container cleanup
-    completes before the monitor stops. The coi process exits quickly,
+    completes before the monitor stops. The cci process exits quickly,
     but Incus container deletion happens asynchronously.
 
     Uses the same clear-screen technique as LiveScreenMonitor to provide
     a seamless visual experience.
 
     Args:
-        prefix: Container name prefix to wait for (default: "coi-test-")
+        prefix: Container name prefix to wait for (default: "cci-test-")
         timeout: Maximum time to wait in seconds (default: 30)
         poll_interval: How often to check in seconds (default: 0.5)
 
@@ -590,10 +590,10 @@ def get_container_list():
         return []
 
 
-def cleanup_all_test_containers(pattern="coi-test-"):
+def cleanup_all_test_containers(pattern="cci-test-"):
     """
     Clean up all containers matching pattern.
-    Default cleans coi-test-* containers ONLY (not user's active sessions).
+    Default cleans cci-test-* containers ONLY (not user's active sessions).
 
     IMPORTANT: This should NEVER clean up containers with 'claude-' prefix
     to avoid interfering with user's active sessions.
@@ -621,7 +621,7 @@ def cleanup_all_test_containers(pattern="coi-test-"):
 
 def get_session_id_from_output(output):
     """
-    Extract session ID from coi output.
+    Extract session ID from cci output.
     Looks for "Session ID: <uuid>" pattern.
     """
     import re
@@ -1173,12 +1173,12 @@ def calculate_container_name(workspace_dir, slot):
         slot: Slot number
 
     Returns:
-        Expected container name (e.g., "coi-test-85918044-1")
+        Expected container name (e.g., "cci-test-85918044-1")
     """
     import hashlib
 
-    # Get container prefix from environment (defaults to "coi-" but tests use "coi-test-")
-    prefix = os.environ.get("COI_CONTAINER_PREFIX", "coi-")
+    # Get container prefix from environment (defaults to "cci-" but tests use "cci-test-")
+    prefix = os.environ.get("COI_CONTAINER_PREFIX", "cci-")
 
     # Hash the workspace path (SHA256)
     # Use os.path.abspath (not Path.resolve) to match Go's filepath.Abs behavior

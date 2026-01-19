@@ -50,14 +50,14 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           make build
-          mv coi coi-${{ matrix.os }}-${{ matrix.arch }}
+          mv cci cci-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Verify version
         # Only verify amd64 builds since ARM64 cannot run on amd64 runners
         if: matrix.arch == 'amd64'
         run: |
-          chmod +x coi-${{ matrix.os }}-${{ matrix.arch }}
-          BUILT_VERSION=$(./coi-${{ matrix.os }}-${{ matrix.arch }} version | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+          chmod +x cci-${{ matrix.os }}-${{ matrix.arch }}
+          BUILT_VERSION=$(./cci-${{ matrix.os }}-${{ matrix.arch }} version | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
           EXPECTED_VERSION=${{ steps.version.outputs.version }}
           # Strip leading 'v' from expected version if present
           EXPECTED_VERSION=${EXPECTED_VERSION#v}
@@ -72,8 +72,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: coi-${{ matrix.os }}-${{ matrix.arch }}
-          path: coi-${{ matrix.os }}-${{ matrix.arch }}
+          name: cci-${{ matrix.os }}-${{ matrix.arch }}
+          path: cci-${{ matrix.os }}-${{ matrix.arch }}
 
   release:
     name: Create release
@@ -101,14 +101,14 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release
-          find dist -type f -name 'coi-*' -exec mv {} release/ \;
+          find dist -type f -name 'cci-*' -exec mv {} release/ \;
           chmod +x release/*
           ls -lh release/
 
       - name: Generate checksums
         run: |
           cd release
-          sha256sum coi-* > checksums.txt
+          sha256sum cci-* > checksums.txt
           cat checksums.txt
 
       - name: Create release notes
@@ -128,23 +128,23 @@ jobs:
 
           #### Linux AMD64 (x86_64)
           ```bash
-          wget https://github.com/thomas/claude-code-isolated/releases/download/${{ steps.version.outputs.version }}/coi-linux-amd64
-          chmod +x coi-linux-amd64
-          sudo mv coi-linux-amd64 /usr/local/bin/coi
+          wget https://github.com/thomas/claude-code-isolated/releases/download/${{ steps.version.outputs.version }}/cci-linux-amd64
+          chmod +x cci-linux-amd64
+          sudo mv cci-linux-amd64 /usr/local/bin/cci
           ```
 
           #### Linux ARM64 (aarch64)
           ```bash
-          wget https://github.com/thomas/claude-code-isolated/releases/download/${{ steps.version.outputs.version }}/coi-linux-arm64
-          chmod +x coi-linux-arm64
-          sudo mv coi-linux-arm64 /usr/local/bin/coi
+          wget https://github.com/thomas/claude-code-isolated/releases/download/${{ steps.version.outputs.version }}/cci-linux-arm64
+          chmod +x cci-linux-arm64
+          sudo mv cci-linux-arm64 /usr/local/bin/cci
           ```
 
           ### Verify Installation
           ```bash
-          coi version
-          coi build sandbox
-          coi shell
+          cci version
+          cci build sandbox
+          cci shell
           ```
 
           ## What's Changed
@@ -171,7 +171,7 @@ jobs:
           name: Release ${{ steps.version.outputs.version }}
           body_path: release-notes.md
           files: |
-            release/coi-*
+            release/cci-*
             release/checksums.txt
           draft: false
           prerelease: false

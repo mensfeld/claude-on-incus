@@ -1,5 +1,5 @@
 """
-Test for coi shutdown - no spurious errors when container stops during timeout.
+Test for cci shutdown - no spurious errors when container stops during timeout.
 
 Tests that:
 1. Launch a container
@@ -35,7 +35,7 @@ def test_shutdown_no_spurious_errors(coi_binary, cleanup_containers, workspace_d
 
     # Launch a container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

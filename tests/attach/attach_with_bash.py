@@ -1,9 +1,9 @@
 """
-Test for coi attach --bash - attach to bash instead of tmux.
+Test for cci attach --bash - attach to bash instead of tmux.
 
 Tests that:
 1. Start a shell session and detach
-2. Run coi attach --bash
+2. Run cci attach --bash
 3. Verify it attaches to bash shell (not tmux)
 """
 
@@ -25,12 +25,12 @@ from support.helpers import (
 
 def test_attach_with_bash(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach --bash attaches to bash shell.
+    Test that cci attach --bash attaches to bash shell.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Detach from session
-    3. Run coi attach <name> --bash
+    3. Run cci attach <name> --bash
     4. Verify we get a bash shell (can run commands)
     5. Cleanup
     """
@@ -80,7 +80,7 @@ def test_attach_with_bash(coi_binary, cleanup_containers, workspace_dir):
     containers = get_container_list()
     assert container_name in containers, f"Container {container_name} should still be running"
 
-    # === Phase 3: Test coi attach --bash ===
+    # === Phase 3: Test cci attach --bash ===
 
     child2 = spawn_coi(
         coi_binary,

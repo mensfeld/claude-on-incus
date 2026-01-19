@@ -1,4 +1,4 @@
-"""Test coi list --format=json with active containers"""
+"""Test cci list --format=json with active containers"""
 
 import json
 import subprocess
@@ -7,12 +7,12 @@ from support.helpers import calculate_container_name
 
 
 def test_list_format_json_active(coi_binary, cleanup_containers, workspace_dir):
-    """Test that coi list --format=json outputs valid JSON with active containers."""
+    """Test that cci list --format=json outputs valid JSON with active containers."""
     container_name = calculate_container_name(workspace_dir, 1)
 
     # Phase 1: Launch container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

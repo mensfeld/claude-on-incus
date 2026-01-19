@@ -1,5 +1,5 @@
 """
-Test for coi container exec --env - passes environment variables.
+Test for cci container exec --env - passes environment variables.
 
 Tests that:
 1. Launch a container
@@ -30,7 +30,7 @@ def test_exec_with_env(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

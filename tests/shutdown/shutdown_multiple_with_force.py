@@ -1,5 +1,5 @@
 """
-Test for coi shutdown - multiple specific containers with --force.
+Test for cci shutdown - multiple specific containers with --force.
 
 Tests that:
 1. Launch multiple containers
@@ -19,7 +19,7 @@ def test_shutdown_multiple_with_force(coi_binary, cleanup_containers, workspace_
 
     Flow:
     1. Launch two containers
-    2. Run coi shutdown --force <container1> <container2>
+    2. Run cci shutdown --force <container1> <container2>
     3. Verify both containers are deleted
     """
     container1 = calculate_container_name(workspace_dir, 1)
@@ -27,7 +27,7 @@ def test_shutdown_multiple_with_force(coi_binary, cleanup_containers, workspace_
 
     # Launch first container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container1],
+        [coi_binary, "container", "launch", "cci", container1],
         capture_output=True,
         text=True,
         timeout=120,
@@ -36,7 +36,7 @@ def test_shutdown_multiple_with_force(coi_binary, cleanup_containers, workspace_
 
     # Launch second container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container2],
+        [coi_binary, "container", "launch", "cci", container2],
         capture_output=True,
         text=True,
         timeout=120,

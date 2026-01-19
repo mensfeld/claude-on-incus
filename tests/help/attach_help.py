@@ -1,8 +1,8 @@
 """
-Test for coi attach --help - help text validation.
+Test for cci attach --help - help text validation.
 
 Tests that:
-1. Run coi attach --help
+1. Run cci attach --help
 2. Verify help text contains expected sections
 3. Verify exit code is 0
 """
@@ -15,7 +15,7 @@ def test_attach_help(coi_binary):
     Test attach command help output.
 
     Flow:
-    1. Run coi attach --help
+    1. Run cci attach --help
     2. Verify exit code is 0
     3. Verify output contains usage and description
     """

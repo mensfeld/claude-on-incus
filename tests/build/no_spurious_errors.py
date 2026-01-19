@@ -1,8 +1,8 @@
 """
-Test for coi build - no spurious errors during cleanup.
+Test for cci build - no spurious errors during cleanup.
 
 Tests that:
-1. Run coi build custom with a simple script
+1. Run cci build custom with a simple script
 2. Verify build succeeds
 3. Verify no spurious error messages appear (e.g., "already stopped")
 
@@ -25,7 +25,7 @@ def test_build_no_spurious_errors(coi_binary, tmp_path):
     4. Verify no "Error: The instance is already stopped" message
     5. Cleanup
     """
-    image_name = "coi-test-no-errors"
+    image_name = "cci-test-no-errors"
 
     # Create minimal build script
     build_script = tmp_path / "build.sh"
@@ -38,11 +38,11 @@ echo "Test build - no spurious errors"
 
     # Skip if base doesn't exist
     result = subprocess.run(
-        [coi_binary, "image", "exists", "coi"],
+        [coi_binary, "image", "exists", "cci"],
         capture_output=True,
     )
     if result.returncode != 0:
-        # Skip test if coi base image doesn't exist
+        # Skip test if cci base image doesn't exist
         return
 
     # Build custom image

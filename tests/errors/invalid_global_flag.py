@@ -1,8 +1,8 @@
 """
-Test for coi --invalid-flag - error handling.
+Test for cci --invalid-flag - error handling.
 
 Tests that:
-1. Run coi with an invalid global flag
+1. Run cci with an invalid global flag
 2. Verify it returns non-zero exit code
 3. Verify error message is helpful
 """
@@ -15,7 +15,7 @@ def test_invalid_global_flag(coi_binary):
     Test behavior with invalid global flag.
 
     Flow:
-    1. Run coi with non-existent flag
+    1. Run cci with non-existent flag
     2. Verify exit code is non-zero
     3. Verify error message mentions the invalid flag
     """

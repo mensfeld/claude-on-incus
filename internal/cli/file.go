@@ -24,10 +24,10 @@ var filePushCmd = &cobra.Command{
 
 Examples:
   # Push file
-  coi file push ./config.json my-container:/workspace/config.json
+  cci file push ./config.json my-container:/workspace/config.json
 
   # Push directory
-  coi file push -r ./src my-container:/workspace/src`,
+  cci file push -r ./src my-container:/workspace/src`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		localPath := args[0]
@@ -79,7 +79,7 @@ var filePullCmd = &cobra.Command{
 
 Example:
   # Pull directory (e.g., save Claude session data)
-  coi file pull -r my-container:/root/.claude ./saved-sessions/session-123/`,
+  cci file pull -r my-container:/root/.claude ./saved-sessions/session-123/`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		source := args[0]

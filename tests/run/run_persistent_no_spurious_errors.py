@@ -1,5 +1,5 @@
 """
-Test for coi run --persistent - no spurious errors during cleanup.
+Test for cci run --persistent - no spurious errors during cleanup.
 
 Tests that:
 1. Run with --persistent flag
@@ -20,7 +20,7 @@ def test_run_persistent_no_spurious_errors(coi_binary, cleanup_containers, works
     Test that persistent run cleanup doesn't show spurious stop errors.
 
     Flow:
-    1. Run coi run --persistent with a simple command
+    1. Run cci run --persistent with a simple command
     2. Command completes and container stops itself
     3. Verify no "Error: The instance is already stopped" message
     4. Cleanup

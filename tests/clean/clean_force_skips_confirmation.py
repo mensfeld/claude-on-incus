@@ -1,8 +1,8 @@
 """
-Test for coi clean --force - skips confirmation prompt.
+Test for cci clean --force - skips confirmation prompt.
 
 Tests that:
-1. Run coi clean --force
+1. Run cci clean --force
 2. Verify it completes without requiring input
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_clean_force_skips_confirmation(coi_binary, cleanup_containers):
     """
-    Test that coi clean --force skips confirmation prompt.
+    Test that cci clean --force skips confirmation prompt.
 
     Flow:
-    1. Run coi clean --force (no input provided)
+    1. Run cci clean --force (no input provided)
     2. Verify it completes successfully without hanging
     """
     # Run with short timeout - if it hangs waiting for input, it will timeout
@@ -26,7 +26,7 @@ def test_clean_force_skips_confirmation(coi_binary, cleanup_containers):
     )
 
     # Should succeed without hanging
-    assert result.returncode == 0, f"coi clean --force should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci clean --force should succeed. stderr: {result.stderr}"
 
     # Should not contain prompts for confirmation
     combined_output = result.stdout + result.stderr

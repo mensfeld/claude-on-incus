@@ -1,8 +1,8 @@
 """
-Test for coi version - with help flag.
+Test for cci version - with help flag.
 
 Tests that:
-1. Run coi version --help
+1. Run cci version --help
 2. Verify it shows help text or version info
 """
 
@@ -14,7 +14,7 @@ def test_version_with_help_flag(coi_binary):
     Test version command with --help flag.
 
     Flow:
-    1. Run coi version --help
+    1. Run cci version --help
     2. Verify exit code is 0
     3. Verify output contains help or version information
     """

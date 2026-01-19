@@ -11,9 +11,9 @@ import (
 // Load loads configuration from all available sources
 // Hierarchy (lowest to highest precedence):
 // 1. Built-in defaults
-// 2. System config (/etc/coi/config.toml)
-// 3. User config (~/.config/coi/config.toml)
-// 4. Project config (./.coi.toml)
+// 2. System config (/etc/cci/config.toml)
+// 3. User config (~/.config/cci/config.toml)
+// 4. Project config (./.cci.toml)
 // 5. Environment variables (CLAUDE_ON_INCUS_* or COI_*)
 func Load() (*Config, error) {
 	// Start with defaults
@@ -107,15 +107,15 @@ func WriteExample(path string) error {
 # See: https://github.com/thomas/claude-code-isolated
 
 [defaults]
-image = "coi"
+image = "cci"
 # Set persistent=true to reuse containers across sessions (keeps installed tools)
 persistent = false
 model = "claude-sonnet-4-5"
 
 [paths]
-sessions_dir = "~/.coi/sessions"
-storage_dir = "~/.coi/storage"
-logs_dir = "~/.coi/logs"
+sessions_dir = "~/.cci/sessions"
+storage_dir = "~/.cci/storage"
+logs_dir = "~/.cci/logs"
 
 [incus]
 project = "default"
@@ -125,13 +125,13 @@ code_user = "code"
 
 # Example profile for Rust development with persistent container
 # [profiles.rust]
-# image = "coi-rust"
+# image = "cci-rust"
 # environment = { RUST_BACKTRACE = "1" }
 # persistent = true
 
 # Example profile for web development
 # [profiles.web]
-# image = "coi"
+# image = "cci"
 # environment = { NODE_ENV = "development" }
 # persistent = true
 `

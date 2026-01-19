@@ -12,13 +12,13 @@ import (
 
 const (
 	BaseImage      = "images:ubuntu/22.04"
-	CoiAlias       = "coi"
-	BuildContainer = "coi-build"
+	CoiAlias       = "cci"
+	BuildContainer = "cci-build"
 )
 
 // BuildOptions contains options for building an image
 type BuildOptions struct {
-	ImageType   string // "coi" or "custom"
+	ImageType   string // "cci" or "custom"
 	AliasName   string
 	Description string
 	BaseImage   string
@@ -236,7 +236,7 @@ func (b *Builder) tryFixDNS() bool {
 
 		// Write a working resolv.conf with public DNS servers
 		_, err := b.mgr.ExecCommand(`cat > /etc/resolv.conf << 'EOF'
-# Auto-configured by coi build due to DNS misconfiguration
+# Auto-configured by cci build due to DNS misconfiguration
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
@@ -266,7 +266,7 @@ func (b *Builder) logDNSFixWarning() {
 // runBuildSteps executes the build steps based on image type
 func (b *Builder) runBuildSteps() error {
 	switch b.opts.ImageType {
-	case "coi":
+	case "cci":
 		return b.buildCoi()
 	case "custom":
 		return b.buildCustom()
@@ -275,9 +275,9 @@ func (b *Builder) runBuildSteps() error {
 	}
 }
 
-// buildCoi implements coi image build steps using external script
+// buildCoi implements cci image build steps using external script
 func (b *Builder) buildCoi() error {
-	return b.runBuildScript("scripts/build/coi.sh")
+	return b.runBuildScript("scripts/build/cci.sh")
 }
 
 // runBuildScript executes a build script from the scripts directory

@@ -1,5 +1,5 @@
 """
-Test for coi container mount - fails for nonexistent source directory.
+Test for cci container mount - fails for nonexistent source directory.
 
 Tests that:
 1. Launch a container
@@ -30,7 +30,7 @@ def test_mount_nonexistent_source(coi_binary, cleanup_containers, workspace_dir)
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -41,7 +41,7 @@ def test_mount_nonexistent_source(coi_binary, cleanup_containers, workspace_dir)
     time.sleep(3)
 
     # === Phase 2: Try to mount nonexistent source ===
-    # Syntax: coi container mount <name> <device-name> <source> <path>
+    # Syntax: cci container mount <name> <device-name> <source> <path>
 
     nonexistent_source = "/nonexistent/path/12345"
     mount_name = "bad-mount"

@@ -42,7 +42,7 @@ def test_restricted_blocks_local_gateway(coi_binary, workspace_dir, cleanup_cont
     )
 
     # Extract container name from output
-    # Look for pattern like "Container name: coi-xxxxx-1"
+    # Look for pattern like "Container name: cci-xxxxx-1"
     container_name = None
     for line in result.stderr.split("\n"):
         if "Container name:" in line:
@@ -68,7 +68,7 @@ def test_restricted_blocks_local_gateway(coi_binary, workspace_dir, cleanup_cont
     assert result.returncode == 0, f"Should be able to run ip route. stderr: {result.stderr}"
 
     # Parse gateway IP from output like: "default via 10.0.3.1 dev eth0 ..."
-    # Note: coi container exec outputs to stderr, not stdout
+    # Note: cci container exec outputs to stderr, not stdout
     output = result.stderr.strip()
     gateway_ip = None
 

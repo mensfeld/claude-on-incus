@@ -1,5 +1,5 @@
 """
-Test for coi shell - workspace files persist even in ephemeral mode.
+Test for cci shell - workspace files persist even in ephemeral mode.
 
 Tests that:
 1. Start ephemeral shell
@@ -30,7 +30,7 @@ def test_workspace_files_persist_ephemeral(coi_binary, cleanup_containers, works
     Test that files created in /workspace persist after ephemeral container deletion.
 
     Flow:
-    1. Start coi shell (ephemeral)
+    1. Start cci shell (ephemeral)
     2. Exit claude to bash
     3. Create a file in /workspace
     4. Exit (poweroff to trigger container deletion)

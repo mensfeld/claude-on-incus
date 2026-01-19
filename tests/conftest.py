@@ -16,17 +16,17 @@ if tests_dir not in sys.path:
 
 @pytest.fixture(scope="session")
 def coi_binary():
-    """Return path to coi binary."""
+    """Return path to cci binary."""
     # Check COI_BINARY env var first (for CI)
     if "COI_BINARY" in os.environ:
         binary_path = os.environ["COI_BINARY"]
         if os.path.exists(binary_path):
             return os.path.abspath(binary_path)
 
-    # Look for coi binary in project root
-    binary_path = os.path.join(os.path.dirname(__file__), "..", "coi")
+    # Look for cci binary in project root
+    binary_path = os.path.join(os.path.dirname(__file__), "..", "cci")
     if not os.path.exists(binary_path):
-        pytest.skip("coi binary not found - run 'make build' first")
+        pytest.skip("cci binary not found - run 'make build' first")
     return os.path.abspath(binary_path)
 
 
@@ -96,7 +96,7 @@ def dummy_image(coi_binary):
 
     The image is built once per test session and reused across all tests.
     """
-    image_name = "coi-test-dummy"
+    image_name = "cci-test-dummy"
 
     # Check if image already exists
     result = subprocess.run([coi_binary, "image", "exists", image_name], capture_output=True)

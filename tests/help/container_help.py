@@ -1,8 +1,8 @@
 """
-Test for coi container --help - help text validation.
+Test for cci container --help - help text validation.
 
 Tests that:
-1. Run coi container --help
+1. Run cci container --help
 2. Verify help text contains expected sections
 3. Verify exit code is 0
 """
@@ -15,7 +15,7 @@ def test_container_help(coi_binary):
     Test container command help output.
 
     Flow:
-    1. Run coi container --help
+    1. Run cci container --help
     2. Verify exit code is 0
     3. Verify output contains subcommands
     """

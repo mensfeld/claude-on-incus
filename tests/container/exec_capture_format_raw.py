@@ -1,4 +1,4 @@
-"""Test coi container exec --capture --format=raw"""
+"""Test cci container exec --capture --format=raw"""
 
 import subprocess
 
@@ -11,7 +11,7 @@ def test_exec_capture_format_raw(coi_binary, cleanup_containers, workspace_dir):
 
     # Phase 1: Launch container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

@@ -1,5 +1,5 @@
 """
-Test for coi shutdown - no arguments provided.
+Test for cci shutdown - no arguments provided.
 
 Tests that:
 1. Run shutdown without arguments
@@ -14,7 +14,7 @@ def test_shutdown_no_args(coi_binary, cleanup_containers):
     Test that shutdown without arguments shows error.
 
     Flow:
-    1. Run coi shutdown (no args, no --all)
+    1. Run cci shutdown (no args, no --all)
     2. Verify it fails with usage message
     """
     result = subprocess.run(

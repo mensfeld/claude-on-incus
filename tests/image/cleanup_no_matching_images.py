@@ -1,8 +1,8 @@
 """
-Test for coi image cleanup - no matching images.
+Test for cci image cleanup - no matching images.
 
 Tests that:
-1. Run coi image cleanup with prefix that matches nothing
+1. Run cci image cleanup with prefix that matches nothing
 2. Verify it succeeds with appropriate message
 """
 
@@ -14,7 +14,7 @@ def test_cleanup_no_matching_images(coi_binary, cleanup_containers):
     Test cleanup with prefix that matches no images.
 
     Flow:
-    1. Run coi image cleanup with unique prefix --keep 1
+    1. Run cci image cleanup with unique prefix --keep 1
     2. Verify it succeeds (nothing to delete)
     """
     result = subprocess.run(

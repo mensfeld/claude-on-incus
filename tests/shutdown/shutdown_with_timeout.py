@@ -1,5 +1,5 @@
 """
-Test for coi shutdown --timeout flag.
+Test for cci shutdown --timeout flag.
 
 Tests that:
 1. Launch a container
@@ -19,7 +19,7 @@ def test_shutdown_with_timeout(coi_binary, cleanup_containers, workspace_dir):
 
     Flow:
     1. Launch a container
-    2. Run coi shutdown --timeout=5 <container>
+    2. Run cci shutdown --timeout=5 <container>
     3. Verify timeout is shown in output
     """
     slot = 1
@@ -27,7 +27,7 @@ def test_shutdown_with_timeout(coi_binary, cleanup_containers, workspace_dir):
 
     # Launch a container
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

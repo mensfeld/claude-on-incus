@@ -1,9 +1,9 @@
 """
-Test for coi info - verify output contains expected fields.
+Test for cci info - verify output contains expected fields.
 
 Tests that:
 1. Create a session
-2. Run coi info
+2. Run cci info
 3. Verify output contains: Session ID, Container, Session Path, Resume command
 """
 
@@ -22,11 +22,11 @@ from support.helpers import (
 
 def test_info_output_fields(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi info output contains all expected fields.
+    Test that cci info output contains all expected fields.
 
     Flow:
     1. Start a shell session and exit
-    2. Run coi info
+    2. Run cci info
     3. Verify output contains expected fields
     4. Cleanup
     """
@@ -68,7 +68,7 @@ def test_info_output_fields(coi_binary, cleanup_containers, workspace_dir):
 
     time.sleep(5)
 
-    # === Phase 2: Run coi info ===
+    # === Phase 2: Run cci info ===
 
     result = subprocess.run(
         [coi_binary, "info"],
@@ -99,7 +99,7 @@ def test_info_output_fields(coi_binary, cleanup_containers, workspace_dir):
     )
 
     # Resume command
-    assert "coi shell --resume" in output or "resume" in output.lower(), (
+    assert "cci shell --resume" in output or "resume" in output.lower(), (
         f"Should show resume command. Got:\n{output}"
     )
 

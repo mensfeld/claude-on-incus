@@ -1,8 +1,8 @@
 """
-Test for coi image cleanup - missing --keep flag.
+Test for cci image cleanup - missing --keep flag.
 
 Tests that:
-1. Run coi image cleanup without --keep
+1. Run cci image cleanup without --keep
 2. Verify it fails with error about required flag
 """
 
@@ -14,7 +14,7 @@ def test_cleanup_missing_keep_flag(coi_binary, cleanup_containers):
     Test that cleanup without --keep flag fails.
 
     Flow:
-    1. Run coi image cleanup prefix (no --keep)
+    1. Run cci image cleanup prefix (no --keep)
     2. Verify it fails with appropriate error
     """
     result = subprocess.run(

@@ -2,7 +2,7 @@
 Integration tests for custom image building.
 
 Tests:
-- coi build custom with script
+- cci build custom with script
 - Custom image with base specified
 - Custom image with privileged base
 """
@@ -14,7 +14,7 @@ import time
 
 def test_build_custom_simple(coi_binary, tmp_path):
     """Test building a custom image with a simple script."""
-    image_name = "coi-test-custom-simple"
+    image_name = "cci-test-custom-simple"
 
     # Create build script
     build_script = tmp_path / "build.sh"
@@ -25,9 +25,9 @@ apt-get install -y curl
 echo "Custom build completed" > /tmp/build_marker.txt
 """)
 
-    # Build custom image (skip if coi-sandbox doesn't exist)
+    # Build custom image (skip if cci-sandbox doesn't exist)
     result = subprocess.run(
-        [coi_binary, "image", "exists", "coi-sandbox"],
+        [coi_binary, "image", "exists", "cci-sandbox"],
         capture_output=True,
     )
     if result.returncode != 0:
@@ -59,7 +59,7 @@ echo "Custom build completed" > /tmp/build_marker.txt
     assert result.returncode == 0, "Custom image should exist"
 
     # Launch container from custom image to verify
-    container_name = "coi-test-custom-verify"
+    container_name = "cci-test-custom-verify"
     result = subprocess.run(
         [coi_binary, "container", "launch", image_name, container_name],
         capture_output=True,

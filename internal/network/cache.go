@@ -22,7 +22,7 @@ type CacheManager struct {
 // NewCacheManager creates a new cache manager
 func NewCacheManager(baseDir string) *CacheManager {
 	return &CacheManager{
-		cacheDir: filepath.Join(baseDir, ".coi", "network-cache"),
+		cacheDir: filepath.Join(baseDir, ".cci", "network-cache"),
 	}
 }
 

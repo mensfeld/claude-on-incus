@@ -1,5 +1,5 @@
 """
-Test for coi file pull - invalid source format.
+Test for cci file pull - invalid source format.
 
 Tests that:
 1. Try to pull with source missing colon separator

@@ -1,5 +1,5 @@
 """
-Test for coi shell --persistent - session with resume.
+Test for cci shell --persistent - session with resume.
 
 Tests the resume lifecycle in persistent mode:
 1. Start dummy in persistent mode
@@ -7,7 +7,7 @@ Tests the resume lifecycle in persistent mode:
 3. Exit to bash shell
 4. Issue sudo poweroff (container kept in persistent mode)
 5. Delete container to simulate fresh start
-6. Run coi shell --persistent --resume
+6. Run cci shell --persistent --resume
 7. Verify session was resumed (dummy shows "Resuming session")
 8. Cleanup
 """
@@ -35,11 +35,11 @@ def test_persistent_session_with_resume(coi_binary, cleanup_containers, workspac
     Test persistent session resume.
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Interact with dummy
     3. Exit claude to bash, then poweroff
     4. Delete container (for clean slate)
-    5. Run coi shell --persistent --resume
+    5. Run cci shell --persistent --resume
     6. Verify resume worked
     7. Cleanup
     """

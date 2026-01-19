@@ -1,5 +1,5 @@
 """
-Test for coi run - exit code 0 for successful command.
+Test for cci run - exit code 0 for successful command.
 
 Tests that:
 1. Run a successful command
@@ -14,7 +14,7 @@ def test_run_exit_code_success(coi_binary, cleanup_containers, workspace_dir):
     Test that successful command returns exit code 0.
 
     Flow:
-    1. Run coi run "true" (always succeeds)
+    1. Run cci run "true" (always succeeds)
     2. Verify exit code is 0
     """
     result = subprocess.run(

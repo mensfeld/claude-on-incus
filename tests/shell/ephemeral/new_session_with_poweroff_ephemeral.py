@@ -1,12 +1,12 @@
 """
-Test for coi shell - ephemeral session with shutdown.
+Test for cci shell - ephemeral session with shutdown.
 
 Tests the complete lifecycle:
 1. Start dummy in ephemeral mode
 2. Send a message and verify response
 3. Exit to bash shell
 4. Issue sudo shutdown 0
-5. Verify proper cleanup messages from coi
+5. Verify proper cleanup messages from cci
 6. Verify container is removed
 """
 
@@ -32,7 +32,7 @@ def test_ephemeral_session_with_shutdown(coi_binary, cleanup_containers, workspa
     Test ephemeral session lifecycle with sudo shutdown 0.
 
     Flow:
-    1. Start coi shell (ephemeral mode)
+    1. Start cci shell (ephemeral mode)
     2. Interact with dummy
     3. Exit claude to get to bash
     4. Run sudo shutdown 0 to stop container

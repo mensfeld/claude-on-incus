@@ -1,5 +1,5 @@
 """
-Test for coi image exists - check nonexistent image.
+Test for cci image exists - check nonexistent image.
 
 Tests that:
 1. Check for an image that doesn't exist
@@ -14,7 +14,7 @@ def test_exists_nonexistent_image(coi_binary, cleanup_containers):
     Test checking if a nonexistent image exists.
 
     Flow:
-    1. Run coi image exists nonexistent-image-xyz-123
+    1. Run cci image exists nonexistent-image-xyz-123
     2. Verify exit code is non-zero (image doesn't exist)
     """
     # === Phase 1: Check nonexistent image ===

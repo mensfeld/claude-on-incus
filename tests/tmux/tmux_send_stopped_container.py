@@ -1,5 +1,5 @@
 """
-Test for coi tmux send - error when container is stopped.
+Test for cci tmux send - error when container is stopped.
 
 Tests that:
 1. Launch a container
@@ -21,7 +21,7 @@ def test_tmux_send_stopped_container(coi_binary, cleanup_containers, workspace_d
     Flow:
     1. Launch a container
     2. Stop the container
-    3. Try to use coi tmux send
+    3. Try to use cci tmux send
     4. Verify error message about container not running
     5. Cleanup
     """
@@ -30,7 +30,7 @@ def test_tmux_send_stopped_container(coi_binary, cleanup_containers, workspace_d
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

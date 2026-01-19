@@ -1,8 +1,8 @@
 """
-Test for coi run - no command provided.
+Test for cci run - no command provided.
 
 Tests that:
-1. Run coi run without a command
+1. Run cci run without a command
 2. Verify it fails with usage error
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_run_no_command(coi_binary, cleanup_containers):
     """
-    Test that coi run without command shows error.
+    Test that cci run without command shows error.
 
     Flow:
-    1. Run coi run (no command)
+    1. Run cci run (no command)
     2. Verify it fails with usage message
     """
     result = subprocess.run(

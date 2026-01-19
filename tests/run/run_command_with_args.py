@@ -1,5 +1,5 @@
 """
-Test for coi run - execute command with multiple arguments.
+Test for cci run - execute command with multiple arguments.
 
 Tests that:
 1. Run a command with multiple arguments
@@ -14,7 +14,7 @@ def test_run_command_with_args(coi_binary, cleanup_containers, workspace_dir):
     Test running a command with multiple arguments.
 
     Flow:
-    1. Run coi run with multiple args
+    1. Run cci run with multiple args
     2. Verify output shows all args were received
     """
     result = subprocess.run(

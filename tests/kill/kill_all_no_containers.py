@@ -1,8 +1,8 @@
 """
-Test for coi kill --all - when no containers exist.
+Test for cci kill --all - when no containers exist.
 
 Tests that:
-1. Run coi kill --all when no containers exist
+1. Run cci kill --all when no containers exist
 2. Verify it handles gracefully
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_kill_all_no_containers(coi_binary, cleanup_containers):
     """
-    Test coi kill --all when no containers exist.
+    Test cci kill --all when no containers exist.
 
     Flow:
-    1. Run coi kill --all --force
+    1. Run cci kill --all --force
     2. Verify it succeeds with "no containers" message
 
     Note: This test may find containers from other tests if run in parallel.

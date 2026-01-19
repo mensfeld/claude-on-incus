@@ -1,8 +1,8 @@
 """
-Test for coi image list --format json - output in JSON format.
+Test for cci image list --format json - output in JSON format.
 
 Tests that:
-1. Run coi image list --format json
+1. Run cci image list --format json
 2. Verify output is valid JSON
 """
 
@@ -15,13 +15,13 @@ def test_list_json_format(coi_binary, cleanup_containers):
     Test listing images in JSON format.
 
     Flow:
-    1. Run coi image list --format json --prefix coi
+    1. Run cci image list --format json --prefix cci
     2. Verify output is valid JSON
     """
     # === Phase 1: Run image list with JSON format ===
 
     result = subprocess.run(
-        [coi_binary, "image", "list", "--format", "json", "--prefix", "coi"],
+        [coi_binary, "image", "list", "--format", "json", "--prefix", "cci"],
         capture_output=True,
         text=True,
         timeout=30,

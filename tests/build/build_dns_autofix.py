@@ -1,5 +1,5 @@
 """
-Test for coi build - DNS auto-fix functionality.
+Test for cci build - DNS auto-fix functionality.
 
 Tests that:
 1. When DNS is misconfigured (127.0.0.53 stub resolver), build auto-detects and fixes it
@@ -62,15 +62,15 @@ def test_build_dns_autofix(coi_binary, tmp_path):
     """
     Test that build auto-fixes DNS misconfiguration.
 
-    This test builds from a fresh Ubuntu base image (not from coi) to ensure
-    the DNS auto-fix is triggered. Building from coi would inherit the already-
+    This test builds from a fresh Ubuntu base image (not from cci) to ensure
+    the DNS auto-fix is triggered. Building from cci would inherit the already-
     fixed DNS configuration.
 
     Flow:
     1. Get Incus network name
     2. Break DNS configuration (set 127.0.0.53)
     3. Clean up any existing build container
-    4. Run coi build custom with --base images:ubuntu/22.04
+    4. Run cci build custom with --base images:ubuntu/22.04
     5. Verify build succeeds
     6. Verify DNS auto-fix messages appear in output
     7. Restore DNS configuration
@@ -80,7 +80,7 @@ def test_build_dns_autofix(coi_binary, tmp_path):
     if not network_name:
         pytest.skip("Could not determine Incus network name")
 
-    image_name = "coi-test-dns-autofix"
+    image_name = "cci-test-dns-autofix"
 
     # Create minimal build script that verifies DNS works
     build_script = tmp_path / "build.sh"
@@ -105,13 +105,13 @@ fi
 
         # Clean up any existing build container
         subprocess.run(
-            ["incus", "delete", "--force", "coi-build"],
+            ["incus", "delete", "--force", "cci-build"],
             capture_output=True,
             timeout=30,
             check=False,
         )
 
-        # Build custom image from fresh Ubuntu base (not coi) to trigger DNS fix
+        # Build custom image from fresh Ubuntu base (not cci) to trigger DNS fix
         # Using --base images:ubuntu/22.04 ensures we start with broken DNS
         result = subprocess.run(
             [
@@ -166,7 +166,7 @@ def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
     """
     Test that containers started from a DNS-fixed image have working DNS.
 
-    This verifies that the permanent DNS fix in scripts/build/coi.sh correctly
+    This verifies that the permanent DNS fix in scripts/build/cci.sh correctly
     persists static DNS configuration into the built image.
 
     Flow:
@@ -174,23 +174,23 @@ def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
     2. Build custom image from fresh Ubuntu base (triggers DNS auto-fix)
     3. Launch a container from that image
     4. Test DNS resolution inside the container
-    5. Verify it works (image has static DNS from coi.sh fix)
+    5. Verify it works (image has static DNS from cci.sh fix)
     """
     network_name = get_incus_network()
     if not network_name:
         pytest.skip("Could not determine Incus network name")
 
-    image_name = "coi-test-dns-persistence"
-    container_name = "coi-test-dns-container"
+    image_name = "cci-test-dns-persistence"
+    container_name = "cci-test-dns-container"
 
-    # Create build script that configures static DNS (simulates what coi.sh does)
+    # Create build script that configures static DNS (simulates what cci.sh does)
     build_script = tmp_path / "build.sh"
     build_script.write_text(
         """#!/bin/bash
 set -e
 echo "Configuring static DNS for persistence test..."
 
-# Check if DNS works, if not configure static DNS (like coi.sh does)
+# Check if DNS works, if not configure static DNS (like cci.sh does)
 if ! getent hosts archive.ubuntu.com > /dev/null 2>&1; then
     echo "DNS broken, configuring static DNS..."
     # Disable systemd-resolved if present
@@ -219,7 +219,7 @@ fi
 
         # Clean up any existing build container and test container
         subprocess.run(
-            ["incus", "delete", "--force", "coi-build"],
+            ["incus", "delete", "--force", "cci-build"],
             capture_output=True,
             timeout=30,
             check=False,
@@ -321,7 +321,7 @@ def test_build_with_working_dns_no_changes(coi_binary, tmp_path):
 
     Flow:
     1. Ensure DNS is working (restore if needed)
-    2. Run coi build custom
+    2. Run cci build custom
     3. Verify no DNS modification messages appear
     """
     # Get network name
@@ -330,15 +330,15 @@ def test_build_with_working_dns_no_changes(coi_binary, tmp_path):
         # Ensure DNS is not broken from previous test
         restore_dns_config(network_name)
 
-    # Skip if coi base image doesn't exist
+    # Skip if cci base image doesn't exist
     result = subprocess.run(
-        [coi_binary, "image", "exists", "coi"],
+        [coi_binary, "image", "exists", "cci"],
         capture_output=True,
     )
     if result.returncode != 0:
-        pytest.skip("coi image not built - run 'coi build' first")
+        pytest.skip("cci image not built - run 'cci build' first")
 
-    image_name = "coi-test-dns-nochange"
+    image_name = "cci-test-dns-nochange"
 
     # Create minimal build script
     build_script = tmp_path / "build.sh"
@@ -352,7 +352,7 @@ echo "Build with working DNS"
     try:
         # Clean up any existing build container
         subprocess.run(
-            ["incus", "delete", "--force", "coi-build"],
+            ["incus", "delete", "--force", "cci-build"],
             capture_output=True,
             timeout=30,
             check=False,

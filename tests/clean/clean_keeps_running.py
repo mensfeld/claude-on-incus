@@ -1,9 +1,9 @@
 """
-Test for coi clean - keeps running containers.
+Test for cci clean - keeps running containers.
 
 Tests that:
 1. Launch a container (keep it running)
-2. Run coi clean
+2. Run cci clean
 3. Verify running container is NOT removed
 """
 
@@ -18,11 +18,11 @@ from support.helpers import (
 
 def test_clean_keeps_running(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi clean does NOT remove running containers.
+    Test that cci clean does NOT remove running containers.
 
     Flow:
     1. Launch a container and keep it running
-    2. Run coi clean --force
+    2. Run cci clean --force
     3. Verify container is still running
     4. Cleanup
     """
@@ -31,7 +31,7 @@ def test_clean_keeps_running(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -54,7 +54,7 @@ def test_clean_keeps_running(coi_binary, cleanup_containers, workspace_dir):
         timeout=60,
     )
 
-    assert result.returncode == 0, f"coi clean should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci clean should succeed. stderr: {result.stderr}"
 
     time.sleep(2)
 

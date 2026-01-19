@@ -1,5 +1,5 @@
 """
-Test for coi image delete - delete nonexistent image.
+Test for cci image delete - delete nonexistent image.
 
 Tests that:
 1. Try to delete an image that doesn't exist
@@ -14,7 +14,7 @@ def test_delete_nonexistent_image(coi_binary, cleanup_containers):
     Test deleting a nonexistent image fails gracefully.
 
     Flow:
-    1. Run coi image delete nonexistent-image
+    1. Run cci image delete nonexistent-image
     2. Verify it fails with error message
     """
     # === Phase 1: Try to delete nonexistent image ===

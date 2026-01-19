@@ -102,13 +102,13 @@ var containerExecCmd = &cobra.Command{
 
 Examples:
   # Run as root
-  coi container exec my-container -- ls -la /
+  cci container exec my-container -- ls -la /
 
   # Run as specific user with env vars
-  coi container exec my-container --user 1000 --env FOO=bar --cwd /workspace -- npm test
+  cci container exec my-container --user 1000 --env FOO=bar --cwd /workspace -- npm test
 
   # Capture output as JSON
-  coi container exec my-container --capture -- echo "hello world"`,
+  cci container exec my-container --capture -- echo "hello world"`,
 	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		containerName := args[0]
@@ -286,7 +286,7 @@ var containerMountCmd = &cobra.Command{
 	Long: `Mount a host directory into a container.
 
 Example:
-  coi container mount my-container workspace /home/user/project /workspace --shift`,
+  cci container mount my-container workspace /home/user/project /workspace --shift`,
 	Args: cobra.ExactArgs(4),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]

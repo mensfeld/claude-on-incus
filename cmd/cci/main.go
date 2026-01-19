@@ -9,11 +9,11 @@ import (
 )
 
 func main() {
-	// Detect if called as 'coi' or 'claude-code-isolated'
+	// Detect if called as 'cci' or 'claude-code-isolated'
 	progName := filepath.Base(os.Args[0])
-	isCoi := progName == "coi"
+	isCci := progName == "cci"
 
-	if err := cli.Execute(isCoi); err != nil {
+	if err := cli.Execute(isCci); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

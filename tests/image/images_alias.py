@@ -1,9 +1,9 @@
 """
-Test for coi images - alias for coi image list.
+Test for cci images - alias for cci image list.
 
 Tests that:
-1. Run coi images
-2. Verify it behaves like coi image list
+1. Run cci images
+2. Verify it behaves like cci image list
 """
 
 import subprocess
@@ -11,13 +11,13 @@ import subprocess
 
 def test_images_alias(coi_binary, cleanup_containers):
     """
-    Test that 'coi images' is an alias for 'coi image list'.
+    Test that 'cci images' is an alias for 'cci image list'.
 
     Flow:
-    1. Run coi images
-    2. Verify output is similar to coi image list
+    1. Run cci images
+    2. Verify output is similar to cci image list
     """
-    # === Phase 1: Run coi images ===
+    # === Phase 1: Run cci images ===
 
     result = subprocess.run(
         [coi_binary, "images"],
@@ -26,7 +26,7 @@ def test_images_alias(coi_binary, cleanup_containers):
         timeout=30,
     )
 
-    assert result.returncode == 0, f"coi images should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci images should succeed. stderr: {result.stderr}"
 
     # === Phase 2: Verify output format ===
 
@@ -40,13 +40,13 @@ def test_images_alias(coi_binary, cleanup_containers):
 
 def test_images_all_flag(coi_binary, cleanup_containers):
     """
-    Test that 'coi images --all' works.
+    Test that 'cci images --all' works.
 
     Flow:
-    1. Run coi images --all
+    1. Run cci images --all
     2. Verify it shows all local images
     """
-    # === Phase 1: Run coi images --all ===
+    # === Phase 1: Run cci images --all ===
 
     result = subprocess.run(
         [coi_binary, "images", "--all"],
@@ -55,7 +55,7 @@ def test_images_all_flag(coi_binary, cleanup_containers):
         timeout=30,
     )
 
-    assert result.returncode == 0, f"coi images --all should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci images --all should succeed. stderr: {result.stderr}"
 
     # === Phase 2: Verify output ===
 

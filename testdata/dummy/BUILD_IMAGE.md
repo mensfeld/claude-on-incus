@@ -20,11 +20,11 @@ echo "Dummy CLI installed successfully"
 EOF
 
 # Build custom image
-coi build custom coi-test-dummy \
+cci build custom cci-test-dummy \
     --script testdata/dummy/install.sh
 
 # Now tests can use this image
-coi shell --image coi-test-dummy
+cci shell --image cci-test-dummy
 ```
 
 ### Option 2: Mount Dummy CLI via .claude Directory
@@ -39,7 +39,7 @@ cp testdata/dummy/claude "${test_claude_dir}/bin/claude"
 chmod +x "${test_claude_dir}/bin/claude"
 
 # COI will mount this and container will use it
-coi shell --workspace "${workspace}"
+cci shell --workspace "${workspace}"
 ```
 
 ### Option 3: Use Fixture to Prepare Test Image (RECOMMENDED)
@@ -49,7 +49,7 @@ coi shell --workspace "${workspace}"
 def dummy_image(coi_binary):
     """Build a test image with dummy CLI pre-installed."""
 
-    image_name = "coi-test-dummy"
+    image_name = "cci-test-dummy"
 
     # Check if image already exists
     result = subprocess.run(

@@ -1,5 +1,5 @@
 """
-Test for coi container delete - fails for nonexistent container.
+Test for cci container delete - fails for nonexistent container.
 
 Tests that:
 1. Try to delete a container that doesn't exist

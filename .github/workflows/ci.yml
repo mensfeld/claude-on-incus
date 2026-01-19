@@ -223,8 +223,8 @@ jobs:
 
       - name: Build COI binary
         run: |
-          go build -o coi ./cmd/coi
-          ./coi version
+          go build -o cci ./cmd/cci
+          ./cci version
 
       - name: Test bind mount functionality
         run: |
@@ -266,34 +266,34 @@ jobs:
           rm -rf /tmp/test-bind-mount
 
       - name: Restore COI image from cache
-        id: cache-coi-image
+        id: cache-cci-image
         uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
-          path: /tmp/coi-image.tar.gz
-          key: ${{ runner.os }}-coi-image-${{ hashFiles('internal/image/**', 'testdata/dummy/**', 'scripts/build/**') }}
+          path: /tmp/cci-image.tar.gz
+          key: ${{ runner.os }}-cci-image-${{ hashFiles('internal/image/**', 'testdata/dummy/**', 'scripts/build/**') }}
 
       - name: Import COI image from cache
-        if: steps.cache-coi-image.outputs.cache-hit == 'true'
+        if: steps.cache-cci-image.outputs.cache-hit == 'true'
         run: |
           echo "Restoring COI image from cache..."
-          incus image import /tmp/coi-image.tar.gz --alias coi
-          ./coi images
+          incus image import /tmp/cci-image.tar.gz --alias cci
+          ./cci images
 
       - name: Build COI image
-        if: steps.cache-coi-image.outputs.cache-hit != 'true'
+        if: steps.cache-cci-image.outputs.cache-hit != 'true'
         run: |
           echo "Building COI image (not cached)..."
-          ./coi build
-          ./coi images
+          ./cci build
+          ./cci images
           # Export image for caching
-          incus image export coi /tmp/coi-image
+          incus image export cci /tmp/cci-image
 
       - name: Save COI image to cache
-        if: steps.cache-coi-image.outputs.cache-hit != 'true'
+        if: steps.cache-cci-image.outputs.cache-hit != 'true'
         uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
-          path: /tmp/coi-image.tar.gz
-          key: ${{ runner.os }}-coi-image-${{ hashFiles('internal/image/**', 'testdata/dummy/**', 'scripts/build/**') }}
+          path: /tmp/cci-image.tar.gz
+          key: ${{ runner.os }}-cci-image-${{ hashFiles('internal/image/**', 'testdata/dummy/**', 'scripts/build/**') }}
 
       - name: Run integration tests with coverage
         run: |
@@ -303,13 +303,13 @@ jobs:
           # --cov-report=term-missing shows which lines aren't covered
           python -m pytest tests/ -v --tb=short --durations=0 --cov=tests --cov-report=term-missing
         env:
-          COI_BINARY: ./coi
+          COI_BINARY: ./cci
 
       - name: Cleanup
         if: always()
         run: |
-          ./coi kill --all --force || true
-          ./coi clean --force || true
+          ./cci kill --all --force || true
+          ./cci clean --force || true
 
   ci-success:
     name: CI Success

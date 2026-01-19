@@ -10,7 +10,7 @@ import (
 var tmuxCmd = &cobra.Command{
 	Use:   "tmux",
 	Short: "Interact with tmux sessions in containers",
-	Long: `Send commands to or capture output from AI coding sessions running in tmux.
+	Long: `Send commands to or capture output from Claude Code sessions running in tmux.
 This is primarily for automated workflows.`,
 }
 
@@ -18,7 +18,7 @@ var tmuxSendCmd = &cobra.Command{
 	Use:   "send SESSION_NAME COMMAND",
 	Short: "Send a command to a tmux session",
 	Long: `Send a command to a running tmux session in a container.
-The session name should be the container name (e.g., coi-abc123-1).`,
+The session name should be the container name (e.g., cci-abc123-1).`,
 	Args: cobra.ExactArgs(2),
 	RunE: tmuxSendCommand,
 }
@@ -27,7 +27,7 @@ var tmuxCaptureCmd = &cobra.Command{
 	Use:   "capture SESSION_NAME",
 	Short: "Capture output from a tmux session",
 	Long: `Capture the current pane output from a tmux session.
-The session name should be the container name (e.g., coi-abc123-1).`,
+The session name should be the container name (e.g., cci-abc123-1).`,
 	Args: cobra.ExactArgs(1),
 	RunE: tmuxCaptureCommand,
 }
@@ -61,7 +61,7 @@ func tmuxSendCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Send command to tmux session
-	tmuxSession := fmt.Sprintf("coi-%s", containerName)
+	tmuxSession := fmt.Sprintf("cci-%s", containerName)
 	tmuxCmd := fmt.Sprintf("tmux send-keys -t %s %q Enter", tmuxSession, command)
 
 	opts := container.ExecCommandOptions{
@@ -93,7 +93,7 @@ func tmuxCaptureCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Capture tmux pane output
-	tmuxSession := fmt.Sprintf("coi-%s", containerName)
+	tmuxSession := fmt.Sprintf("cci-%s", containerName)
 	tmuxCmd := fmt.Sprintf("tmux capture-pane -t %s -p", tmuxSession)
 
 	opts := container.ExecCommandOptions{
@@ -112,7 +112,7 @@ func tmuxCaptureCommand(cmd *cobra.Command, args []string) error {
 
 func tmuxListCommand(cmd *cobra.Command, args []string) error {
 	// List all running containers with configured prefix
-	containers, err := container.ListContainers("coi-.*")
+	containers, err := container.ListContainers("cci-.*")
 	if err != nil {
 		return fmt.Errorf("failed to list containers: %w", err)
 	}
@@ -133,7 +133,7 @@ func tmuxListCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		// Check if tmux session exists
-		tmuxSession := fmt.Sprintf("coi-%s", c)
+		tmuxSession := fmt.Sprintf("cci-%s", c)
 		tmuxCmd := fmt.Sprintf("tmux has-session -t %s 2>/dev/null", tmuxSession)
 
 		opts := container.ExecCommandOptions{

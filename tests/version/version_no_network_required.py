@@ -1,8 +1,8 @@
 """
-Test for coi version - no network required.
+Test for cci version - no network required.
 
 Tests that:
-1. Run coi version
+1. Run cci version
 2. Verify it works without network access
 3. Verify version is embedded in binary
 """
@@ -15,7 +15,7 @@ def test_version_no_network_required(coi_binary):
     Test version command works offline.
 
     Flow:
-    1. Run coi version
+    1. Run cci version
     2. Verify exit code is 0
     3. Verify complete output is produced
     4. This confirms version is embedded in binary, not fetched from network
@@ -32,7 +32,7 @@ def test_version_no_network_required(coi_binary):
     output = result.stdout
 
     # Verify complete version output
-    assert "code-on-incus (coi) v" in output, f"Should contain version string. Got:\n{output}"
+    assert "claude-code-isolated (cci) v" in output, f"Should contain version string. Got:\n{output}"
 
     assert "https://github.com/thomas/claude-code-isolated" in output, (
         f"Should contain repository URL. Got:\n{output}"

@@ -1,5 +1,5 @@
 """
-Test for coi container launch --ephemeral flag.
+Test for cci container launch --ephemeral flag.
 
 Tests that:
 1. Launch a container with --ephemeral flag
@@ -31,7 +31,7 @@ def test_launch_ephemeral_flag(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch ephemeral container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name, "--ephemeral"],
+        [coi_binary, "container", "launch", "cci", container_name, "--ephemeral"],
         capture_output=True,
         text=True,
         timeout=120,

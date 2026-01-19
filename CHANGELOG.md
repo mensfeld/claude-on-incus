@@ -31,8 +31,8 @@ Version injection implementation:
 ### Bug Fixes
 
 - [Bug Fix] Suppress spurious "Error: The instance is already stopped" message during successful image builds. The error was appearing during cleanup when the container was already stopped by the imaging process. Now checks if container is running before attempting to stop it.
-- [Bug Fix] Fix spurious "Error: The instance is already stopped" message during `coi run --persistent` cleanup. When a persistent container stopped itself after command completion, the cleanup tried to stop it again, causing spurious errors. Now checks if container is running before attempting to stop it.
-- [Bug Fix] Fix potential race condition in `coi shutdown` where force-kill could attempt to stop an already-stopped container if graceful shutdown completed during the timeout window. Now checks if container is still running before attempting force-kill.
+- [Bug Fix] Fix spurious "Error: The instance is already stopped" message during `cci run --persistent` cleanup. When a persistent container stopped itself after command completion, the cleanup tried to stop it again, causing spurious errors. Now checks if container is running before attempting to stop it.
+- [Bug Fix] Fix potential race condition in `cci shutdown` where force-kill could attempt to stop an already-stopped container if graceful shutdown completed during the timeout window. Now checks if container is still running before attempting force-kill.
 
 ### Documentation
 
@@ -50,17 +50,17 @@ Version injection implementation:
 
 **Major architectural refactoring to support multiple AI coding tools**
 
-This release introduces a comprehensive tool abstraction layer that allows code-on-incus to support multiple AI coding assistants beyond Claude Code. The refactoring was completed in three phases (Phase 1-3) with minimal user-facing changes.
+This release introduces a comprehensive tool abstraction layer that allows claude-code-isolated to support multiple AI coding assistants beyond Claude Code. The refactoring was completed in three phases (Phase 1-3) with minimal user-facing changes.
 
 ### Breaking Changes
 
 **Session Directory Structure:**
-- Old: `~/.coi/sessions/<session-id>/`
-- New: `~/.coi/sessions-claude/<session-id>/` (for Claude)
-      `~/.coi/sessions-aider/<session-id>/` (for Aider, future)
+- Old: `~/.cci/sessions/<session-id>/`
+- New: `~/.cci/sessions-claude/<session-id>/` (for Claude)
+      `~/.cci/sessions-aider/<session-id>/` (for Aider, future)
       etc.
 
-**Migration:** Old sessions in `~/.coi/sessions/` will not be automatically migrated. You can manually move session directories if needed, or start fresh sessions.
+**Migration:** Old sessions in `~/.cci/sessions/` will not be automatically migrated. You can manually move session directories if needed, or start fresh sessions.
 
 ### Features
 
@@ -100,7 +100,7 @@ name = "claude"          # AI coding tool to use (currently supports: claude)
 
 ### Documentation
 
-- [Documentation] Updated README from "claude-on-incus" to "code-on-incus"
+- [Documentation] Updated README from "claude-on-incus" to "claude-code-isolated"
 - [Documentation] Rebranded to emphasize multi-tool support
 - [Documentation] Added "Supported AI Coding Tools" section
 - [Documentation] Updated all CLI help text to be tool-agnostic
@@ -169,7 +169,7 @@ Add comprehensive network isolation with domain allowlisting and IP-based filter
 ### Enhancements
 - [Enhancement] New `allowlist` network mode alongside existing `restricted` and `open` modes
 - [Enhancement] Always block RFC1918 private networks in allowlist mode
-- [Enhancement] Persistent IP cache at `~/.coi/network-cache/<container>.json`
+- [Enhancement] Persistent IP cache at `~/.cci/network-cache/<container>.json`
 - [Enhancement] Graceful DNS failure handling with last-known-good IPs
 - [Enhancement] Comprehensive logging for DNS resolution and IP refresh operations
 - [Enhancement] Dynamic ACL recreation for IP updates without container restart
@@ -243,14 +243,14 @@ Re-release of 0.3.0 with proper GitHub release automation.
 Add machine-readable output formats to enable programmatic integration with claude_yard Ruby project.
 
 ### Features
-- [Feature] Add `--format=json` flag to `coi list` command for machine-readable output
-- [Feature] Add `--format=raw` flag to `coi container exec --capture` for raw stdout output (exit code via $?)
+- [Feature] Add `--format=json` flag to `cci list` command for machine-readable output
+- [Feature] Add `--format=raw` flag to `cci container exec --capture` for raw stdout output (exit code via $?)
 
 ### Bug Fixes
 - [Fix] Power management permissions - Add wrapper scripts for shutdown/poweroff/reboot commands to work without sudo prefix (uses passwordless sudo internally)
 
 ### Enhancements
-- [Enhancement] Enable programmatic integration between coi and claude_yard projects
+- [Enhancement] Enable programmatic integration between cci and claude_yard projects
 - [Enhancement] Add 5 integration tests for new output formats (3 for list, 2 for exec)
 - [Enhancement] Add integration test for power management commands without sudo
 - [Enhancement] Update README with --format flag documentation and examples
@@ -259,7 +259,7 @@ Add machine-readable output formats to enable programmatic integration with clau
 
 ## 0.2.0 (2026-01-03)
 
-Major internal refactoring to make coi CLI-agnostic (zero breaking changes). Enables future support for tools beyond Claude Code (e.g., Aider, Cursor). Includes bug fixes for persistent containers, slot allocation, and CI improvements.
+Major internal refactoring to make cci CLI-agnostic (zero breaking changes). Enables future support for tools beyond Claude Code (e.g., Aider, Cursor). Includes bug fixes for persistent containers, slot allocation, and CI improvements.
 
 ### Features
 - [Feature] Add `shutdown` command for graceful container shutdown (separate from `kill`)
@@ -286,7 +286,7 @@ Major internal refactoring to make coi CLI-agnostic (zero breaking changes). Ena
 - [Fix] Attach command container detection - Improved reliability of attach operations
 - [Fix] CI networking issues - Better timeout handling (180s) and diagnostics for slower environments
 - [Fix] Test suite stability - Various fixes to make tests more reliable and deterministic
-- [Fix] Persistent container indicator in `coi list` - Shows "(persistent)" label correctly
+- [Fix] Persistent container indicator in `cci list` - Shows "(persistent)" label correctly
 - [Fix] CI cache key updated to use `testdata/dummy/**` pattern
 - [Fix] Documentation inconsistencies between README and actual implementation
 - [Fix] **Tmux server persistence in CI** - Explicitly start tmux server before session operations; ensures sessions work in CI and new containers
@@ -307,12 +307,12 @@ Major internal refactoring to make coi CLI-agnostic (zero breaking changes). Ena
 - [Enhancement] **CI tests now run all attach tests** - Removed skipif decorators after fixing tmux persistence, all tests pass in CI
 
 ### Changes
-- [Change] Rename images from `claudeyard-*` to `coi-*` for consistency
+- [Change] Rename images from `claudeyard-*` to `cci-*` for consistency
 - [Change] **Session creation pattern** - Changed from `tmux new-session` (single command) to `tmux new-session -d` + `tmux attach` (two-step pattern) for better detach/reattach support
 
 ## 0.1.0 (2025-12-11)
 
-Initial release of claude-on-incus (coi) - Run Claude Code in isolated Incus containers.
+Initial release of claude-code-isolated (cci) - Run Claude Code in isolated Incus containers.
 
 ### Core Features
 
@@ -337,16 +337,16 @@ Initial release of claude-on-incus (coi) - Run Claude Code in isolated Incus con
 
 ### Container Images
 
-- [Feature] Sandbox image (`coi-sandbox`) - Ubuntu 22.04 + Docker + Node.js + Claude CLI + tmux
-- [Feature] Privileged image (`coi-privileged`) - Sandbox + GitHub CLI + SSH + Git config
+- [Feature] Sandbox image (`cci-sandbox`) - Ubuntu 22.04 + Docker + Node.js + Claude CLI + tmux
+- [Feature] Privileged image (`cci-privileged`) - Sandbox + GitHub CLI + SSH + Git config
 - [Feature] Automatic container lifecycle management (ephemeral vs persistent)
 
 ### Configuration
 
 - [Feature] Configuration hierarchy: built-in defaults → system → user → project → env vars → CLI flags
 - [Feature] Named profiles with environment override support
-- [Feature] Project-specific configuration (`.claude-on-incus.toml`)
-- [Feature] User configuration (`~/.config/claude-on-incus/config.toml`)
+- [Feature] Project-specific configuration (`.cci.toml`)
+- [Feature] User configuration (`~/.config/cci/config.toml`)
 
 ### Session Management
 

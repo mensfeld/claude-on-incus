@@ -1,8 +1,8 @@
 """
-Test for coi image list --all - list all local images.
+Test for cci image list --all - list all local images.
 
 Tests that:
-1. Run coi image list --all
+1. Run cci image list --all
 2. Verify it shows all local images
 """
 
@@ -14,7 +14,7 @@ def test_list_all_images(coi_binary, cleanup_containers):
     Test listing all local images with --all flag.
 
     Flow:
-    1. Run coi image list --all
+    1. Run cci image list --all
     2. Verify output contains All Local Images section
     """
     # === Phase 1: Run image list --all ===

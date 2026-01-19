@@ -1,5 +1,5 @@
 """
-Test for coi shell - custom directory mounting in ephemeral mode.
+Test for cci shell - custom directory mounting in ephemeral mode.
 
 Tests that:
 1. Create a temp directory with a test file
@@ -29,7 +29,7 @@ def test_custom_mount_ephemeral(coi_binary, cleanup_containers, workspace_dir, t
 
     Flow:
     1. Create a temp directory with a unique test file
-    2. Start coi shell with the temp dir as workspace
+    2. Start cci shell with the temp dir as workspace
     3. Exit claude to bash
     4. Verify the test file exists in /workspace
     5. Cleanup

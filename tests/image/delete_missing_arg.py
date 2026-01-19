@@ -1,8 +1,8 @@
 """
-Test for coi image delete - missing argument.
+Test for cci image delete - missing argument.
 
 Tests that:
-1. Run coi image delete without image name
+1. Run cci image delete without image name
 2. Verify it shows usage error
 """
 
@@ -11,10 +11,10 @@ import subprocess
 
 def test_delete_missing_arg(coi_binary, cleanup_containers):
     """
-    Test that coi image delete without argument shows error.
+    Test that cci image delete without argument shows error.
 
     Flow:
-    1. Run coi image delete (no alias)
+    1. Run cci image delete (no alias)
     2. Verify it fails with usage message
     """
     # === Phase 1: Run without argument ===

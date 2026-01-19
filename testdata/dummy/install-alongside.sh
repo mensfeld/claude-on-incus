@@ -38,5 +38,5 @@ fi
 echo "✓ Installation complete!"
 echo ""
 echo "Usage:"
-echo "  USE_TEST_CLAUDE=1 coi shell  # Uses fake test-claude (fast)"
-echo "  coi shell                     # Uses real claude (slow)"
+echo "  USE_TEST_CLAUDE=1 cci shell  # Uses fake test-claude (fast)"
+echo "  cci shell                     # Uses real claude (slow)"

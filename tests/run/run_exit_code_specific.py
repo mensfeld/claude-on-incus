@@ -1,5 +1,5 @@
 """
-Test for coi run - specific exit code propagation.
+Test for cci run - specific exit code propagation.
 
 Tests that:
 1. Run a command with specific exit code
@@ -14,7 +14,7 @@ def test_run_exit_code_specific(coi_binary, cleanup_containers, workspace_dir):
     Test that specific exit codes are propagated.
 
     Flow:
-    1. Run coi run "exit 42"
+    1. Run cci run "exit 42"
     2. Verify exit code is 42
     """
     result = subprocess.run(

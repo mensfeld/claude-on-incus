@@ -1,10 +1,10 @@
 """
-Test for coi shell - new session is NOT resumed without --resume flag.
+Test for cci shell - new session is NOT resumed without --resume flag.
 
 Verifies that:
 1. Start dummy, interact with it
 2. Poweroff container
-3. Start coi shell again WITHOUT --resume
+3. Start cci shell again WITHOUT --resume
 4. Verify it's a NEW session (not resuming the old one)
 """
 
@@ -31,9 +31,9 @@ def test_new_session_not_resumed(coi_binary, cleanup_containers, workspace_dir):
     Test that without --resume, a new session is started.
 
     Flow:
-    1. Start coi shell, interact with dummy
+    1. Start cci shell, interact with dummy
     2. Poweroff container
-    3. Start coi shell again (no --resume)
+    3. Start cci shell again (no --resume)
     4. Verify dummy shows "Session:" (new session), not "Resuming session:"
     5. Cleanup
     """
@@ -136,7 +136,7 @@ def test_new_session_not_resumed(coi_binary, cleanup_containers, workspace_dir):
     # Force cleanup any remaining
     containers = get_container_list()
     for c in containers:
-        if c.startswith("coi-test-"):
+        if c.startswith("cci-test-"):
             subprocess.run(
                 ["sg", "incus-admin", "-c", f"incus delete --force {c}"],
                 capture_output=True,

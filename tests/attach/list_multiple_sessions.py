@@ -1,9 +1,9 @@
 """
-Test for coi attach - lists multiple sessions.
+Test for cci attach - lists multiple sessions.
 
 Tests that:
 1. Start two shell sessions in parallel slots
-2. Run coi attach with no arguments
+2. Run cci attach with no arguments
 3. Verify it lists both sessions instead of attaching
 """
 
@@ -23,14 +23,14 @@ from support.helpers import (
 
 def test_attach_lists_multiple_sessions(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach lists sessions when multiple are running.
+    Test that cci attach lists sessions when multiple are running.
 
     Flow:
-    1. Start coi shell --persistent (slot 1)
+    1. Start cci shell --persistent (slot 1)
     2. Detach
-    3. Start coi shell --persistent (slot 2)
+    3. Start cci shell --persistent (slot 2)
     4. Detach
-    5. Run coi attach
+    5. Run cci attach
     6. Verify it lists both sessions
     7. Cleanup
     """
@@ -111,7 +111,7 @@ def test_attach_lists_multiple_sessions(coi_binary, cleanup_containers, workspac
     assert container_name_1 in containers, f"Container {container_name_1} should be running"
     assert container_name_2 in containers, f"Container {container_name_2} should be running"
 
-    # === Phase 3: Test coi attach lists sessions ===
+    # === Phase 3: Test cci attach lists sessions ===
 
     result = subprocess.run(
         [coi_binary, "attach"],
@@ -121,7 +121,7 @@ def test_attach_lists_multiple_sessions(coi_binary, cleanup_containers, workspac
     )
 
     # Should succeed and list sessions
-    assert result.returncode == 0, f"coi attach should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci attach should succeed. stderr: {result.stderr}"
 
     output = result.stdout
 
@@ -133,7 +133,7 @@ def test_attach_lists_multiple_sessions(coi_binary, cleanup_containers, workspac
     assert container_name_2 in output, f"Should list {container_name_2}. Got:\n{output}"
 
     # Should show usage hint
-    assert "coi attach" in output, f"Should show usage hint. Got:\n{output}"
+    assert "cci attach" in output, f"Should show usage hint. Got:\n{output}"
 
     # === Phase 4: Cleanup ===
 

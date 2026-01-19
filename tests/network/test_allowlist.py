@@ -19,11 +19,11 @@ def test_allowlist_mode_allows_only_specified_domains(
     For now, this test passes to avoid breaking the test suite.
 
     Manual test procedure:
-    1. Create ~/.config/coi/config.toml with:
+    1. Create ~/.config/cci/config.toml with:
        [network]
        mode = "allowlist"
        allowed_domains = ["example.com"]
-    2. Run: coi shell
+    2. Run: cci shell
     3. Test: curl example.com (should work)
     4. Test: curl github.com (should fail)
     5. Test: curl 192.168.1.1 (should fail)

@@ -20,7 +20,7 @@ var imageCmd = &cobra.Command{
 	Long:  `Operations for listing, publishing, deleting, and managing container images.`,
 }
 
-// Legacy imagesCmd for backwards compatibility (coi images)
+// Legacy imagesCmd for backwards compatibility (cci images)
 var imagesCmd = &cobra.Command{
 	Use:   "images",
 	Short: "List available Incus images (alias for 'image list')",
@@ -29,8 +29,8 @@ var imagesCmd = &cobra.Command{
 Shows both built COI images and available remote images.
 
 Examples:
-  coi images              # List COI images only
-  coi images --all        # List all local images
+  cci images              # List COI images only
+  cci images --all        # List all local images
 `,
 	RunE: imageListCommand,
 }
@@ -42,10 +42,10 @@ var imageListCmd = &cobra.Command{
 	Long: `List available Incus images with optional filtering.
 
 Examples:
-  coi image list                           # List COI images
-  coi image list --all                     # List all local images
-  coi image list --prefix claudeyard-      # List images starting with prefix
-  coi image list --format json             # Output as JSON`,
+  cci image list                           # List COI images
+  cci image list --all                     # List all local images
+  cci image list --prefix claudeyard-      # List images starting with prefix
+  cci image list --format json             # Output as JSON`,
 	RunE: imageListCommand,
 }
 
@@ -56,7 +56,7 @@ var imagePublishCmd = &cobra.Command{
 	Long: `Publish a container as an image with the given alias.
 
 Example:
-  coi image publish my-container my-image --description "Custom build with Python 3.11"`,
+  cci image publish my-container my-image --description "Custom build with Python 3.11"`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		containerName := args[0]
@@ -130,7 +130,7 @@ Image aliases must follow format: prefix-YYYYMMDD-HHMMSS
 
 Example:
   # Keep only the 3 most recent versions of node-42 images
-  coi image cleanup claudeyard-node-42- --keep 3`,
+  cci image cleanup claudeyard-node-42- --keep 3`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		prefix := args[0]
@@ -244,7 +244,7 @@ func imageListCommand(cmd *cobra.Command, args []string) error {
 		description string
 		buildCmd    string
 	}{
-		{"coi", "coi image (Claude CLI, Node.js, Docker, GitHub CLI, tmux)", "coi build"},
+		{"cci", "cci image (Claude CLI, Node.js, Docker, GitHub CLI, tmux)", "cci build"},
 	}
 
 	fmt.Println("COI Images:")
@@ -282,10 +282,10 @@ func imageListCommand(cmd *cobra.Command, args []string) error {
 	fmt.Println("  - debian:12, debian:11")
 	fmt.Println("  - alpine:3.19")
 	fmt.Println()
-	fmt.Println("  Example: coi shell --image ubuntu:24.04")
+	fmt.Println("  Example: cci shell --image ubuntu:24.04")
 	fmt.Println()
 	fmt.Println("Custom Images:")
-	fmt.Println("  Build your own: coi build custom --script setup.sh my-image")
+	fmt.Println("  Build your own: cci build custom --script setup.sh my-image")
 	fmt.Println()
 
 	return nil

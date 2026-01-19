@@ -5,9 +5,9 @@ This test acts as a smoke test for the entire installation workflow:
 1. Launch a fresh Ubuntu 24.04 container
 2. Install Incus inside it (nested Incus)
 3. Follow the README installation steps
-4. Build the coi binary
-5. Verify coi --help works
-6. Verify basic coi commands work
+4. Build the cci binary
+5. Verify cci --help works
+6. Verify basic cci commands work
 
 This validates the complete setup process from scratch.
 
@@ -27,9 +27,9 @@ def meta_container():
     Launch a fresh Ubuntu container to test the installation process.
 
     This validates that the README installation steps work correctly
-    and produce a functioning coi binary.
+    and produce a functioning cci binary.
     """
-    container_name = "coi-meta-test"
+    container_name = "cci-meta-test"
 
     # Clean up any existing test container
     subprocess.run(
@@ -87,9 +87,9 @@ def test_full_installation_process(meta_container, coi_binary):
     1. System dependencies can be installed
     2. Go can be installed
     3. Repository can be cloned
-    4. coi binary can be built from source
-    5. coi --help works
-    6. coi version works
+    4. cci binary can be built from source
+    5. cci --help works
+    6. cci version works
 
     This does NOT test Incus functionality - it only validates the
     build process and that the binary executes correctly.
@@ -157,7 +157,7 @@ def test_full_installation_process(meta_container, coi_binary):
     assert result.returncode == 0, f"Failed to install Go: {result.stderr}"
     assert "go version" in result.stdout, "Go installation verification failed"
 
-    # Phase 3: Clone repository and build coi
+    # Phase 3: Clone repository and build cci
     # In CI (pull requests), use the PR branch instead of master
     github_branch = os.environ.get("GITHUB_HEAD_REF", "")
     if github_branch:
@@ -172,42 +172,42 @@ def test_full_installation_process(meta_container, coi_binary):
         cd /root
         {clone_cmd}
         cd claude-code-isolated
-        /usr/local/go/bin/go build -o coi ./cmd/coi
-        ./coi version
+        /usr/local/go/bin/go build -o cci ./cmd/cci
+        ./cci version
         """,
         timeout=300,
     )
-    assert result.returncode == 0, f"Failed to build coi: {result.stderr}"
-    assert "code-on-incus (coi) v" in result.stdout, "coi version check failed"
+    assert result.returncode == 0, f"Failed to build cci: {result.stderr}"
+    assert "claude-code-isolated (cci) v" in result.stdout, "cci version check failed"
 
-    # Phase 4: Test coi --help
+    # Phase 4: Test cci --help
     result = exec_in_container(
         container_name,
         """
         cd /root/claude-code-isolated
-        ./coi --help
+        ./cci --help
         """,
         timeout=30,
     )
-    assert result.returncode == 0, f"coi --help failed: {result.stderr}"
-    assert "code-on-incus (coi) is a CLI tool" in result.stdout, (
-        "coi help output missing expected text"
+    assert result.returncode == 0, f"cci --help failed: {result.stderr}"
+    assert "claude-code-isolated (cci) is a CLI tool" in result.stdout, (
+        "cci help output missing expected text"
     )
-    assert "Available Commands:" in result.stdout, "coi help missing commands section"
+    assert "Available Commands:" in result.stdout, "cci help missing commands section"
 
-    # Phase 5: Test coi basic commands
+    # Phase 5: Test cci basic commands
     result = exec_in_container(
         container_name,
         """
         cd /root/claude-code-isolated
-        ./coi images --help
-        ./coi list --help
-        ./coi shell --help
+        ./cci images --help
+        ./cci list --help
+        ./cci shell --help
         echo "Basic commands work"
         """,
         timeout=30,
     )
-    assert result.returncode == 0, f"Basic coi commands failed: {result.stderr}"
+    assert result.returncode == 0, f"Basic cci commands failed: {result.stderr}"
 
 
 def test_installation_with_prebuilt_binary(meta_container, coi_binary):
@@ -219,15 +219,15 @@ def test_installation_with_prebuilt_binary(meta_container, coi_binary):
     just validates the binary executes correctly.
 
     Flow:
-    1. Copy pre-built coi binary into container
-    2. Test coi --help works
-    3. Test coi version works
+    1. Copy pre-built cci binary into container
+    2. Test cci --help works
+    3. Test cci version works
     """
     container_name = meta_container
 
     # Push pre-built binary to container
     result = subprocess.run(
-        ["incus", "file", "push", coi_binary, f"{container_name}/usr/local/bin/coi"],
+        ["incus", "file", "push", coi_binary, f"{container_name}/usr/local/bin/cci"],
         capture_output=True,
         text=True,
         timeout=30,
@@ -238,11 +238,11 @@ def test_installation_with_prebuilt_binary(meta_container, coi_binary):
     result = exec_in_container(
         container_name,
         """
-        chmod +x /usr/local/bin/coi
-        coi --help
-        coi version
+        chmod +x /usr/local/bin/cci
+        cci --help
+        cci version
         """,
         timeout=30,
     )
     assert result.returncode == 0, f"Pre-built binary test failed: {result.stderr}"
-    assert "code-on-incus (coi)" in result.stdout, "coi binary not working correctly"
+    assert "claude-code-isolated (cci)" in result.stdout, "cci binary not working correctly"

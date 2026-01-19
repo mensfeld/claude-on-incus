@@ -1,9 +1,9 @@
 """
-Test for coi clean --sessions - cleans saved session data.
+Test for cci clean --sessions - cleans saved session data.
 
 Tests that:
 1. Create a session directory with data
-2. Run coi clean --sessions
+2. Run cci clean --sessions
 3. Verify session data is removed
 """
 
@@ -25,12 +25,12 @@ from support.helpers import (
 
 def test_clean_sessions_flag(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi clean --sessions cleans saved session data.
+    Test that cci clean --sessions cleans saved session data.
 
     Flow:
     1. Start a session and poweroff (saves session)
     2. Verify session is saved
-    3. Run coi clean --sessions --force
+    3. Run cci clean --sessions --force
     4. Verify session data is removed
     """
     env = {"COI_USE_DUMMY": "1"}
@@ -96,7 +96,7 @@ def test_clean_sessions_flag(coi_binary, cleanup_containers, workspace_dir):
         timeout=60,
     )
 
-    assert result.returncode == 0, f"coi clean --sessions should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci clean --sessions should succeed. stderr: {result.stderr}"
 
     time.sleep(2)
 

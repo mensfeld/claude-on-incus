@@ -1,10 +1,10 @@
 """
-Test for coi list - shows stopped container.
+Test for cci list - shows stopped container.
 
 Tests that:
 1. Launch a container
 2. Stop it
-3. Run coi list
+3. Run cci list
 4. Verify it shows container with "Stopped" status
 """
 
@@ -16,12 +16,12 @@ from support.helpers import calculate_container_name
 
 def test_list_stopped_container(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi list shows stopped containers.
+    Test that cci list shows stopped containers.
 
     Flow:
     1. Launch a container
     2. Stop the container
-    3. Run coi list
+    3. Run cci list
     4. Verify container appears with "Stopped" status
     5. Cleanup
     """
@@ -30,7 +30,7 @@ def test_list_stopped_container(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

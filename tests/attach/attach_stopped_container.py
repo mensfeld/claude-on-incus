@@ -1,5 +1,5 @@
 """
-Test for coi attach - attach to stopped container fails gracefully.
+Test for cci attach - attach to stopped container fails gracefully.
 
 Tests that:
 1. Launch a container
@@ -19,7 +19,7 @@ from support.helpers import (
 
 def test_attach_stopped_container(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach to a stopped container fails gracefully.
+    Test that cci attach to a stopped container fails gracefully.
 
     Flow:
     1. Launch a container directly
@@ -33,7 +33,7 @@ def test_attach_stopped_container(coi_binary, cleanup_containers, workspace_dir)
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

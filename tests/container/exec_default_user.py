@@ -1,5 +1,5 @@
 """
-Test for coi image - verifies 'code' user exists with correct setup.
+Test for cci image - verifies 'code' user exists with correct setup.
 
 Tests that:
 1. Launch a container
@@ -15,7 +15,7 @@ from support.helpers import calculate_container_name
 
 def test_code_user_exists(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that the coi image has the 'code' user configured correctly.
+    Test that the cci image has the 'code' user configured correctly.
 
     Flow:
     1. Launch a container
@@ -28,7 +28,7 @@ def test_code_user_exists(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

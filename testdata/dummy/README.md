@@ -34,7 +34,7 @@ def test_with_dummy(coi_binary):
 
 ## Session State
 
-The dummy creates a `.claude` directory structure for compatibility with the coi session management system. This is intentionally kept as `.claude` for now since it's used by the coi tool's session logic.
+The dummy creates a `.claude` directory structure for compatibility with the cci session management system. This is intentionally kept as `.claude` for now since it's used by the cci tool's session logic.
 
 ## Extending
 
@@ -46,4 +46,4 @@ To add more realistic behavior:
 
 ## Future: Supporting Multiple CLI Tools
 
-This dummy is the first step toward making coi support different CLI tools beyond Claude Code. The generic naming (dummy instead of dummy) reflects this direction.
+This dummy is the first step toward making cci support different CLI tools beyond Claude Code. The generic naming (dummy instead of dummy) reflects this direction.

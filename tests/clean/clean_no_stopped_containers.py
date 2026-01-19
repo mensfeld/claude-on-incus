@@ -1,8 +1,8 @@
 """
-Test for coi clean - no stopped containers.
+Test for cci clean - no stopped containers.
 
 Tests that:
-1. Run coi clean when no stopped containers exist
+1. Run cci clean when no stopped containers exist
 2. Verify it shows appropriate message
 """
 
@@ -11,11 +11,11 @@ import subprocess
 
 def test_clean_no_stopped_containers(coi_binary, cleanup_containers):
     """
-    Test that coi clean with no stopped containers shows appropriate message.
+    Test that cci clean with no stopped containers shows appropriate message.
 
     Flow:
     1. Ensure no stopped containers exist
-    2. Run coi clean --force
+    2. Run cci clean --force
     3. Verify output indicates nothing to clean
     """
     result = subprocess.run(
@@ -26,7 +26,7 @@ def test_clean_no_stopped_containers(coi_binary, cleanup_containers):
     )
 
     # Should succeed
-    assert result.returncode == 0, f"coi clean should succeed. stderr: {result.stderr}"
+    assert result.returncode == 0, f"cci clean should succeed. stderr: {result.stderr}"
 
     # Should indicate nothing to clean or complete successfully
     combined_output = result.stdout + result.stderr

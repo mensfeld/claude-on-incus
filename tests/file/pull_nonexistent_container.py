@@ -1,5 +1,5 @@
 """
-Test for coi file pull - pull from nonexistent container.
+Test for cci file pull - pull from nonexistent container.
 
 Tests that:
 1. Try to pull from a container that doesn't exist

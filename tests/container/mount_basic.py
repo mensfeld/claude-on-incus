@@ -1,5 +1,5 @@
 """
-Test for coi container mount - mounts directory into container.
+Test for cci container mount - mounts directory into container.
 
 Tests that:
 1. Launch a container
@@ -40,7 +40,7 @@ def test_mount_basic(coi_binary, cleanup_containers, workspace_dir):
         # === Phase 2: Launch container ===
 
         result = subprocess.run(
-            [coi_binary, "container", "launch", "coi", container_name],
+            [coi_binary, "container", "launch", "cci", container_name],
             capture_output=True,
             text=True,
             timeout=120,
@@ -51,7 +51,7 @@ def test_mount_basic(coi_binary, cleanup_containers, workspace_dir):
         time.sleep(3)
 
         # === Phase 3: Mount directory ===
-        # Syntax: coi container mount <name> <device-name> <source> <path>
+        # Syntax: cci container mount <name> <device-name> <source> <path>
 
         mount_name = "test-mount"
         result = subprocess.run(

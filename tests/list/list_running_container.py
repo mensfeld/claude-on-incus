@@ -1,9 +1,9 @@
 """
-Test for coi list - shows running container info.
+Test for cci list - shows running container info.
 
 Tests that:
 1. Launch a container
-2. Run coi list
+2. Run cci list
 3. Verify it shows container with status, created time, image
 """
 
@@ -15,11 +15,11 @@ from support.helpers import calculate_container_name
 
 def test_list_running_container(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi list shows running container details.
+    Test that cci list shows running container details.
 
     Flow:
     1. Launch a container
-    2. Run coi list
+    2. Run cci list
     3. Verify container appears with status "Running"
     4. Verify shows created time and image info
     5. Cleanup
@@ -29,7 +29,7 @@ def test_list_running_container(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,

@@ -1,5 +1,5 @@
 """
-Test for coi shell --persistent - multiple slots running in parallel with isolation.
+Test for cci shell --persistent - multiple slots running in parallel with isolation.
 
 Tests that:
 1. Start persistent session on slot 1, create marker file in ~/
@@ -32,10 +32,10 @@ def test_persistent_multiple_slots_parallel(coi_binary, cleanup_containers, work
     Test that multiple persistent slots can run in parallel with isolated home directories.
 
     Flow:
-    1. Start coi shell --persistent (slot 1 auto-allocated)
+    1. Start cci shell --persistent (slot 1 auto-allocated)
     2. Interact with dummy, create marker file in ~/
     3. Exit claude, exit bash (detach - container stays running)
-    4. Start coi shell --persistent again (slot 2 auto-allocated)
+    4. Start cci shell --persistent again (slot 2 auto-allocated)
     5. Verify both containers are running
     6. Create marker file in slot 2, verify slot 1's file is NOT visible (isolation)
     7. Cleanup both containers

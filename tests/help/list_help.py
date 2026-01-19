@@ -1,8 +1,8 @@
 """
-Test for coi list --help - help text validation.
+Test for cci list --help - help text validation.
 
 Tests that:
-1. Run coi list --help
+1. Run cci list --help
 2. Verify help text contains expected sections
 3. Verify exit code is 0
 """
@@ -15,7 +15,7 @@ def test_list_help(coi_binary):
     Test list command help output.
 
     Flow:
-    1. Run coi list --help
+    1. Run cci list --help
     2. Verify exit code is 0
     3. Verify output contains usage and flags
     """

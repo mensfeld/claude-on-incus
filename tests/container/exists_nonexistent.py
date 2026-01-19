@@ -1,5 +1,5 @@
 """
-Test for coi container exists - returns false for nonexistent container.
+Test for cci container exists - returns false for nonexistent container.
 
 Tests that:
 1. Check exists for nonexistent container

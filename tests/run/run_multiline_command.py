@@ -1,5 +1,5 @@
 """
-Test for coi run - multi-statement shell command.
+Test for cci run - multi-statement shell command.
 
 Tests that:
 1. Run command with multiple statements
@@ -14,7 +14,7 @@ def test_run_multiline_command(coi_binary, cleanup_containers, workspace_dir):
     Test running multi-statement command.
 
     Flow:
-    1. Run coi run with multiple statements
+    1. Run cci run with multiple statements
     2. Verify all statements execute
     """
     result = subprocess.run(

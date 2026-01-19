@@ -1,8 +1,8 @@
 """
-Test for coi completion --help - completion help text validation.
+Test for cci completion --help - completion help text validation.
 
 Tests that:
-1. Run coi completion --help
+1. Run cci completion --help
 2. Verify help text explains how to use completion
 3. Verify exit code is 0
 """
@@ -15,7 +15,7 @@ def test_completion_help(coi_binary):
     Test completion command help output.
 
     Flow:
-    1. Run coi completion --help
+    1. Run cci completion --help
     2. Verify exit code is 0
     3. Verify output contains usage and supported shells
     """

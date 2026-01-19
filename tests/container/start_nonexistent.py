@@ -1,5 +1,5 @@
 """
-Test for coi container start - fails for nonexistent container.
+Test for cci container start - fails for nonexistent container.
 
 Tests that:
 1. Try to start a container that doesn't exist

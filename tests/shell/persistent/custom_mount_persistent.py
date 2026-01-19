@@ -1,5 +1,5 @@
 """
-Test for coi shell --persistent - custom directory mounting in persistent mode.
+Test for cci shell --persistent - custom directory mounting in persistent mode.
 
 Tests that:
 1. Create a temp directory with a test file
@@ -31,7 +31,7 @@ def test_custom_mount_persistent(coi_binary, cleanup_containers, workspace_dir, 
 
     Flow:
     1. Create a temp directory with a unique test file
-    2. Start coi shell --persistent with the temp dir as workspace
+    2. Start cci shell --persistent with the temp dir as workspace
     3. Exit claude to bash
     4. Verify the test file exists in /workspace
     5. Create a new file inside container

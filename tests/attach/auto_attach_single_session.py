@@ -1,9 +1,9 @@
 """
-Test for coi attach - attach by slot.
+Test for cci attach - attach by slot.
 
 Tests that:
 1. Start a shell session and detach
-2. Run coi attach with --slot flag
+2. Run cci attach with --slot flag
 3. Verify it attaches to the correct session (isolated from other running sessions)
 """
 
@@ -23,17 +23,17 @@ from support.helpers import (
 
 def test_auto_attach_single_session(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi attach works with --slot flag (workspace-specific).
+    Test that cci attach works with --slot flag (workspace-specific).
 
     Flow:
-    1. Start coi shell --persistent
+    1. Start cci shell --persistent
     2. Detach from session (exit bash, container stays running)
-    3. Run coi attach --slot 1
+    3. Run cci attach --slot 1
     4. Verify it attaches and shows "Attaching to..."
     5. Cleanup
 
     Note: This test uses --slot to isolate from other running sessions,
-    making it safe to run tests while using coi for development.
+    making it safe to run tests while using cci for development.
     """
     env = {"COI_USE_DUMMY": "1"}
     container_name = calculate_container_name(workspace_dir, 1)
@@ -86,10 +86,10 @@ def test_auto_attach_single_session(coi_binary, cleanup_containers, workspace_di
         f"Container {container_name} should still be running after detach"
     )
 
-    # === Phase 3: Test coi attach with slot (workspace-specific) ===
+    # === Phase 3: Test cci attach with slot (workspace-specific) ===
 
-    # Run coi attach with --slot to isolate from other running sessions
-    # This ensures the test works even when other coi sessions are running
+    # Run cci attach with --slot to isolate from other running sessions
+    # This ensures the test works even when other cci sessions are running
     result = subprocess.run(
         [coi_binary, "attach", "--slot", "1", "--workspace", workspace_dir],
         capture_output=True,

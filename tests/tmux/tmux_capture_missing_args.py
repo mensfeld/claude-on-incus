@@ -1,5 +1,5 @@
 """
-Test for coi tmux capture - error when missing required arguments.
+Test for cci tmux capture - error when missing required arguments.
 
 Tests that:
 1. Try to use tmux capture with no arguments
@@ -14,7 +14,7 @@ def test_tmux_capture_missing_args(coi_binary, cleanup_containers):
     Test tmux capture fails when session name is missing.
 
     Flow:
-    1. Try coi tmux capture with no args
+    1. Try cci tmux capture with no args
     2. Verify usage/error shown
     """
 

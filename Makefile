@@ -1,7 +1,7 @@
 .PHONY: build install clean test test-coverage test-unit integrations-setup integrations integrations-debug integrations-cli lint lint-python fmt tidy help
 
 # Binary name
-BINARY_NAME=coi
+BINARY_NAME=cci
 BINARY_FULL=claude-code-isolated
 
 # Build directory
@@ -30,7 +30,7 @@ LDFLAGS=-ldflags "-X github.com/thomas/claude-code-isolated/internal/cli.Version
 # Build the project
 build:
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
-	@$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/coi
+	@$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/cci
 	@ln -sf $(BINARY_NAME) $(BUILD_DIR)/$(BINARY_FULL)
 
 # Install to system
@@ -140,10 +140,10 @@ check-all: check doc-coverage
 build-all:
 	@echo "Building $(BINARY_NAME) version $(VERSION) for all platforms..."
 	@mkdir -p dist
-	@GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 ./cmd/coi
-	@GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-arm64 ./cmd/coi
-	@GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 ./cmd/coi
-	@GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-arm64 ./cmd/coi
+	@GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 ./cmd/cci
+	@GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-arm64 ./cmd/cci
+	@GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 ./cmd/cci
+	@GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-arm64 ./cmd/cci
 
 # Help
 help:

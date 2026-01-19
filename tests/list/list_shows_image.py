@@ -1,9 +1,9 @@
 """
-Test for coi list - shows image description.
+Test for cci list - shows image description.
 
 Tests that:
-1. Launch a container from coi image
-2. Run coi list
+1. Launch a container from cci image
+2. Run cci list
 3. Verify it shows the image description
 """
 
@@ -15,11 +15,11 @@ from support.helpers import calculate_container_name
 
 def test_list_shows_image(coi_binary, cleanup_containers, workspace_dir):
     """
-    Test that coi list shows image description.
+    Test that cci list shows image description.
 
     Flow:
-    1. Launch a container from coi image
-    2. Run coi list
+    1. Launch a container from cci image
+    2. Run cci list
     3. Verify Image field appears
     4. Cleanup
     """
@@ -28,7 +28,7 @@ def test_list_shows_image(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -53,7 +53,7 @@ def test_list_shows_image(coi_binary, cleanup_containers, workspace_dir):
 
     assert container_name in output, f"Container should appear. Got:\n{output}"
 
-    # Should show Image field (coi image has a description)
+    # Should show Image field (cci image has a description)
     assert "Image:" in output, f"Should show Image field. Got:\n{output}"
 
     # === Phase 4: Cleanup ===

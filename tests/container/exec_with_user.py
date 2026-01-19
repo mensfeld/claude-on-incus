@@ -1,5 +1,5 @@
 """
-Test for coi container exec --user - executes as specified user.
+Test for cci container exec --user - executes as specified user.
 
 Tests that:
 1. Launch a container
@@ -31,7 +31,7 @@ def test_exec_with_user(coi_binary, cleanup_containers, workspace_dir):
     # === Phase 1: Launch container ===
 
     result = subprocess.run(
-        [coi_binary, "container", "launch", "coi", container_name],
+        [coi_binary, "container", "launch", "cci", container_name],
         capture_output=True,
         text=True,
         timeout=120,
@@ -64,7 +64,7 @@ def test_exec_with_user(coi_binary, cleanup_containers, workspace_dir):
         timeout=30,
     )
 
-    # code user exists in coi image with UID 1000
+    # code user exists in cci image with UID 1000
     assert result.returncode == 0, f"Exec as code should succeed. stderr: {result.stderr}"
 
     combined_output = result.stdout + result.stderr

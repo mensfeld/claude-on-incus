@@ -24,25 +24,23 @@ var (
 
 var shellCmd = &cobra.Command{
 	Use:   "shell",
-	Short: "Start an interactive AI coding session",
-	Long: `Start an interactive AI coding session in a container (always runs in tmux).
-
-By default, runs Claude Code. Other tools can be configured via the tool.name config option.
+	Short: "Start an interactive Claude Code session",
+	Long: `Start an interactive Claude Code session in a container (always runs in tmux).
 
 All sessions run in tmux for monitoring and detach/reattach support:
   - Interactive: Automatically attaches to tmux session
-  - Background: Runs detached, use 'coi tmux capture' to view output
+  - Background: Runs detached, use 'cci tmux capture' to view output
   - Detach anytime: Ctrl+B d (session keeps running)
-  - Reattach: Run 'coi shell' again in same workspace
+  - Reattach: Run 'cci shell' again in same workspace
 
 Examples:
-  coi shell                         # Interactive session in tmux
-  coi shell --background            # Run in background (detached)
-  coi shell --resume                # Resume latest session (auto)
-  coi shell --resume=<session-id>   # Resume specific session (note: = is required)
-  coi shell --continue=<session-id> # Same as --resume (alias)
-  coi shell --slot 2                # Use specific slot
-  coi shell --debug                 # Launch bash for debugging
+  cci shell                         # Interactive session in tmux
+  cci shell --background            # Run in background (detached)
+  cci shell --resume                # Resume latest session (auto)
+  cci shell --resume=<session-id>   # Resume specific session (note: = is required)
+  cci shell --continue=<session-id> # Same as --resume (alias)
+  cci shell --slot 2                # Use specific slot
+  cci shell --debug                 # Launch bash for debugging
 `,
 	RunE: shellCommand,
 }
@@ -81,7 +79,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-	baseDir := filepath.Join(homeDir, ".coi")
+	baseDir := filepath.Join(homeDir, ".cci")
 	sessionsDir := session.GetSessionsDir(baseDir, toolInstance)
 	if err := os.MkdirAll(sessionsDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create sessions directory: %w", err)
@@ -107,7 +105,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 	} else if resumeID != "" {
 		// Validate that the explicitly provided session exists
 		if !session.SessionExists(sessionsDir, resumeID) {
-			return fmt.Errorf("session '%s' not found - check available sessions with: coi list --all", resumeID)
+			return fmt.Errorf("session '%s' not found - check available sessions with: cci list --all", resumeID)
 		}
 		fmt.Fprintf(os.Stderr, "Resuming session: %s\n", resumeID)
 	}
@@ -204,7 +202,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to setup session: %w", err)
 	}
 
-	// Save metadata early so coi list shows correct persistent/ephemeral status
+	// Save metadata early so cci list shows correct persistent/ephemeral status
 	if err := session.SaveMetadataEarly(sessionsDir, sessionID, result.ContainerName, absWorkspace, persistent); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to save early metadata: %v\n", err)
 	}
@@ -401,7 +399,7 @@ func runCLI(result *session.SetupResult, sessionID string, useResumeFlag, restor
 
 // runCLIInTmux executes CLI tool in a tmux session for background/monitoring support
 func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, useResumeFlag, restoreOnly bool, sessionsDir, resumeID string, t tool.Tool) error {
-	tmuxSessionName := fmt.Sprintf("coi-%s", result.ContainerName)
+	tmuxSessionName := fmt.Sprintf("cci-%s", result.ContainerName)
 
 	// Build CLI command
 	var cliCmd string
@@ -512,7 +510,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 				return fmt.Errorf("failed to send command to existing tmux session: %w", err)
 			}
 			fmt.Fprintf(os.Stderr, "Sent command to existing tmux session: %s\n", tmuxSessionName)
-			fmt.Fprintf(os.Stderr, "Use 'coi tmux capture %s' to view output\n", result.ContainerName)
+			fmt.Fprintf(os.Stderr, "Use 'cci tmux capture %s' to view output\n", result.ContainerName)
 			return nil
 		} else {
 			// Attach to existing session
@@ -550,8 +548,8 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		}
 
 		fmt.Fprintf(os.Stderr, "Created background tmux session: %s\n", tmuxSessionName)
-		fmt.Fprintf(os.Stderr, "Use 'coi tmux capture %s' to view output\n", result.ContainerName)
-		fmt.Fprintf(os.Stderr, "Use 'coi tmux send %s \"<command>\"' to send commands\n", result.ContainerName)
+		fmt.Fprintf(os.Stderr, "Use 'cci tmux capture %s' to view output\n", result.ContainerName)
+		fmt.Fprintf(os.Stderr, "Use 'cci tmux send %s \"<command>\"' to send commands\n", result.ContainerName)
 		return nil
 	} else {
 		// Interactive mode: create detached session, then attach
