@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/mensfeld/claude-on-incus/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/container"
 )
 
 // GetContainerPrefix returns the container prefix to use.

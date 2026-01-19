@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mensfeld/claude-on-incus/internal/config"
-	"github.com/mensfeld/claude-on-incus/internal/container"
-	"github.com/mensfeld/claude-on-incus/internal/session"
+	"github.com/thomas/claude-code-isolated/internal/config"
+	"github.com/thomas/claude-code-isolated/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -63,7 +63,7 @@ func cleanCommand(cmd *cobra.Command, args []string) error {
 
 	// Clean stopped containers
 	if cleanAll || (!cleanSessions) {
-		fmt.Println("Checking for stopped claude-on-incus containers...")
+		fmt.Println("Checking for stopped claude-code-isolated containers...")
 
 		containers, err := listActiveContainers()
 		if err != nil {

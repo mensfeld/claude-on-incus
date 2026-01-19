@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mensfeld/claude-on-incus/internal/config"
-	"github.com/mensfeld/claude-on-incus/internal/container"
-	"github.com/mensfeld/claude-on-incus/internal/session"
+	"github.com/thomas/claude-code-isolated/internal/config"
+	"github.com/thomas/claude-code-isolated/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +21,7 @@ var (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List active containers and saved sessions",
-	Long: `List active claude-on-incus containers and saved sessions.
+	Long: `List active claude-code-isolated containers and saved sessions.
 
 By default, shows only active containers. Use --all to also show saved sessions.
 
@@ -121,7 +121,7 @@ type SessionInfo struct {
 	Workspace string
 }
 
-// listActiveContainers lists all active claude-on-incus containers
+// listActiveContainers lists all active claude-code-isolated containers
 func listActiveContainers() ([]ContainerInfo, error) {
 	// Use the configured container prefix (respects COI_CONTAINER_PREFIX env var)
 	prefix := session.GetContainerPrefix()

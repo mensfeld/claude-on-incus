@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mensfeld/claude-on-incus/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/container"
 	"github.com/spf13/cobra"
 )
 

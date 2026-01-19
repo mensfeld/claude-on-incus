@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mensfeld/claude-on-incus/internal/container"
-	"github.com/mensfeld/claude-on-incus/internal/session"
+	"github.com/thomas/claude-code-isolated/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/session"
 	"github.com/spf13/cobra"
 )
 

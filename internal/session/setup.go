@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mensfeld/claude-on-incus/internal/config"
-	"github.com/mensfeld/claude-on-incus/internal/container"
-	"github.com/mensfeld/claude-on-incus/internal/network"
-	"github.com/mensfeld/claude-on-incus/internal/tool"
+	"github.com/thomas/claude-code-isolated/internal/config"
+	"github.com/thomas/claude-code-isolated/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/network"
+	"github.com/thomas/claude-code-isolated/internal/tool"
 )
 
 const (

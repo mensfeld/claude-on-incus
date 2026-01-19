@@ -636,7 +636,7 @@ def get_latest_session_id():
     """
     Get the most recent session ID from sessions directory.
     """
-    sessions_dir = Path.home() / ".claude-on-incus" / "sessions"
+    sessions_dir = Path.home() / ".claude-code-isolated" / "sessions"
 
     if not sessions_dir.exists():
         return None

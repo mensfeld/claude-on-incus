@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mensfeld/claude-on-incus/internal/config"
-	"github.com/mensfeld/claude-on-incus/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/config"
+	"github.com/thomas/claude-code-isolated/internal/container"
 )
 
 // ACLManager manages Incus network ACLs for container isolation

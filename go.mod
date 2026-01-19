@@ -1,4 +1,4 @@
-module github.com/mensfeld/claude-on-incus
+module github.com/thomas/claude-code-isolated
 
 go 1.24.4
 

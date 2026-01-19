@@ -161,9 +161,9 @@ def test_full_installation_process(meta_container, coi_binary):
     # In CI (pull requests), use the PR branch instead of master
     github_branch = os.environ.get("GITHUB_HEAD_REF", "")
     if github_branch:
-        clone_cmd = f"git clone -b {github_branch} https://github.com/mensfeld/claude-on-incus.git"
+        clone_cmd = f"git clone -b {github_branch} https://github.com/thomas/claude-code-isolated.git"
     else:
-        clone_cmd = "git clone https://github.com/mensfeld/claude-on-incus.git"
+        clone_cmd = "git clone https://github.com/thomas/claude-code-isolated.git"
 
     result = exec_in_container(
         container_name,
@@ -171,7 +171,7 @@ def test_full_installation_process(meta_container, coi_binary):
         set -e
         cd /root
         {clone_cmd}
-        cd claude-on-incus
+        cd claude-code-isolated
         /usr/local/go/bin/go build -o coi ./cmd/coi
         ./coi version
         """,
@@ -184,7 +184,7 @@ def test_full_installation_process(meta_container, coi_binary):
     result = exec_in_container(
         container_name,
         """
-        cd /root/claude-on-incus
+        cd /root/claude-code-isolated
         ./coi --help
         """,
         timeout=30,
@@ -199,7 +199,7 @@ def test_full_installation_process(meta_container, coi_binary):
     result = exec_in_container(
         container_name,
         """
-        cd /root/claude-on-incus
+        cd /root/claude-code-isolated
         ./coi images --help
         ./coi list --help
         ./coi shell --help

@@ -5,11 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mensfeld/claude-on-incus/internal/cli"
+	"github.com/thomas/claude-code-isolated/internal/cli"
 )
 
 func main() {
-	// Detect if called as 'coi' or 'claude-on-incus'
+	// Detect if called as 'coi' or 'claude-code-isolated'
 	progName := filepath.Base(os.Args[0])
 	isCoi := progName == "coi"
 

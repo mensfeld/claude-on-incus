@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mensfeld/claude-on-incus/internal/config"
+	"github.com/thomas/claude-code-isolated/internal/config"
 )
 
 // Manager provides high-level network isolation management for containers

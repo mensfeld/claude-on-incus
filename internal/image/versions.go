@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mensfeld/claude-on-incus/internal/container"
+	"github.com/thomas/claude-code-isolated/internal/container"
 )
 
 // ImageInfo contains image metadata

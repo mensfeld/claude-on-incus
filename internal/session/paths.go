@@ -3,7 +3,7 @@ package session
 import (
 	"path/filepath"
 
-	"github.com/mensfeld/claude-on-incus/internal/tool"
+	"github.com/thomas/claude-code-isolated/internal/tool"
 )
 
 // GetSessionsDir returns the sessions directory path for a given tool.

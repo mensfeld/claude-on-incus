@@ -2,7 +2,7 @@
 
 # Binary name
 BINARY_NAME=coi
-BINARY_FULL=claude-on-incus
+BINARY_FULL=claude-code-isolated
 
 # Build directory
 BUILD_DIR=.
@@ -25,7 +25,7 @@ GOVET=$(GOCMD) vet
 
 # Version injection
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-LDFLAGS=-ldflags "-X github.com/mensfeld/claude-on-incus/internal/cli.Version=$(VERSION)"
+LDFLAGS=-ldflags "-X github.com/thomas/claude-code-isolated/internal/cli.Version=$(VERSION)"
 
 # Build the project
 build:
