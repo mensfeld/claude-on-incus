@@ -177,7 +177,7 @@ For users who prefer to verify each step or cannot use the automated installer:
 If you prefer to build from source or need a specific version:
 
 ```bash
-# Prerequisites: Go 1.22 or later
+# Prerequisites: Go 1.24.4 or later
 git clone https://github.com/mensfeld/claude-on-incus.git
 cd claude-on-incus
 make build
