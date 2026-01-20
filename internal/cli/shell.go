@@ -192,6 +192,7 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 		CLIConfigPath: cliConfigPath,
 		Tool:          toolInstance,
 		NetworkConfig: &networkConfig,
+		DisableShift:  cfg.Incus.DisableShift,
 	}
 
 	if storage != "" {

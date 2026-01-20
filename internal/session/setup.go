@@ -42,6 +42,7 @@ type SetupOptions struct {
 	CLIConfigPath string    // e.g., ~/.claude (host CLI config to copy credentials from)
 	Tool          tool.Tool // AI coding tool being used
 	NetworkConfig *config.NetworkConfig
+	DisableShift  bool      // Disable UID shifting (for Colima/Lima environments)
 	Logger        func(string)
 }
 
@@ -158,7 +159,8 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 		// Configure UID/GID mapping for bind mounts based on environment
 		// Local: Use shift=true (kernel idmap support)
 		// CI: Use raw.idmap (kernel lacks idmap support, runner UID 1001 → container UID 1000)
-		useShift := true
+		// Colima/Lima: Disable shift (VM already handles UID mapping via virtiofs)
+		useShift := !opts.DisableShift // Config can disable shift for Colima/Lima environments
 		isCI := os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
 
 		if isCI {
@@ -167,6 +169,8 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 				opts.Logger(fmt.Sprintf("Warning: Failed to set raw.idmap: %v", err))
 			}
 			useShift = false // Don't use shift=true with raw.idmap
+		} else if opts.DisableShift {
+			opts.Logger("UID shifting disabled (Colima/Lima environment)")
 		}
 
 		// Add disk devices BEFORE starting container
