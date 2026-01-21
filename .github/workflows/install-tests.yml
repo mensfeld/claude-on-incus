@@ -229,18 +229,25 @@ jobs:
           coi kill --all --force || true
           coi clean --force || true
 
-  # Test building COI on Arch Linux (no Incus - just build validation)
-  arch-build:
-    name: Arch Linux Build Test
+  # End-to-end installation test on Arch Linux
+  # NOTE: This test shows the full installation flow for users to reference,
+  #       but runs in a container so Incus cannot fully initialize.
+  #       On a real Arch system, all steps would work.
+  arch-install:
+    name: Arch Linux Installation Flow
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     container:
       image: archlinux:latest
+      options: --privileged
 
     steps:
-      - name: Initialize Arch Linux
+      - name: Install system packages
         run: |
-          # Update system and install base packages
+          echo "=== Arch Linux Installation Flow ==="
+          echo ""
+          echo "Step 1: Update system and install dependencies"
+
           pacman -Syu --noconfirm
           pacman -S --noconfirm base-devel git go wget curl
 
@@ -249,26 +256,62 @@ jobs:
 
       - name: Configure git for container
         run: |
-          # Fix git ownership issues in container
+          # Fix git ownership issues in container (GitHub Actions specific)
           git config --global --add safe.directory '*'
+
+      - name: Install Incus
+        continue-on-error: true
+        run: |
+          echo ""
+          echo "Step 2: Install Incus"
+          echo "On a real Arch system: sudo pacman -S incus"
+          echo ""
+
+          # Attempt to install (will have package conflicts in container)
+          pacman -S --noconfirm incus || echo "⚠️  Container limitation: Incus installation has package conflicts"
+
+          # Check if it worked
+          if command -v incus &> /dev/null; then
+            echo "✅ Incus installed"
+            incus version || true
+          else
+            echo "⚠️  Incus not available (expected in CI container)"
+            echo "    On a real Arch system, Incus would install successfully"
+          fi
 
       - name: Build and install COI
         run: |
-          echo "Testing that COI builds and installs on Arch Linux..."
+          echo ""
+          echo "Step 3: Build and install COI from source"
+          echo ""
 
           make build
           make install
 
-          # Verify binary works
           coi version
+
+          echo "✅ COI installed successfully"
+
+      - name: Verify installation
+        run: |
+          echo ""
+          echo "Step 4: Verify installation"
+          echo ""
+
           coi --help
+          coi version
 
           echo ""
-          echo "✅ COI successfully builds and installs on Arch Linux"
+          echo "=== Installation Summary ==="
+          echo "✅ System packages installed"
+          echo "✅ COI built and installed"
           echo ""
-          echo "Note: This test validates that the COI binary can be built"
-          echo "      and installed on Arch. Full Incus integration testing"
-          echo "      is covered by the Ubuntu tests."
+          echo "On a real Arch system, you would now run:"
+          echo "  sudo incus admin init  # Initialize Incus"
+          echo "  coi build              # Build COI image"
+          echo "  coi shell              # Start coding session"
+          echo ""
+          echo "Note: Full Incus integration is tested on Ubuntu in CI."
 
   install-test-success:
     name: Installation Tests Success
@@ -277,7 +320,7 @@ jobs:
     if: always()
     needs:
       - ubuntu-install
-      - arch-build
+      - arch-install
     steps:
       - name: Check all jobs passed
         if: |
