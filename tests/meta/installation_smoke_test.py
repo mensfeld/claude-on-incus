@@ -184,7 +184,7 @@ def test_full_installation_process(meta_container, coi_binary):
     result = exec_in_container(
         container_name,
         """
-        cd /root/claude-on-incus
+        cd /root/code-on-incus
         ./coi --help
         """,
         timeout=30,
@@ -199,7 +199,7 @@ def test_full_installation_process(meta_container, coi_binary):
     result = exec_in_container(
         container_name,
         """
-        cd /root/claude-on-incus
+        cd /root/code-on-incus
         ./coi images --help
         ./coi list --help
         ./coi shell --help
