@@ -7,11 +7,11 @@ import (
 
 func TestIsColimaOrLimaEnvironment(t *testing.T) {
 	tests := []struct {
-		name           string
-		procMounts     string
-		userEnv        string
-		expected       bool
-		shouldCreate   bool
+		name         string
+		procMounts   string
+		userEnv      string
+		expected     bool
+		shouldCreate bool
 	}{
 		{
 			name: "Detects Lima via virtiofs mount",
@@ -53,7 +53,7 @@ tmpfs /tmp tmpfs rw,nosuid,nodev 0 0
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create temporary /proc/mounts file
-			tmpFile := ""
+			var tmpFile string
 			if tt.shouldCreate {
 				f, err := os.CreateTemp("", "mounts")
 				if err != nil {
