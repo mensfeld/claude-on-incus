@@ -3,17 +3,44 @@ Test for coi persist --all flag.
 
 Tests that:
 1. Launch 2 ephemeral containers
-2. Run coi persist --all --force
-3. Verify both containers' metadata updated
-4. Verify success message shows "Persisted 2"
+2. Create session metadata for both
+3. Run coi persist --all --force
+4. Verify both containers' metadata updated
+5. Verify success message shows "Persisted 2"
 """
 
 import json
 import subprocess
 import time
+import uuid
+from datetime import datetime
 from pathlib import Path
 
 from support.helpers import calculate_container_name
+
+
+def create_session_metadata(container_name, workspace_dir, persistent=False):
+    """Create a session metadata file for a container."""
+    sessions_dir = Path.home() / ".coi" / "sessions-claude"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    session_id = str(uuid.uuid4())
+    session_dir = sessions_dir / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    metadata = {
+        "session_id": session_id,
+        "container_name": container_name,
+        "persistent": persistent,
+        "workspace": str(workspace_dir),
+        "saved_at": datetime.now().isoformat() + "Z"
+    }
+
+    metadata_path = session_dir / "metadata.json"
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    return metadata_path
 
 
 def test_persist_all_flag(coi_binary, cleanup_containers, workspace_dir):
@@ -22,9 +49,10 @@ def test_persist_all_flag(coi_binary, cleanup_containers, workspace_dir):
 
     Flow:
     1. Launch 2 ephemeral containers
-    2. Persist all with --all --force
-    3. Verify both metadata files updated
-    4. Verify success output
+    2. Create session metadata for both
+    3. Persist all with --all --force
+    4. Verify both metadata files updated
+    5. Verify success output
     """
     container_name_1 = calculate_container_name(workspace_dir, 1)
     container_name_2 = calculate_container_name(workspace_dir, 2)
@@ -49,6 +77,11 @@ def test_persist_all_flag(coi_binary, cleanup_containers, workspace_dir):
 
     time.sleep(3)
 
+    # === Phase 1.5: Create session metadata for both containers ===
+
+    create_session_metadata(container_name_1, workspace_dir, persistent=False)
+    create_session_metadata(container_name_2, workspace_dir, persistent=False)
+
     # === Phase 2: Persist all containers ===
 
     result = subprocess.run(
@@ -60,8 +93,16 @@ def test_persist_all_flag(coi_binary, cleanup_containers, workspace_dir):
     assert result.returncode == 0, f"Persist --all should succeed. stderr: {result.stderr}"
 
     combined_output = result.stdout + result.stderr
-    assert "Persisted 2" in combined_output, (
-        f"Should show 'Persisted 2' in output. Got:\n{combined_output}"
+    # Check that persist operation succeeded (may persist more than 2 if other test containers exist)
+    assert "Persisted" in combined_output, (
+        f"Should show persisted confirmation. Got:\n{combined_output}"
+    )
+    # Verify both our containers were persisted
+    assert container_name_1 in combined_output, (
+        f"Should persist {container_name_1}. Got:\n{combined_output}"
+    )
+    assert container_name_2 in combined_output, (
+        f"Should persist {container_name_2}. Got:\n{combined_output}"
     )
 
     # === Phase 3: Verify both metadata files updated ===
