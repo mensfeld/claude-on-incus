@@ -33,7 +33,7 @@ def create_session_metadata(container_name, workspace_dir, persistent=False):
         "container_name": container_name,
         "persistent": persistent,
         "workspace": str(workspace_dir),
-        "saved_at": datetime.now().isoformat() + "Z"
+        "saved_at": datetime.now().isoformat() + "Z",
     }
 
     metadata_path = session_dir / "metadata.json"

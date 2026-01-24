@@ -46,6 +46,6 @@ def test_persist_nonexistent_container(coi_binary):
     # If it exits with error, that's acceptable
     # If it shows warning but exits 0, that's also acceptable (warn and continue pattern)
     # But it should NOT silently succeed
-    assert (
-        result.returncode != 0 or "warning" in combined_output.lower()
-    ), "Should either error or show warning for nonexistent container"
+    assert result.returncode != 0 or "warning" in combined_output.lower(), (
+        "Should either error or show warning for nonexistent container"
+    )
