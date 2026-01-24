@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## Unreleased
+
+### Features
+
+- [Feature] Add `coi persist` command to convert ephemeral sessions to persistent - Allows converting running ephemeral containers to persistent mode, preventing automatic deletion when stopped. Supports `--all` flag to persist all containers and `--force` to skip confirmations. Use `coi list` to verify persistence mode.
+
+### Testing
+
+- [Testing] Added integration tests for `coi persist` command - Five test scenarios covering basic operation, bulk operations, state verification, and error handling (tests/persist/ directory).
+
 ## 0.5.2 (2026-01-19)
 
 ### Bug Fixes
