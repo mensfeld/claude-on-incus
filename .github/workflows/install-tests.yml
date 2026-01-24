@@ -340,10 +340,12 @@ jobs:
       - name: Start Colima with Incus runtime
         run: |
           echo "Starting Colima with Incus backend..."
-          colima start --runtime incus --cpu 2 --memory 4
+          # Use QEMU driver for better CI compatibility
+          # VZ driver has issues in GitHub Actions environment
+          colima start --runtime incus --cpu 2 --memory 4 --vm-type qemu
 
           # Wait for Colima to be ready
-          sleep 10
+          sleep 20
 
           # Verify Incus is available
           incus version
