@@ -158,12 +158,16 @@ def test_full_installation_process(meta_container, coi_binary):
     assert "go version" in result.stdout, "Go installation verification failed"
 
     # Phase 3: Clone repository and build coi
-    # In CI (pull requests), use the PR branch instead of master
+    # In CI (pull requests), use the PR branch and repository (handles forks correctly)
     github_branch = os.environ.get("GITHUB_HEAD_REF", "")
+    github_repo_url = os.environ.get(
+        "GITHUB_REPOSITORY_URL", "https://github.com/mensfeld/code-on-incus.git"
+    )
+
     if github_branch:
-        clone_cmd = f"git clone -b {github_branch} https://github.com/mensfeld/code-on-incus.git"
+        clone_cmd = f"git clone -b {github_branch} {github_repo_url}"
     else:
-        clone_cmd = "git clone https://github.com/mensfeld/code-on-incus.git"
+        clone_cmd = f"git clone {github_repo_url}"
 
     result = exec_in_container(
         container_name,

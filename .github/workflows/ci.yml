@@ -304,6 +304,7 @@ jobs:
           python -m pytest tests/ -v --tb=short --durations=0 --cov=tests --cov-report=term-missing
         env:
           COI_BINARY: ./coi
+          GITHUB_REPOSITORY_URL: ${{ github.event.pull_request.head.repo.clone_url || format('https://github.com/{0}.git', github.repository) }}
 
       - name: Cleanup
         if: always()

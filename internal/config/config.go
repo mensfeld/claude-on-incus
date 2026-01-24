@@ -31,10 +31,11 @@ type PathsConfig struct {
 
 // IncusConfig contains Incus-specific settings
 type IncusConfig struct {
-	Project  string `toml:"project"`
-	Group    string `toml:"group"`
-	CodeUID  int    `toml:"code_uid"`
-	CodeUser string `toml:"code_user"`
+	Project      string `toml:"project"`
+	Group        string `toml:"group"`
+	CodeUID      int    `toml:"code_uid"`
+	CodeUser     string `toml:"code_user"`
+	DisableShift bool   `toml:"disable_shift"` // Disable UID shifting (for Colima/Lima environments)
 }
 
 // NetworkMode represents the network isolation mode
@@ -227,6 +228,10 @@ func (c *Config) Merge(other *Config) {
 	}
 	if other.Tool.Binary != "" {
 		c.Tool.Binary = other.Tool.Binary
+	}
+	// For DisableShift, if the other config sets it to true, use it
+	if other.Incus.DisableShift {
+		c.Incus.DisableShift = true
 	}
 
 	// Merge profiles
