@@ -314,11 +314,12 @@ jobs:
           echo "Note: Full Incus integration is tested on Ubuntu in CI."
 
   # End-to-end installation test on macOS with Colima
-  # NOTE: Using macos-13 (Intel) because ARM runners (macos-14+) don't support
-  # nested virtualization required for Colima/Lima VMs
+  # NOTE: Using macos-15-intel (Intel) because ARM runners (macos-14/15) don't support
+  # nested virtualization required for Colima/Lima VMs. macos-13 was deprecated in 2025.
+  # macos-15-intel will be available until August 2027.
   macos-install:
     name: macOS Installation Test (Colima)
-    runs-on: macos-13
+    runs-on: macos-15-intel
     timeout-minutes: 45
     strategy:
       matrix:
