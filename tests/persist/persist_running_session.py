@@ -45,9 +45,7 @@ def test_persist_running_session(coi_binary, cleanup_containers, workspace_dir):
 
     # === Phase 1: Start ephemeral shell and create content ===
 
-    child = spawn_coi(
-        coi_binary, ["shell", "--workspace", workspace_dir, "--slot", "1"], env=env
-    )
+    child = spawn_coi(coi_binary, ["shell", "--workspace", workspace_dir, "--slot", "1"], env=env)
 
     wait_for_container_ready(child, timeout=90)
     wait_for_prompt(child, timeout=90)
