@@ -145,10 +145,32 @@ def test_persist_running_session(coi_binary, cleanup_containers, workspace_dir):
         f"Container should STILL show as (persistent) after exit. Got:\n{list_output_after}"
     )
 
-    # Success! The persist command worked:
-    # ✅ Container still exists after exiting ephemeral session
-    # ✅ coi list shows (persistent) while running
-    # ✅ coi list shows (persistent) after exit
-    #
-    # Note: Content preservation requires using coi shell with --resume
-    # to reattach to the same container, not coi run which recreates it
+    # === Phase 6: Verify data is actually preserved ===
+
+    # Start the container if stopped
+    subprocess.run(
+        [coi_binary, "container", "start", container_name],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    time.sleep(2)
+
+    # Use exec to check file directly in the persisted container
+    result = subprocess.run(
+        [coi_binary, "container", "exec", container_name, "cat", marker_file],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, (
+        f"File should exist in persisted container. stderr: {result.stderr}"
+    )
+
+    # Check both stdout and stderr for the content (output location varies)
+    combined_output = result.stdout + result.stderr
+    assert marker_content in combined_output, (
+        f"File content should be preserved. Expected '{marker_content}', "
+        f"got stdout: {result.stdout}, stderr: {result.stderr}"
+    )
