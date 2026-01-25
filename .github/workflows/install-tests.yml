@@ -353,39 +353,26 @@ jobs:
 
       - name: Initialize Incus
         run: |
-          # Initialize Incus with minimal config
-          cat <<EOF | incus admin init --preseed
-          config: {}
-          networks:
-          - config:
-              ipv4.address: auto
-              ipv6.address: none
-            name: incusbr0
-            type: bridge
-          storage_pools:
-          - config:
-              size: 10GiB
-            name: default
-            driver: dir
-          profiles:
-          - config: {}
-            devices:
-              eth0:
-                name: eth0
-                network: incusbr0
-                type: nic
-              root:
-                path: /
-                pool: default
-                type: disk
-            name: default
-          EOF
+          # Initialize Incus with minimal config using command-line flags
+          # The Homebrew version doesn't support --preseed flag
+
+          # Create storage pool
+          incus storage create default dir
+
+          # Create network
+          incus network create incusbr0 ipv4.address=auto ipv6.address=none
 
           # Enable NAT
           incus network set incusbr0 ipv4.nat=true
 
+          # Update default profile with network and storage
+          incus profile device add default eth0 nic network=incusbr0
+          incus profile device add default root disk path=/ pool=default
+
           # Verify Incus is working
           incus list
+          incus network list
+          incus storage list
 
       - name: Install COI (binary method)
         if: matrix.install_method == 'binary'
