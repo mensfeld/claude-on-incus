@@ -8,6 +8,7 @@ import (
 
 	"github.com/mensfeld/code-on-incus/internal/container"
 	"github.com/mensfeld/code-on-incus/internal/session"
+	"github.com/mensfeld/code-on-incus/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
@@ -125,10 +126,7 @@ func attachToContainer(containerName string) error {
 	mgr := container.NewManager(containerName)
 
 	// Get TERM with fallback (same as shell command)
-	termEnv := os.Getenv("TERM")
-	if termEnv == "" {
-		termEnv = "xterm-256color" // Fallback to widely compatible terminal
-	}
+	termEnv := terminal.SanitizeTerm(os.Getenv("TERM"))
 
 	// Execute as code user with proper environment setup
 	user := container.CodeUID

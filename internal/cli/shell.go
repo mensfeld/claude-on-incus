@@ -12,6 +12,7 @@ import (
 	"github.com/mensfeld/code-on-incus/internal/config"
 	"github.com/mensfeld/code-on-incus/internal/container"
 	"github.com/mensfeld/code-on-incus/internal/session"
+	"github.com/mensfeld/code-on-incus/internal/terminal"
 	"github.com/mensfeld/code-on-incus/internal/tool"
 	"github.com/spf13/cobra"
 )
@@ -377,8 +378,8 @@ func runCLI(result *session.SetupResult, sessionID string, useResumeFlag, restor
 	// Build environment variables
 	containerEnv := map[string]string{
 		"HOME":       result.HomeDir,
-		"TERM":       os.Getenv("TERM"), // Preserve terminal type
-		"IS_SANDBOX": "1",               // Always set sandbox mode
+		"TERM":       terminal.SanitizeTerm(os.Getenv("TERM")), // Use sanitized terminal type
+		"IS_SANDBOX": "1",                                      // Always set sandbox mode
 	}
 
 	// Merge user-provided --env vars
@@ -449,10 +450,7 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 	userPtr := &user
 
 	// Get TERM with fallback
-	termEnv := os.Getenv("TERM")
-	if termEnv == "" {
-		termEnv = "xterm-256color" // Fallback to widely compatible terminal
-	}
+	termEnv := terminal.SanitizeTerm(os.Getenv("TERM"))
 
 	containerEnv := map[string]string{
 		"HOME":       result.HomeDir,
