@@ -182,6 +182,39 @@ jobs:
 
           echo "✓ All basic commands work"
 
+      - name: Test exotic terminal types (issue #53)
+        run: |
+          echo "======================================"
+          echo "Testing exotic TERM values (issue #53)"
+          echo "======================================"
+          echo ""
+          echo "This test validates that modern terminals like Ghostty,"
+          echo "WezTerm, Alacritty, and Kitty work correctly."
+          echo ""
+
+          # Test with various exotic terminal types
+          for TERM_VALUE in "xterm-ghostty" "wezterm" "alacritty" "kitty"; do
+            echo "Testing with TERM=$TERM_VALUE..."
+
+            # Set TERM and try to run a simple command in a container
+            # This will fail if TERM is not properly sanitized
+            if TERM="$TERM_VALUE" timeout 30 coi shell --debug -e "TERM=$TERM_VALUE" <<< 'echo "Terminal test successful"; exit' 2>&1 | tee /tmp/term-test.log; then
+              echo "✓ TERM=$TERM_VALUE worked correctly"
+            else
+              # Check if it failed due to terminal issues
+              if grep -q "missing or unsuitable terminal" /tmp/term-test.log; then
+                echo "✗ FAILED: Got 'missing or unsuitable terminal' error with TERM=$TERM_VALUE"
+                echo "This indicates issue #53 is NOT fixed"
+                exit 1
+              else
+                echo "✓ No terminal-related errors with TERM=$TERM_VALUE"
+              fi
+            fi
+            echo ""
+          done
+
+          echo "✓ All exotic terminal types handled correctly"
+
       - name: Test Quick Start scenario (USER'S ACTUAL WORKFLOW)
         if: matrix.install_method == 'binary'
         run: |
