@@ -55,6 +55,29 @@ func buildJSONFromSettings(settings map[string]interface{}) (string, error) {
 	return string(jsonBytes), nil
 }
 
+// setupMounts mounts all configured directories to the container
+func setupMounts(mgr *container.Manager, mountConfig *MountConfig, useShift bool, logger func(string)) error {
+	if mountConfig == nil || len(mountConfig.Mounts) == 0 {
+		return nil
+	}
+
+	for _, mount := range mountConfig.Mounts {
+		// Create host directory if it doesn't exist
+		if err := os.MkdirAll(mount.HostPath, 0o755); err != nil {
+			return fmt.Errorf("failed to create mount directory '%s': %w", mount.HostPath, err)
+		}
+
+		logger(fmt.Sprintf("Adding mount: %s -> %s", mount.HostPath, mount.ContainerPath))
+
+		// Apply shift setting (all mounts use same shift for now)
+		if err := mgr.MountDisk(mount.DeviceName, mount.HostPath, mount.ContainerPath, useShift); err != nil {
+			return fmt.Errorf("failed to add mount '%s': %w", mount.DeviceName, err)
+		}
+	}
+
+	return nil
+}
+
 // SetupOptions contains options for setting up a session
 type SetupOptions struct {
 	WorkspacePath string
@@ -219,20 +242,8 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 		}
 
 		// Mount all configured directories
-		if opts.MountConfig != nil && len(opts.MountConfig.Mounts) > 0 {
-			for _, mount := range opts.MountConfig.Mounts {
-				// Create host directory if it doesn't exist
-				if err := os.MkdirAll(mount.HostPath, 0o755); err != nil {
-					return nil, fmt.Errorf("failed to create mount directory '%s': %w", mount.HostPath, err)
-				}
-
-				opts.Logger(fmt.Sprintf("Adding mount: %s -> %s", mount.HostPath, mount.ContainerPath))
-
-				// Apply shift setting (all mounts use same shift for now)
-				if err := result.Manager.MountDisk(mount.DeviceName, mount.HostPath, mount.ContainerPath, useShift); err != nil {
-					return nil, fmt.Errorf("failed to add mount '%s': %w", mount.DeviceName, err)
-				}
-			}
+		if err := setupMounts(result.Manager, opts.MountConfig, useShift, opts.Logger); err != nil {
+			return nil, err
 		}
 
 		// Setup network isolation (before starting container)
