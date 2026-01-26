@@ -77,7 +77,6 @@ func TestExoticTermWithTmuxCommand(t *testing.T) {
 			// Execute the command
 			cmd := exec.Command("bash", "-c", tmuxCmd)
 			output, err := cmd.CombinedOutput()
-
 			if err != nil {
 				// Check if it's the specific "missing or unsuitable terminal" error from #53
 				if strings.Contains(string(output), "missing or unsuitable terminal") {

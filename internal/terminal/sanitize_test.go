@@ -4,9 +4,9 @@ import "testing"
 
 func TestSanitizeTerm(t *testing.T) {
 	tests := []struct {
-		name  string
-		term  string
-		want  string
+		name string
+		term string
+		want string
 	}{
 		// Empty TERM
 		{

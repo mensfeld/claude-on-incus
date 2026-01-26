@@ -89,7 +89,6 @@ func TestSanitizeTerm_DirectUseFailure(t *testing.T) {
 	cmd.Env = append(os.Environ(), fmt.Sprintf("TERM=%s", exoticTerm))
 
 	output, err := cmd.CombinedOutput()
-
 	// We EXPECT this to fail, demonstrating the problem
 	if err != nil {
 		if strings.Contains(string(output), "missing or unsuitable terminal") {
