@@ -32,7 +32,14 @@ container = "/mnt/data2"
 
     # Run from workspace directory so config is loaded
     result = subprocess.run(
-        [coi_binary, "run", "--", "sh", "-c", "cat /mnt/data1/file1.txt && cat /mnt/data2/file2.txt"],
+        [
+            coi_binary,
+            "run",
+            "--",
+            "sh",
+            "-c",
+            "cat /mnt/data1/file1.txt && cat /mnt/data2/file2.txt",
+        ],
         capture_output=True,
         text=True,
         timeout=120,
