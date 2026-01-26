@@ -99,3 +99,38 @@ func TestSanitizeTermDeterministic(t *testing.T) {
 		t.Errorf("SanitizeTerm() not deterministic: %s != %s", result1, result2)
 	}
 }
+
+func TestSanitizeTermFromEnvFlag(t *testing.T) {
+	// Test that exotic TERM values passed via -e flag get sanitized
+	// This ensures users can't bypass sanitization by using -e TERM=xterm-ghostty
+	tests := []struct {
+		name     string
+		userTerm string
+		want     string
+	}{
+		{
+			name:     "user passes exotic TERM via -e flag",
+			userTerm: "xterm-ghostty",
+			want:     "xterm-256color",
+		},
+		{
+			name:     "user passes wezterm via -e flag",
+			userTerm: "wezterm",
+			want:     "xterm-256color",
+		},
+		{
+			name:     "user passes standard TERM via -e flag",
+			userTerm: "xterm-256color",
+			want:     "xterm-256color",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SanitizeTerm(tt.userTerm)
+			if got != tt.want {
+				t.Errorf("SanitizeTerm(%q) = %q, want %q (user should not be able to bypass sanitization)", tt.userTerm, got, tt.want)
+			}
+		})
+	}
+}

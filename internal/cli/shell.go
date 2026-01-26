@@ -390,6 +390,11 @@ func runCLI(result *session.SetupResult, sessionID string, useResumeFlag, restor
 		}
 	}
 
+	// Sanitize TERM if user explicitly provided it via -e flag
+	if userTerm, exists := containerEnv["TERM"]; exists {
+		containerEnv["TERM"] = terminal.SanitizeTerm(userTerm)
+	}
+
 	opts := container.ExecCommandOptions{
 		User:        userPtr,
 		Cwd:         "/workspace",
@@ -464,6 +469,11 @@ func runCLIInTmux(result *session.SetupResult, sessionID string, detached bool, 
 		if len(parts) == 2 {
 			containerEnv[parts[0]] = parts[1]
 		}
+	}
+
+	// Sanitize TERM if user explicitly provided it via -e flag
+	if userTerm, exists := containerEnv["TERM"]; exists {
+		containerEnv["TERM"] = terminal.SanitizeTerm(userTerm)
 	}
 
 	// Build environment export commands for tmux
