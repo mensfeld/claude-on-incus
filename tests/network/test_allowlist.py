@@ -3,20 +3,14 @@ Integration tests for network allowlist mode.
 
 Tests the domain allowlisting feature with DNS resolution and IP-based filtering.
 
-Note: These tests require OVN networking.
+Note: These tests require OVN networking (now configured in CI).
 """
 
 import os
 import subprocess
 import tempfile
 
-import pytest
-
-# Skip in CI - allowlist mode requires OVN networking
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true",
-    reason="Allowlist network mode requires OVN networking (not available in CI)",
-)
+# OVN networking is now configured in CI, so these tests can run!
 
 
 def test_allowlist_mode_allows_specified_domains(coi_binary, workspace_dir, cleanup_containers):

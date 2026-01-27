@@ -112,7 +112,23 @@ jobs:
           SOURCES'
 
           sudo apt-get update
-          sudo apt-get install -y incus
+          sudo apt-get install -y incus ovn-host ovn-central
+
+      - name: Configure OVN
+        run: |
+          # Configure OVN to listen on TCP (required for Incus integration)
+          sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
+          sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
+
+          # Configure Open vSwitch to connect to OVN
+          sudo ovs-vsctl set open_vswitch . \
+            external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
+            external_ids:ovn-encap-type=geneve \
+            external_ids:ovn-encap-ip=127.0.0.1
+
+          # Verify OVS configuration
+          echo "OVN configuration:"
+          sudo ovs-vsctl get open_vswitch . external_ids
 
       - name: Initialize Incus
         run: |
@@ -129,17 +145,19 @@ jobs:
           sudo systemctl restart incus || true
           sleep 5
 
-          # Initialize Incus with btrfs storage (faster than default dir storage)
+          # Initialize Incus with btrfs storage and OVN networking
           # Using preseed for explicit configuration
           cat <<EOF | sudo incus admin init --preseed
           config:
             images.compression_algorithm: none
           networks:
           - config:
-              ipv4.address: auto
-              ipv6.address: auto
-            name: incusbr0
-            type: bridge
+              bridge.mtu: "1442"
+              ipv4.address: 10.215.220.1/24
+              ipv4.nat: "true"
+              ipv6.address: none
+            name: ovn-net
+            type: ovn
           storage_pools:
           - config:
               size: 15GiB
@@ -150,7 +168,7 @@ jobs:
             devices:
               eth0:
                 name: eth0
-                network: incusbr0
+                network: ovn-net
                 type: nic
               root:
                 path: /
@@ -165,9 +183,8 @@ jobs:
           # Add current user to incus-admin group
           sudo usermod -aG incus-admin $USER
 
-          # Ensure NAT is enabled on the bridge
-          incus network set incusbr0 ipv4.nat=true
-          incus network set incusbr0 ipv6.nat=true
+          echo "OVN network configured successfully"
+          incus network list
 
       - name: Check kernel idmap support
         run: |
@@ -182,7 +199,7 @@ jobs:
           echo "Checking if AppArmor is blocking bind mounts:"
           sudo dmesg | grep -i "apparmor.*denied" | tail -20 || echo "No recent AppArmor denials"
 
-      - name: Configure networking for Incus
+      - name: Configure networking for Incus with OVN
         run: |
           # Enable IP forwarding (required for container networking)
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
@@ -191,28 +208,23 @@ jobs:
           # Get default interface for outbound traffic
           DEFAULT_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
 
-          # Use DOCKER-USER chain (same approach as canonical/setup-lxd)
-          # Docker respects this chain and won't interfere with our rules
+          # OVN uses geneve interfaces - allow traffic through FORWARD chain
           if sudo iptables -nL DOCKER-USER 2>/dev/null; then
-            sudo iptables -I DOCKER-USER -i incusbr0 -j ACCEPT
-            sudo iptables -I DOCKER-USER -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+            # Use DOCKER-USER chain (same approach as canonical/setup-lxd)
+            sudo iptables -I DOCKER-USER -i genev_sys_6081 -j ACCEPT
+            sudo iptables -I DOCKER-USER -o genev_sys_6081 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
           else
             # Fallback to FORWARD chain if DOCKER-USER doesn't exist
             sudo iptables -P FORWARD ACCEPT
-            sudo iptables -I FORWARD 1 -i incusbr0 -j ACCEPT
-            sudo iptables -I FORWARD 1 -o incusbr0 -j ACCEPT
+            sudo iptables -I FORWARD 1 -i genev_sys_6081 -j ACCEPT
+            sudo iptables -I FORWARD 1 -o genev_sys_6081 -j ACCEPT
           fi
 
-          # Add NAT/MASQUERADE rules for Incus bridge subnet
-          BRIDGE_SUBNET=$(ip -4 addr show incusbr0 | grep -oP 'inet \K[\d.]+/\d+' || echo "")
-          if [ -n "$BRIDGE_SUBNET" ]; then
-            sudo iptables -t nat -I POSTROUTING 1 -s $BRIDGE_SUBNET -o $DEFAULT_IFACE -j MASQUERADE
-          fi
+          # Add NAT/MASQUERADE rules for OVN subnet (10.215.220.0/24)
+          sudo iptables -t nat -I POSTROUTING 1 -s 10.215.220.0/24 -o $DEFAULT_IFACE -j MASQUERADE
 
-          # Add NAT rules for common private IP ranges
-          sudo iptables -t nat -I POSTROUTING 1 -s 10.0.0.0/8 ! -d 10.0.0.0/8 -o $DEFAULT_IFACE -j MASQUERADE
-          sudo iptables -t nat -I POSTROUTING 1 -s 172.16.0.0/12 ! -d 172.16.0.0/12 -o $DEFAULT_IFACE -j MASQUERADE
-          sudo iptables -t nat -I POSTROUTING 1 -s 192.168.0.0/16 ! -d 192.168.0.0/16 -o $DEFAULT_IFACE -j MASQUERADE
+          echo "Network configuration for OVN complete"
+          sudo iptables -L -n -v | head -20
 
       - name: Pre-cache base Ubuntu image
         run: |
@@ -226,16 +238,17 @@ jobs:
           go build -o coi ./cmd/coi
           ./coi version
 
-      - name: Configure COI for CI (use open network mode)
+      - name: Configure COI for CI (use restricted network mode with OVN)
         run: |
-          # CI doesn't have OVN, so use open network mode by default
-          # This allows all tests except network-specific restricted mode tests to run
+          # CI now has OVN configured, so we can test restricted/allowlist modes
           mkdir -p ~/.config/coi
           cat > ~/.config/coi/config.toml << 'EOF'
           [network]
-          mode = "open"
+          mode = "restricted"
+          block_private_networks = true
+          block_metadata_endpoint = true
           EOF
-          echo "Created COI config with network.mode = open"
+          echo "Created COI config with network.mode = restricted (OVN enabled)"
 
       - name: Test bind mount functionality
         run: |

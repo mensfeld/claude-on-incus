@@ -6,20 +6,14 @@ Tests that:
 2. Works regardless of what private network range the host uses
 3. Dynamically discovers the gateway IP
 
-Note: This test requires OVN networking which is not available in CI.
+Note: This test requires OVN networking (now configured in CI).
 """
 
 import os
 import subprocess
 import time
 
-import pytest
 
-# Skip in CI - restricted mode requires OVN networking
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true",
-    reason="Restricted network mode requires OVN networking (not available in CI)",
-)
 
 
 def test_restricted_blocks_local_gateway(coi_binary, workspace_dir, cleanup_containers):
