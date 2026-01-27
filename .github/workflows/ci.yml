@@ -372,6 +372,49 @@ jobs:
           EOF
           echo "Created COI config with network.mode = open (tests can override for isolation testing)"
 
+      - name: Debug OVN connectivity (OVN only)
+        if: matrix.network_type == 'ovn'
+        run: |
+          echo "=== Testing OVN host-to-container connectivity ==="
+
+          # Create a simple test container
+          echo "Creating test container..."
+          incus launch images:ubuntu/22.04 ovn-test -n ovn-net
+          sleep 5
+
+          # Get container IP
+          CONTAINER_IP=$(incus list ovn-test --format json | jq -r '.[0].state.network.eth0.addresses[0].address')
+          echo "Container IP: $CONTAINER_IP"
+
+          # Test ping from host to container
+          echo "Testing ping from host to container..."
+          ping -c 3 $CONTAINER_IP || echo "PING FAILED"
+
+          # Start HTTP server in container
+          echo "Starting HTTP server in container..."
+          incus exec ovn-test -- bash -c "nohup python3 -m http.server 8000 > /tmp/http.log 2>&1 &"
+          sleep 2
+
+          # Check if server is running
+          echo "Checking if HTTP server is running in container..."
+          incus exec ovn-test -- netstat -tlnp | grep 8000 || echo "NO SERVER LISTENING"
+
+          # Try to access from host
+          echo "Testing HTTP access from host..."
+          curl -v -m 5 http://$CONTAINER_IP:8000/ || echo "CURL FAILED"
+
+          # Check routing
+          echo "Host routing table:"
+          ip route show
+
+          # Check if we can reach the gateway
+          echo "Testing ping to OVN gateway (10.47.62.100)..."
+          ping -c 3 10.47.62.100 || echo "GATEWAY PING FAILED"
+
+          # Cleanup
+          incus delete -f ovn-test
+          echo "=== End OVN connectivity test ==="
+
       - name: Test bind mount functionality
         run: |
           echo "Testing if bind mounts work with shift=true..."
