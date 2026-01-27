@@ -311,16 +311,19 @@ jobs:
           # Allow traffic to/from OVN subnet through firewall
           # Note: OVN's geneve interface doesn't exist until containers start,
           # so we use subnet-based rules instead of interface-based rules
+
+          # Check if DOCKER-USER chain exists
           if sudo iptables -nL DOCKER-USER 2>/dev/null; then
-            # Use DOCKER-USER chain (same approach as canonical/setup-lxd)
+            echo "Adding OVN subnet rules to DOCKER-USER chain..."
             # Allow traffic destined for OVN subnet (host-to-container)
-            sudo iptables -I DOCKER-USER 1 -d 10.215.220.0/24 -j ACCEPT
+            sudo iptables -I DOCKER-USER -d 10.215.220.0/24 -j ACCEPT || echo "ERROR: Failed to add destination rule"
             # Allow return traffic from OVN subnet (container-to-host responses)
-            sudo iptables -I DOCKER-USER 1 -s 10.215.220.0/24 -j ACCEPT
+            sudo iptables -I DOCKER-USER -s 10.215.220.0/24 -j ACCEPT || echo "ERROR: Failed to add source rule"
           else
+            echo "DOCKER-USER chain not found, using FORWARD chain..."
             # Fallback to FORWARD chain if DOCKER-USER doesn't exist
-            sudo iptables -I FORWARD 1 -d 10.215.220.0/24 -j ACCEPT
-            sudo iptables -I FORWARD 1 -s 10.215.220.0/24 -j ACCEPT
+            sudo iptables -I FORWARD -d 10.215.220.0/24 -j ACCEPT
+            sudo iptables -I FORWARD -s 10.215.220.0/24 -j ACCEPT
           fi
 
           # Add NAT/MASQUERADE rules for OVN subnet (10.215.220.0/24)
