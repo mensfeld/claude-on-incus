@@ -10,7 +10,13 @@ import os
 import subprocess
 import tempfile
 
-# OVN networking is now configured in CI, so these tests can run!
+import pytest
+
+# Skip all tests in this module when running on bridge network (no OVN/ACL support)
+pytestmark = pytest.mark.skipif(
+    os.getenv("CI_NETWORK_TYPE") == "bridge",
+    reason="Allowlist mode requires OVN networking (ACL support)",
+)
 
 
 def test_allowlist_mode_allows_specified_domains(coi_binary, workspace_dir, cleanup_containers):

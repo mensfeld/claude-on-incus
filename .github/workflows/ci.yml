@@ -57,11 +57,18 @@ jobs:
           go tool cover -func=coverage.out | tail -1  # Show total coverage
 
   # Integration tests run in parallel with unit tests (after build passes)
+  # Matrix runs tests in both OVN and bridge-only environments
   integration:
-    name: Integration Tests
+    name: Integration Tests (${{ matrix.network_type }})
     runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        network_type:
+          - ovn      # Full OVN networking with ACL support
+          - bridge   # Standard bridge without OVN (tests error handling)
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -112,9 +119,16 @@ jobs:
           SOURCES'
 
           sudo apt-get update
-          sudo apt-get install -y incus ovn-host ovn-central
+
+          # Install OVN packages only for OVN matrix
+          if [ "${{ matrix.network_type }}" = "ovn" ]; then
+            sudo apt-get install -y incus ovn-host ovn-central
+          else
+            sudo apt-get install -y incus
+          fi
 
       - name: Configure OVN
+        if: matrix.network_type == 'ovn'
         run: |
           # Configure OVN to listen on TCP (required for Incus integration)
           sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
@@ -130,7 +144,8 @@ jobs:
           echo "OVN configuration:"
           sudo ovs-vsctl get open_vswitch . external_ids
 
-      - name: Initialize Incus
+      - name: Initialize Incus (OVN)
+        if: matrix.network_type == 'ovn'
         run: |
           # Wait for Incus service to be ready
           sudo systemctl start incus.socket || true
@@ -195,6 +210,62 @@ jobs:
           echo "OVN network configured successfully"
           incus network list
 
+      - name: Initialize Incus (Bridge)
+        if: matrix.network_type == 'bridge'
+        run: |
+          # Wait for Incus service to be ready
+          sudo systemctl start incus.socket || true
+          sleep 5
+
+          # Configure subuid/subgid for UID mapping (needed for raw.idmap)
+          # Map runner UID 1001 to be available for container remapping
+          echo "root:1001:1" | sudo tee -a /etc/subuid
+          echo "root:1001:1" | sudo tee -a /etc/subgid
+
+          # Restart Incus to pick up subuid/subgid changes
+          sudo systemctl restart incus || true
+          sleep 5
+
+          # Initialize Incus with btrfs storage and standard bridge networking
+          # NO OVN - this tests error handling for non-OVN networks
+          cat <<EOF | sudo incus admin init --preseed
+          config:
+            images.compression_algorithm: none
+          networks:
+          - config:
+              ipv4.address: 10.47.62.1/24
+              ipv4.nat: "true"
+              ipv6.address: none
+            name: incusbr0
+            type: bridge
+          storage_pools:
+          - config:
+              size: 15GiB
+            name: default
+            driver: btrfs
+          profiles:
+          - config: {}
+            devices:
+              eth0:
+                name: eth0
+                network: incusbr0
+                type: nic
+              root:
+                path: /
+                pool: default
+                type: disk
+            name: default
+          EOF
+
+          # Allow access without re-login by changing socket permissions
+          sudo chmod 666 /var/lib/incus/unix.socket
+
+          # Add current user to incus-admin group
+          sudo usermod -aG incus-admin $USER
+
+          echo "Bridge network configured successfully"
+          incus network list
+
       - name: Check kernel idmap support
         run: |
           echo "Kernel version:"
@@ -209,6 +280,7 @@ jobs:
           sudo dmesg | grep -i "apparmor.*denied" | tail -20 || echo "No recent AppArmor denials"
 
       - name: Configure networking for Incus with OVN
+        if: matrix.network_type == 'ovn'
         run: |
           # Enable IP forwarding (required for container networking)
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
@@ -330,12 +402,16 @@ jobs:
       - name: Run integration tests with coverage
         run: |
           # Run all integration tests with coverage reporting
-          # Tests marked with @pytest.mark.skipif will be automatically skipped in CI
+          # Matrix runs tests in both OVN and bridge environments:
+          # - OVN: Runs all tests including network isolation (restricted/allowlist modes)
+          # - Bridge: Runs tests that work without OVN + error handling tests
+          # Tests use CI_NETWORK_TYPE env var to skip incompatible tests
           # --durations=0 shows timing for all tests to help identify slow tests
           # --cov-report=term-missing shows which lines aren't covered
           python -m pytest tests/ -v --tb=short --durations=0 --cov=tests --cov-report=term-missing
         env:
           COI_BINARY: ./coi
+          CI_NETWORK_TYPE: ${{ matrix.network_type }}
           GITHUB_REPOSITORY_URL: ${{ github.event.pull_request.head.repo.clone_url || format('https://github.com/{0}.git', github.repository) }}
 
       - name: Cleanup

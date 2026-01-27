@@ -10,8 +10,17 @@ Tests that:
 Note: This test requires OVN networking (now configured in CI).
 """
 
+import os
 import subprocess
 import time
+
+import pytest
+
+# Skip all tests in this module when running on bridge network (no OVN/ACL support)
+pytestmark = pytest.mark.skipif(
+    os.getenv("CI_NETWORK_TYPE") == "bridge",
+    reason="Restricted mode requires OVN networking (ACL support)",
+)
 
 
 def test_restricted_blocks_private_networks(coi_binary, workspace_dir, cleanup_containers):
