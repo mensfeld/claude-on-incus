@@ -152,10 +152,17 @@ jobs:
             images.compression_algorithm: none
           networks:
           - config:
+              ipv4.address: 10.47.62.1/24
+              ipv4.nat: "true"
+              ipv6.address: none
+            name: incusbr0
+            type: bridge
+          - config:
               bridge.mtu: "1442"
               ipv4.address: 10.215.220.1/24
               ipv4.nat: "true"
               ipv6.address: none
+              network: incusbr0
             name: ovn-net
             type: ovn
           storage_pools:
