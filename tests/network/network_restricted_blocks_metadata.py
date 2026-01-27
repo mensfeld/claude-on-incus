@@ -24,7 +24,15 @@ def test_restricted_blocks_metadata_endpoint(coi_binary, workspace_dir, cleanup_
     """
     # Start shell in background with restricted network mode
     result = subprocess.run(
-        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug", "--network=restricted"],
+        [
+            coi_binary,
+            "shell",
+            "--workspace",
+            workspace_dir,
+            "--background",
+            "--debug",
+            "--network=restricted",
+        ],
         capture_output=True,
         text=True,
         timeout=60,
