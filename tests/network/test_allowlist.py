@@ -6,6 +6,7 @@ Tests the domain allowlisting feature with DNS resolution and IP-based filtering
 Note: These tests require OVN networking (now configured in CI).
 """
 
+import json
 import os
 import subprocess
 import tempfile
@@ -524,24 +525,19 @@ refresh_interval_minutes = 30
 
         time.sleep(2)
 
-        # Get container's IP address
+        # Get container's IP address using incus list (more reliable than hostname -I)
         result = subprocess.run(
-            [
-                coi_binary,
-                "container",
-                "exec",
-                container_name,
-                "--",
-                "hostname",
-                "-I",
-            ],
+            ["incus", "list", container_name, "--format=json"],
             capture_output=True,
             text=True,
             timeout=10,
         )
 
-        assert result.returncode == 0, f"Failed to get container IP: {result.stderr}"
-        container_ip = result.stdout.strip().split()[0]  # First IP
+        assert result.returncode == 0, f"Failed to get container info: {result.stderr}"
+
+        container_info = json.loads(result.stdout)[0]
+        # Get IPv4 address from eth0 interface
+        container_ip = container_info["state"]["network"]["eth0"]["addresses"][0]["address"]
 
         # Test: Host should be able to access the HTTP server
         # This verifies established connection tracking works
@@ -618,24 +614,19 @@ def test_restricted_allows_host_to_access_container_services(
 
     time.sleep(2)
 
-    # Get container's IP address
+    # Get container's IP address using incus list (more reliable than hostname -I)
     result = subprocess.run(
-        [
-            coi_binary,
-            "container",
-            "exec",
-            container_name,
-            "--",
-            "hostname",
-            "-I",
-        ],
+        ["incus", "list", container_name, "--format=json"],
         capture_output=True,
         text=True,
         timeout=10,
     )
 
-    assert result.returncode == 0, f"Failed to get container IP: {result.stderr}"
-    container_ip = result.stdout.strip().split()[0]  # First IP
+    assert result.returncode == 0, f"Failed to get container info: {result.stderr}"
+
+    container_info = json.loads(result.stdout)[0]
+    # Get IPv4 address from eth0 interface
+    container_ip = container_info["state"]["network"]["eth0"]["addresses"][0]["address"]
 
     # Test: Host should be able to access the HTTP server
     result = subprocess.run(
