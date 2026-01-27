@@ -203,6 +203,75 @@ func TestBuildAllowlistRules_EmptyDomains(t *testing.T) {
 	}
 }
 
+// TestBuildACLRules_LocalNetworkAccess tests the allow_local_network_access config
+func TestBuildACLRules_LocalNetworkAccess(t *testing.T) {
+	tests := []struct {
+		name                    string
+		allowLocalNetworkAccess bool
+		wantContains            []string
+		wantNotContains         []string
+	}{
+		{
+			name:                    "allow_local_network_access disabled (default)",
+			allowLocalNetworkAccess: false,
+			wantContains: []string{
+				"egress action=allow connection-state=established,related destination=10.128.178.1/32",
+			},
+			wantNotContains: []string{
+				"egress action=allow connection-state=established,related destination=10.0.0.0/8",
+			},
+		},
+		{
+			name:                    "allow_local_network_access enabled",
+			allowLocalNetworkAccess: true,
+			wantContains: []string{
+				"egress action=allow connection-state=established,related destination=10.0.0.0/8",
+				"egress action=allow connection-state=established,related destination=172.16.0.0/12",
+				"egress action=allow connection-state=established,related destination=192.168.0.0/16",
+			},
+			wantNotContains: []string{
+				"egress action=allow connection-state=established,related destination=10.128.178.1/32",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.NetworkConfig{
+				Mode:                    config.NetworkModeRestricted,
+				BlockPrivateNetworks:    true,
+				BlockMetadataEndpoint:   true,
+				AllowLocalNetworkAccess: tt.allowLocalNetworkAccess,
+			}
+
+			rules := buildACLRules(cfg, "10.128.178.1")
+
+			// Check for expected rules
+			for _, want := range tt.wantContains {
+				found := false
+				for _, rule := range rules {
+					if rule == want {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("buildACLRules() missing expected rule: %s", want)
+				}
+			}
+
+			// Check that unwanted rules are not present
+			for _, unwant := range tt.wantNotContains {
+				for _, rule := range rules {
+					if rule == unwant {
+						t.Errorf("buildACLRules() should not contain rule: %s", unwant)
+					}
+				}
+			}
+		})
+	}
+}
+
 // TestBuildACLRules_RuleOrdering tests that REJECT rules come before ALLOW rules
 // This is critical for OVN which evaluates rules in order
 func TestBuildACLRules_RuleOrdering(t *testing.T) {

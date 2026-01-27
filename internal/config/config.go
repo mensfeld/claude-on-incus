@@ -53,12 +53,13 @@ const (
 
 // NetworkConfig contains network isolation settings
 type NetworkConfig struct {
-	Mode                   NetworkMode          `toml:"mode"`
-	BlockPrivateNetworks   bool                 `toml:"block_private_networks"`
-	BlockMetadataEndpoint  bool                 `toml:"block_metadata_endpoint"`
-	AllowedDomains         []string             `toml:"allowed_domains"`
-	RefreshIntervalMinutes int                  `toml:"refresh_interval_minutes"`
-	Logging                NetworkLoggingConfig `toml:"logging"`
+	Mode                    NetworkMode          `toml:"mode"`
+	BlockPrivateNetworks    bool                 `toml:"block_private_networks"`
+	BlockMetadataEndpoint   bool                 `toml:"block_metadata_endpoint"`
+	AllowedDomains          []string             `toml:"allowed_domains"`
+	RefreshIntervalMinutes  int                  `toml:"refresh_interval_minutes"`
+	AllowLocalNetworkAccess bool                 `toml:"allow_local_network_access"` // Allow established connections from entire local network (not just gateway)
+	Logging                 NetworkLoggingConfig `toml:"logging"`
 }
 
 // NetworkLoggingConfig contains network logging settings
@@ -230,6 +231,7 @@ func (c *Config) Merge(other *Config) {
 	// This is imperfect in TOML but works for most cases
 	c.Network.BlockPrivateNetworks = other.Network.BlockPrivateNetworks
 	c.Network.BlockMetadataEndpoint = other.Network.BlockMetadataEndpoint
+	c.Network.AllowLocalNetworkAccess = other.Network.AllowLocalNetworkAccess
 
 	// Merge allowed domains (replace entirely if set)
 	if len(other.Network.AllowedDomains) > 0 {

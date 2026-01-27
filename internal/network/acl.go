@@ -224,10 +224,15 @@ func buildACLRules(cfg *config.NetworkConfig, gatewayIP string) []string {
 		// IMPORTANT: OVN evaluates rules in order they're added
 		// We must add ALLOW rules for established connections FIRST, then REJECT, then general ALLOW
 
-		// Allow established/related connections to gateway (FIRST - highest priority)
-		// This allows response traffic from container back to host even if host IP is RFC1918
-		// Scoped to gateway IP only (not entire private network)
-		if gatewayIP != "" {
+		// Allow established/related connections (FIRST - highest priority)
+		// This allows response traffic from container back to host/local network
+		if cfg.AllowLocalNetworkAccess {
+			// Allow from entire local network (useful for tmux across machines)
+			rules = append(rules, "egress action=allow connection-state=established,related destination=10.0.0.0/8")
+			rules = append(rules, "egress action=allow connection-state=established,related destination=172.16.0.0/12")
+			rules = append(rules, "egress action=allow connection-state=established,related destination=192.168.0.0/16")
+		} else if gatewayIP != "" {
+			// Default: only allow to gateway IP (host only)
 			rules = append(rules, fmt.Sprintf("egress action=allow connection-state=established,related destination=%s/32", gatewayIP))
 		}
 
@@ -275,10 +280,15 @@ func buildAllowlistRules(cfg *config.NetworkConfig, domainIPs map[string][]strin
 	// IMPORTANT: Rules are evaluated in order they're added in OVN
 	// We must add ALLOW rules BEFORE REJECT rules
 
-	// Step 0: Allow established/related connections to gateway (FIRST - highest priority)
-	// This allows response traffic from container back to host even if host IP is RFC1918
-	// Scoped to gateway IP only (not entire private network)
-	if gatewayIP != "" {
+	// Step 0: Allow established/related connections (FIRST - highest priority)
+	// This allows response traffic from container back to host/local network
+	if cfg.AllowLocalNetworkAccess {
+		// Allow from entire local network (useful for tmux across machines)
+		rules = append(rules, "egress action=allow connection-state=established,related destination=10.0.0.0/8")
+		rules = append(rules, "egress action=allow connection-state=established,related destination=172.16.0.0/12")
+		rules = append(rules, "egress action=allow connection-state=established,related destination=192.168.0.0/16")
+	} else if gatewayIP != "" {
+		// Default: only allow to gateway IP (host only)
 		rules = append(rules, fmt.Sprintf("egress action=allow connection-state=established,related destination=%s/32", gatewayIP))
 	}
 
