@@ -712,16 +712,24 @@ mode = "restricted"  # restricted | open | allowlist
 
 # Allowlist mode configuration
 # Supports both domain names and raw IPv4 addresses
-allowed_domains = ["github.com", "api.anthropic.com", "8.8.8.8"]
+allowed_domains = [
+    "8.8.8.8",             # Google DNS (REQUIRED for DNS resolution)
+    "1.1.1.1",             # Cloudflare DNS (REQUIRED for DNS resolution)
+    "registry.npmjs.org",  # npm package registry
+    "api.anthropic.com",   # Claude API
+    "platform.claude.com", # Claude Platform
+]
 refresh_interval_minutes = 30  # IP refresh interval (0 to disable)
 ```
 
 **Important for allowlist mode:**
+- **Gateway IP is auto-detected** - COI automatically detects and allows your OVN network gateway IP (e.g., `10.128.178.1`). You don't need to add it manually. Containers must reach their gateway to route traffic.
+- **Public DNS servers required** - `8.8.8.8` and `1.1.1.1` must be in the allowlist for DNS resolution to work. The OVN network is configured to use these public DNS servers directly.
+- **ACL rule ordering** - OVN network ACLs are evaluated in the order they're added. COI adds ALLOW rules first (for gateway, allowed domains/IPs), then REJECT rules (for RFC1918 ranges), and finally a catch-all REJECT (for everything else). This ensures proper filtering.
 - Supports both domain names (`github.com`) and raw IPv4 addresses (`8.8.8.8`)
 - Subdomains must be listed explicitly (`github.com` ≠ `api.github.com`)
 - Domains behind CDNs may have many IPs that change frequently
 - DNS failures use cached IPs from previous successful resolution
-- To allow DNS resolution inside the container, add DNS server IPs (e.g., `8.8.8.8`)
 
 ### OVN Network Setup
 
@@ -735,20 +743,66 @@ This disables egress filtering but allows you to work immediately.
 
 **Option 2: Set up OVN networking (recommended for production)**
 
-OVN provides proper network ACL support for egress filtering:
+OVN provides proper network ACL support for egress filtering. Follow these steps to set up OVN:
 
 ```bash
-# Install OVN packages (Ubuntu/Debian)
+# 1. Install OVN packages (Ubuntu/Debian)
 sudo apt install ovn-host ovn-central
 
-# Create an OVN network
-incus network create ovn-net --type=ovn
+# 2. Configure OVN to listen on TCP (required for Incus integration)
+sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
+sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
 
-# Update the default profile to use the OVN network
+# 3. Configure Open vSwitch to connect to OVN (CRITICAL STEP)
+sudo ovs-vsctl set open_vswitch . \
+  external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
+  external_ids:ovn-encap-type=geneve \
+  external_ids:ovn-encap-ip=127.0.0.1
+
+# Verify OVS configuration
+sudo ovs-vsctl get open_vswitch . external_ids
+
+# 4. Stop all running containers temporarily
+incus list --format=csv -c n,s | grep RUNNING | cut -d, -f1 | xargs -I {} incus stop {}
+
+# 5. Delete existing lxdbr0 if it's not managed by Incus
+sudo ip link delete lxdbr0 2>/dev/null || true
+
+# 6. Create lxdbr0 as a managed Incus bridge with OVN ranges
+incus network create lxdbr0 \
+  --type=bridge \
+  ipv4.address=10.47.62.1/24 \
+  ipv4.nat=true \
+  ipv6.address=fd42:a147:d80:5ed8::1/64 \
+  ipv6.nat=true \
+  ipv4.dhcp.ranges=10.47.62.2-10.47.62.99 \
+  ipv4.ovn.ranges=10.47.62.100-10.47.62.254
+
+# 7. Configure project to allow lxdbr0 as an OVN uplink
+incus project set default restricted.networks.uplinks=lxdbr0
+
+# 8. Create the OVN network with predictable IP range
+incus network create ovn-net --type=ovn network=lxdbr0 \
+  ipv4.address=10.128.178.1/24 \
+  ipv6.address=fd42:edcc:dda5:34a3::1/64
+
+# 9. Update the default profile to use the OVN network
 incus profile device set default eth0 network=ovn-net
+
+# 10. Verify the setup
+incus network list
+
+# 11. Start your containers back up
+incus list --format=csv -c n,s | grep STOPPED | cut -d, -f1 | xargs -I {} incus start {}
 ```
 
-For more details, see the [Incus OVN documentation](https://linuxcontainers.org/incus/docs/main/howto/network_ovn/).
+**Key Points:**
+- The OVS configuration (step 3) is critical - it tells Open vSwitch where to find the OVN database
+- The `lxdbr0` network must be managed by Incus (not just a system bridge) to support OVN ranges
+- IP ranges are split: 10.47.62.2-99 for regular DHCP, 10.47.62.100-254 for OVN
+- After setup, `incus network list` should show both `lxdbr0` (bridge, managed) and `ovn-net` (ovn, managed)
+
+For more details, see the [Incus OVN documentation](https://linuxcontainers.org/incus/docs/main/howto/network_ovn_setup/).
 
 **Note:** After switching to OVN, existing containers will need to be recreated to use the new network
 

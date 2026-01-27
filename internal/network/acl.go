@@ -26,7 +26,7 @@ func (m *ACLManager) Create(name string, cfg *config.NetworkConfig) error {
 		return fmt.Errorf("failed to create ACL %s: %w", name, err)
 	}
 
-	// Build and add rules
+	// Build and add egress rules
 	rules := buildACLRules(cfg)
 	for _, rule := range rules {
 		// Parse rule into parts for the incus command
@@ -45,6 +45,12 @@ func (m *ACLManager) Create(name string, cfg *config.NetworkConfig) error {
 			_ = m.Delete(name)
 			return fmt.Errorf("failed to add ACL rule %s: %w", rule, err)
 		}
+	}
+
+	// Add ingress allow-all rule to allow response traffic
+	if err := container.IncusExecQuiet("network", "acl", "rule", "add", name, "ingress", "action=allow"); err != nil {
+		_ = m.Delete(name)
+		return fmt.Errorf("failed to add ingress allow rule: %w", err)
 	}
 
 	return nil
@@ -155,7 +161,7 @@ func (m *ACLManager) CreateAllowlist(name string, cfg *config.NetworkConfig, dom
 	// Build rules for allowlist mode
 	rules := buildAllowlistRules(cfg, domainIPs)
 
-	// Add rules
+	// Add egress rules
 	for _, rule := range rules {
 		parts := strings.Fields(rule)
 		if len(parts) < 2 {
@@ -170,6 +176,12 @@ func (m *ACLManager) CreateAllowlist(name string, cfg *config.NetworkConfig, dom
 			_ = m.Delete(name)
 			return fmt.Errorf("failed to add ACL rule %s: %w", rule, err)
 		}
+	}
+
+	// Add ingress allow-all rule to allow response traffic
+	if err := container.IncusExecQuiet("network", "acl", "rule", "add", name, "ingress", "action=allow"); err != nil {
+		_ = m.Delete(name)
+		return fmt.Errorf("failed to add ingress allow rule: %w", err)
 	}
 
 	return nil
@@ -201,11 +213,9 @@ func buildACLRules(cfg *config.NetworkConfig) []string {
 
 	// In restricted mode, block local networks
 	if cfg.Mode == config.NetworkModeRestricted {
-		// First, add allow rules for all traffic (lower priority)
-		// This ensures non-blocked traffic is explicitly allowed
-		rules = append(rules, "egress action=allow")
+		// IMPORTANT: OVN evaluates rules in order they're added
+		// We must add REJECT rules FIRST, then ALLOW rules
 
-		// Then add reject rules for specific ranges (higher priority, evaluated first)
 		// Block private ranges (RFC1918)
 		if cfg.BlockPrivateNetworks {
 			rules = append(rules, "egress action=reject destination=10.0.0.0/8")
@@ -217,6 +227,9 @@ func buildACLRules(cfg *config.NetworkConfig) []string {
 		if cfg.BlockMetadataEndpoint {
 			rules = append(rules, "egress action=reject destination=169.254.0.0/16")
 		}
+
+		// Allow all other traffic (added last, lowest priority)
+		rules = append(rules, "egress action=allow")
 	}
 
 	return rules
@@ -226,24 +239,33 @@ func buildACLRules(cfg *config.NetworkConfig) []string {
 func buildAllowlistRules(cfg *config.NetworkConfig, domainIPs map[string][]string) []string {
 	rules := []string{}
 
-	// Rule 1: Block all traffic by default (lowest priority)
-	rules = append(rules, "egress action=reject destination=0.0.0.0/0")
+	// Deduplicate IPs across all domains (multiple domains can resolve to same IP)
+	uniqueIPs := make(map[string]bool)
+	for _, ips := range domainIPs {
+		for _, ip := range ips {
+			uniqueIPs[ip] = true
+		}
+	}
 
-	// Rules 2-5: Always block RFC1918 and metadata in allowlist mode (higher priority)
+	// IMPORTANT: Rules are evaluated in order they're added in OVN
+	// We must add ALLOW rules BEFORE REJECT rules
+
+	// Step 1: Allow specific IPs from resolved domains (added first, highest priority)
+	for ip := range uniqueIPs {
+		// Use /32 for single IP precision
+		rules = append(rules, fmt.Sprintf("egress action=allow destination=%s/32", ip))
+	}
+
+	// Step 2: Block RFC1918 and metadata (but specific IPs were already allowed above)
 	rules = append(rules, "egress action=reject destination=10.0.0.0/8")
 	rules = append(rules, "egress action=reject destination=172.16.0.0/12")
 	rules = append(rules, "egress action=reject destination=192.168.0.0/16")
 	rules = append(rules, "egress action=reject destination=169.254.0.0/16")
 
-	// Allow specific IPs from resolved domains (highest priority, evaluated first)
-	// DNS resolution happens on the host, so containers don't need DNS server access
-	// Users can explicitly add DNS server IPs to allowed_domains if needed
-	for _, ips := range domainIPs {
-		for _, ip := range ips {
-			// Use /32 for single IP precision
-			rules = append(rules, fmt.Sprintf("egress action=allow destination=%s/32", ip))
-		}
-	}
+	// Note: We don't add a catch-all reject rule because it interferes with OVN's
+	// internal routing. Instead, we rely on explicitly allowed IPs + RFC1918 blocks.
+	// This means non-RFC1918 IPs not in the allowlist will use OVN's default behavior.
+	// TODO: Investigate if we can make this more restrictive without breaking routing.
 
 	return rules
 }

@@ -19,33 +19,33 @@ func TestBuildACLRules_Restricted(t *testing.T) {
 			name:                  "block both private networks and metadata",
 			blockPrivateNetworks:  true,
 			blockMetadataEndpoint: true,
-			wantRuleCount:         5, // 1 allow + 3 RFC1918 + 1 metadata
+			wantRuleCount:         5, // 3 RFC1918 + 1 metadata + 1 allow
 			wantContains: []string{
-				"egress action=allow",
 				"egress action=reject destination=10.0.0.0/8",
 				"egress action=reject destination=172.16.0.0/12",
 				"egress action=reject destination=192.168.0.0/16",
 				"egress action=reject destination=169.254.0.0/16",
+				"egress action=allow",
 			},
 		},
 		{
 			name:                  "block only private networks",
 			blockPrivateNetworks:  true,
 			blockMetadataEndpoint: false,
-			wantRuleCount:         4, // 1 allow + 3 RFC1918
+			wantRuleCount:         4, // 3 RFC1918 + 1 allow
 			wantContains: []string{
-				"egress action=allow",
 				"egress action=reject destination=10.0.0.0/8",
+				"egress action=allow",
 			},
 		},
 		{
 			name:                  "block only metadata",
 			blockPrivateNetworks:  false,
 			blockMetadataEndpoint: true,
-			wantRuleCount:         2, // 1 allow + 1 metadata
+			wantRuleCount:         2, // 1 metadata + 1 allow
 			wantContains: []string{
-				"egress action=allow",
 				"egress action=reject destination=169.254.0.0/16",
+				"egress action=allow",
 			},
 		},
 		{
@@ -116,22 +116,10 @@ func TestBuildAllowlistRules(t *testing.T) {
 
 	rules := buildAllowlistRules(cfg, domainIPs)
 
-	// Should have: 1 default-deny + 4 RFC1918/metadata blocks + 3 allowed IPs = 8 rules
-	expectedMinRules := 8
-	if len(rules) < expectedMinRules {
-		t.Errorf("buildAllowlistRules() returned %d rules, want at least %d", len(rules), expectedMinRules)
-	}
-
-	// Check for default-deny rule
-	foundDefaultDeny := false
-	for _, rule := range rules {
-		if rule == "egress action=reject destination=0.0.0.0/0" {
-			foundDefaultDeny = true
-			break
-		}
-	}
-	if !foundDefaultDeny {
-		t.Error("buildAllowlistRules() missing default-deny rule")
+	// Should have: 3 allowed IPs + 4 RFC1918/metadata blocks = 7 rules (no catch-all)
+	expectedRules := 7
+	if len(rules) != expectedRules {
+		t.Errorf("buildAllowlistRules() returned %d rules, want %d", len(rules), expectedRules)
 	}
 
 	// Check for allowed IPs
@@ -151,6 +139,27 @@ func TestBuildAllowlistRules(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("buildAllowlistRules() missing expected allow rule: %s", want)
+		}
+	}
+
+	// Check for RFC1918 blocks
+	wantBlocks := []string{
+		"egress action=reject destination=10.0.0.0/8",
+		"egress action=reject destination=172.16.0.0/12",
+		"egress action=reject destination=192.168.0.0/16",
+		"egress action=reject destination=169.254.0.0/16",
+	}
+
+	for _, want := range wantBlocks {
+		found := false
+		for _, rule := range rules {
+			if rule == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("buildAllowlistRules() missing expected block rule: %s", want)
 		}
 	}
 }
@@ -180,9 +189,152 @@ func TestBuildAllowlistRules_EmptyDomains(t *testing.T) {
 	rules := buildAllowlistRules(cfg, domainIPs)
 
 	// Should still have the blocking rules even with no allowed domains
-	// 1 default-deny + 4 RFC1918/metadata blocks = 5 rules
-	expectedRules := 5
+	// 4 RFC1918/metadata blocks (no catch-all)
+	expectedRules := 4
 	if len(rules) != expectedRules {
 		t.Errorf("buildAllowlistRules() with empty domains returned %d rules, want %d", len(rules), expectedRules)
+	}
+}
+
+// TestBuildACLRules_RuleOrdering tests that REJECT rules come before ALLOW rules
+// This is critical for OVN which evaluates rules in order
+func TestBuildACLRules_RuleOrdering(t *testing.T) {
+	cfg := &config.NetworkConfig{
+		Mode:                  config.NetworkModeRestricted,
+		BlockPrivateNetworks:  true,
+		BlockMetadataEndpoint: true,
+	}
+
+	rules := buildACLRules(cfg)
+
+	// Find indices of first reject and first allow
+	firstRejectIdx := -1
+	firstAllowIdx := -1
+
+	for i, rule := range rules {
+		if firstRejectIdx == -1 && (rule == "egress action=reject destination=10.0.0.0/8" ||
+			rule == "egress action=reject destination=172.16.0.0/12" ||
+			rule == "egress action=reject destination=192.168.0.0/16" ||
+			rule == "egress action=reject destination=169.254.0.0/16") {
+			firstRejectIdx = i
+		}
+		if firstAllowIdx == -1 && rule == "egress action=allow" {
+			firstAllowIdx = i
+		}
+	}
+
+	if firstRejectIdx == -1 {
+		t.Error("No reject rules found in restricted mode")
+	}
+	if firstAllowIdx == -1 {
+		t.Error("No allow rule found in restricted mode")
+	}
+
+	// CRITICAL: Reject rules must come BEFORE allow rules
+	// This was the bug - OVN evaluates rules in order
+	if firstRejectIdx > firstAllowIdx {
+		t.Errorf("Rule ordering bug: REJECT rules (index %d) come after ALLOW rules (index %d). "+
+			"OVN evaluates rules in order, so REJECT must come first.",
+			firstRejectIdx, firstAllowIdx)
+	}
+}
+
+// TestBuildAllowlistRules_RuleOrdering tests that ALLOW rules come before REJECT rules
+// This is critical for allowlist mode to work correctly
+func TestBuildAllowlistRules_RuleOrdering(t *testing.T) {
+	cfg := &config.NetworkConfig{
+		Mode: config.NetworkModeAllowlist,
+	}
+
+	domainIPs := map[string][]string{
+		"api.example.com": {"1.2.3.4"},
+	}
+
+	rules := buildAllowlistRules(cfg, domainIPs)
+
+	// Find indices of first allow and first reject
+	firstAllowIdx := -1
+	firstRejectIdx := -1
+
+	for i, rule := range rules {
+		if firstAllowIdx == -1 && rule == "egress action=allow destination=1.2.3.4/32" {
+			firstAllowIdx = i
+		}
+		if firstRejectIdx == -1 && (rule == "egress action=reject destination=10.0.0.0/8" ||
+			rule == "egress action=reject destination=172.16.0.0/12" ||
+			rule == "egress action=reject destination=192.168.0.0/16" ||
+			rule == "egress action=reject destination=169.254.0.0/16") {
+			firstRejectIdx = i
+		}
+	}
+
+	if firstAllowIdx == -1 {
+		t.Error("No allow rules found in allowlist mode")
+	}
+	if firstRejectIdx == -1 {
+		t.Error("No reject rules found in allowlist mode")
+	}
+
+	// CRITICAL: Allow rules must come BEFORE reject rules in allowlist mode
+	// This ensures allowed IPs can be reached before they're blocked by RFC1918 rules
+	if firstAllowIdx > firstRejectIdx {
+		t.Errorf("Rule ordering bug: ALLOW rules (index %d) come after REJECT rules (index %d). "+
+			"OVN evaluates rules in order, so ALLOW must come first in allowlist mode.",
+			firstAllowIdx, firstRejectIdx)
+	}
+}
+
+// TestBuildAllowlistRules_IPDeduplication tests that duplicate IPs are handled correctly
+// Multiple domains can resolve to the same IP (e.g., api.anthropic.com and platform.anthropic.com)
+func TestBuildAllowlistRules_IPDeduplication(t *testing.T) {
+	cfg := &config.NetworkConfig{
+		Mode: config.NetworkModeAllowlist,
+	}
+
+	// Simulate multiple domains resolving to same IP
+	domainIPs := map[string][]string{
+		"api.example.com":      {"160.79.104.10"},
+		"platform.example.com": {"160.79.104.10"}, // Same IP as api
+		"other.example.com":    {"1.2.3.4"},
+	}
+
+	rules := buildAllowlistRules(cfg, domainIPs)
+
+	// Count how many times the duplicate IP appears in rules
+	duplicateIPCount := 0
+	targetRule := "egress action=allow destination=160.79.104.10/32"
+
+	for _, rule := range rules {
+		if rule == targetRule {
+			duplicateIPCount++
+		}
+	}
+
+	// Should appear exactly once, not twice
+	if duplicateIPCount != 1 {
+		t.Errorf("IP deduplication failed: found %d rules for 160.79.104.10, want 1", duplicateIPCount)
+		t.Logf("Rules: %v", rules)
+	}
+}
+
+// TestBuildAllowlistRules_NoCatchAllReject verifies we don't block all traffic
+// The catch-all reject rule (0.0.0.0/0) was interfering with OVN routing
+func TestBuildAllowlistRules_NoCatchAllReject(t *testing.T) {
+	cfg := &config.NetworkConfig{
+		Mode: config.NetworkModeAllowlist,
+	}
+
+	domainIPs := map[string][]string{
+		"api.example.com": {"1.2.3.4"},
+	}
+
+	rules := buildAllowlistRules(cfg, domainIPs)
+
+	// Should NOT have a catch-all reject rule
+	for _, rule := range rules {
+		if rule == "egress action=reject destination=0.0.0.0/0" {
+			t.Error("Found catch-all reject rule 0.0.0.0/0 which breaks OVN routing. " +
+				"This rule should not exist - OVN applies implicit default-deny when ACLs are present.")
+		}
 	}
 }

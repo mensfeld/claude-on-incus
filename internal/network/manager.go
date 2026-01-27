@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/mensfeld/code-on-incus/internal/config"
+	"github.com/mensfeld/code-on-incus/internal/container"
 )
 
 // errACLNotSupportedMessage is the user-facing error message when ACLs are not supported.
@@ -146,6 +148,17 @@ func (m *Manager) setupAllowlist(ctx context.Context, containerName string) erro
 	domainIPs, err := m.resolver.ResolveAll(m.config.AllowedDomains)
 	if err != nil && len(domainIPs) == 0 {
 		return fmt.Errorf("failed to resolve any allowed domains: %w", err)
+	}
+
+	// 3a. Auto-detect and add gateway IP (required for routing)
+	gatewayIP, err := getContainerGatewayIP(containerName)
+	if err != nil {
+		log.Printf("Warning: Could not auto-detect gateway IP: %v", err)
+		log.Println("You may need to manually add the gateway IP to allowed_domains")
+	} else {
+		// Add gateway IP to domainIPs map
+		domainIPs["<gateway>"] = []string{gatewayIP}
+		log.Printf("Auto-detected gateway IP: %s", gatewayIP)
 	}
 
 	// Log resolution results
@@ -306,4 +319,57 @@ func (m *Manager) Teardown(ctx context.Context, containerName string) error {
 // GetMode returns the current network mode
 func (m *Manager) GetMode() config.NetworkMode {
 	return m.config.Mode
+}
+
+// getContainerGatewayIP auto-detects the gateway IP for a container's network
+func getContainerGatewayIP(containerName string) (string, error) {
+	// Get container's network configuration from default profile
+	profileOutput, err := container.IncusOutput("profile", "device", "show", "default")
+	if err != nil {
+		return "", fmt.Errorf("failed to get default profile: %w", err)
+	}
+
+	// Parse network name from profile (eth0 device)
+	var networkName string
+	lines := strings.Split(profileOutput, "\n")
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "eth0:" {
+			// Look for network: line
+			for j := i + 1; j < len(lines) && j < i+10; j++ {
+				if strings.Contains(lines[j], "network:") {
+					parts := strings.Split(lines[j], ":")
+					if len(parts) >= 2 {
+						networkName = strings.TrimSpace(parts[1])
+						break
+					}
+				}
+			}
+			break
+		}
+	}
+
+	if networkName == "" {
+		return "", fmt.Errorf("could not determine network name from profile")
+	}
+
+	// Get network configuration
+	networkOutput, err := container.IncusOutput("network", "show", networkName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network info: %w", err)
+	}
+
+	// Parse gateway IP (ipv4.address field)
+	for _, line := range strings.Split(networkOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "ipv4.address:") {
+			addressWithMask := strings.TrimSpace(strings.TrimPrefix(line, "ipv4.address:"))
+			// Remove CIDR suffix (e.g., "10.128.178.1/24" -> "10.128.178.1")
+			if idx := strings.Index(addressWithMask, "/"); idx != -1 {
+				return addressWithMask[:idx], nil
+			}
+			return addressWithMask, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find ipv4.address in network %s", networkName)
 }

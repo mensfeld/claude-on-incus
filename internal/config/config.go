@@ -117,10 +117,19 @@ func GetDefaultConfig() *Config {
 			CodeUser: "code",
 		},
 		Network: NetworkConfig{
-			Mode:                   NetworkModeRestricted,
-			BlockPrivateNetworks:   true,
-			BlockMetadataEndpoint:  true,
-			AllowedDomains:         []string{},
+			Mode:                  NetworkModeRestricted,
+			BlockPrivateNetworks:  true,
+			BlockMetadataEndpoint: true,
+			AllowedDomains: []string{
+				// Default allowlist for allowlist mode (--network=allowlist)
+				// Note: Gateway IP is auto-detected and added automatically
+				"8.8.8.8",             // Google DNS (REQUIRED for DNS resolution)
+				"1.1.1.1",             // Cloudflare DNS (REQUIRED for DNS resolution)
+				"registry.npmjs.org",  // npm package registry
+				"npm.pkg.github.com",  // GitHub packages
+				"api.anthropic.com",   // Claude API
+				"platform.claude.com", // Claude Platform (OAuth, Console)
+			},
 			RefreshIntervalMinutes: 30,
 			Logging: NetworkLoggingConfig{
 				Enabled: true,
