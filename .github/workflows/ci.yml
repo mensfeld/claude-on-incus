@@ -311,12 +311,17 @@ jobs:
           # OVN uses geneve interfaces - allow traffic through FORWARD chain
           if sudo iptables -nL DOCKER-USER 2>/dev/null; then
             # Use DOCKER-USER chain (same approach as canonical/setup-lxd)
+            # Allow traffic from geneve interface
             sudo iptables -I DOCKER-USER -i genev_sys_6081 -j ACCEPT
+            # Allow return traffic to geneve interface
             sudo iptables -I DOCKER-USER -o genev_sys_6081 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+            # Allow traffic destined for OVN subnet (host-to-container connections)
+            sudo iptables -I DOCKER-USER -d 10.215.220.0/24 -j ACCEPT
           else
             # Fallback to FORWARD chain if DOCKER-USER doesn't exist
             sudo iptables -I FORWARD 1 -i genev_sys_6081 -j ACCEPT
             sudo iptables -I FORWARD 1 -o genev_sys_6081 -j ACCEPT
+            sudo iptables -I FORWARD 1 -d 10.215.220.0/24 -j ACCEPT
           fi
 
           # Add NAT/MASQUERADE rules for OVN subnet (10.215.220.0/24)
