@@ -247,17 +247,16 @@ jobs:
           go build -o coi ./cmd/coi
           ./coi version
 
-      - name: Configure COI for CI (use restricted network mode with OVN)
+      - name: Configure COI for CI (use open network mode for builds)
         run: |
-          # CI now has OVN configured, so we can test restricted/allowlist modes
+          # Use open mode by default so image builds can access internet
+          # Tests will explicitly use restricted/allowlist modes when testing network isolation
           mkdir -p ~/.config/coi
           cat > ~/.config/coi/config.toml << 'EOF'
           [network]
-          mode = "restricted"
-          block_private_networks = true
-          block_metadata_endpoint = true
+          mode = "open"
           EOF
-          echo "Created COI config with network.mode = restricted (OVN enabled)"
+          echo "Created COI config with network.mode = open (tests can override for isolation testing)"
 
       - name: Test bind mount functionality
         run: |

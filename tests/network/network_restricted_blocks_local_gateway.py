@@ -28,9 +28,9 @@ def test_restricted_blocks_local_gateway(coi_binary, workspace_dir, cleanup_cont
     5. Verify connection is blocked by ACL
     6. Cleanup container
     """
-    # Start shell in background (default restricted mode)
+    # Start shell in background with restricted network mode
     result = subprocess.run(
-        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug"],
+        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug", "--network=restricted"],
         capture_output=True,
         text=True,
         timeout=60,

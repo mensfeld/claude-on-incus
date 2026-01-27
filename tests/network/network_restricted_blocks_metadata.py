@@ -22,9 +22,9 @@ def test_restricted_blocks_metadata_endpoint(coi_binary, workspace_dir, cleanup_
     3. Verify connection is blocked/rejected
     4. Cleanup container
     """
-    # Start shell in background
+    # Start shell in background with restricted network mode
     result = subprocess.run(
-        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug"],
+        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug", "--network=restricted"],
         capture_output=True,
         text=True,
         timeout=60,

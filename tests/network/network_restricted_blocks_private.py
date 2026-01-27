@@ -24,9 +24,9 @@ def test_restricted_blocks_private_networks(coi_binary, workspace_dir, cleanup_c
     3. Verify connections are blocked/rejected
     4. Cleanup container
     """
-    # Start shell in background
+    # Start shell in background with restricted network mode
     result = subprocess.run(
-        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug"],
+        [coi_binary, "shell", "--workspace", workspace_dir, "--background", "--debug", "--network=restricted"],
         capture_output=True,
         text=True,
         timeout=60,
