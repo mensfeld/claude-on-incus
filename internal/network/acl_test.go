@@ -114,8 +114,8 @@ func TestBuildAllowlistRules(t *testing.T) {
 	}
 
 	domainIPs := map[string][]string{
-		"api.example.com":       {"1.2.3.4", "5.6.7.8"},
-		"cdn.example.com":       {"10.20.30.40"},
+		"api.example.com":      {"1.2.3.4", "5.6.7.8"},
+		"cdn.example.com":      {"10.20.30.40"},
 		"__internal_gateway__": {"10.128.178.1"}, // Add gateway for established connection rule
 	}
 
