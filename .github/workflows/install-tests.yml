@@ -319,8 +319,36 @@ jobs:
       - name: Test coi build
         run: |
           # Run from repository root (where scripts exist)
-          coi build
-          coi images
+          # Retry up to 3 times on network failures (Colima networking can be flaky)
+          max_attempts=3
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
+
+            if coi build 2>&1 | tee /tmp/build-output.log; then
+              echo "Build succeeded on attempt $attempt"
+              coi images
+              exit 0
+            fi
+
+            # Check if failure was due to network issues
+            if grep -qi "failed to fetch\|could not connect\|connection timed out\|unable to connect" /tmp/build-output.log; then
+              echo "Network failure detected on attempt $attempt"
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Retrying in 10 seconds..."
+                sleep 10
+              fi
+            else
+              echo "Non-network failure detected, not retrying"
+              exit 1
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "Build failed after $max_attempts attempts"
+          exit 1
 
       - name: Test coi commands
         run: |
