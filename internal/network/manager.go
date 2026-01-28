@@ -453,16 +453,23 @@ func ensureHostRoute(containerName string) error {
 	// Try to add route
 	if err := addRoute(subnet, ovnUplinkIP, uplinkBridge); err != nil {
 		// Provide helpful message if we can't add route
-		log.Printf("⚠️  Host route not configured - container services won't be accessible from host")
+		log.Printf("ℹ️  OVN Network Routing")
 		log.Printf("")
-		log.Printf("To access services running in the container from your host:")
+		log.Printf("Your container is on an OVN network (%s). To access services running", subnet)
+		log.Printf("in the container from your host machine (web servers, databases, etc.),")
+		log.Printf("you need to add a route. This is independent of the network mode.")
+		log.Printf("")
+		log.Printf("Run this command to enable host-to-container connectivity:")
 		log.Printf("  sudo ip route add %s via %s dev %s", subnet, ovnUplinkIP, uplinkBridge)
+		log.Printf("")
+		log.Printf("Note: This route persists until reboot. COI will check if it exists")
+		log.Printf("on future container starts and only add it if missing.")
 		log.Printf("")
 		return nil // Don't fail container startup
 	}
 
-	log.Printf("✓ Host route configured: %s via %s", subnet, ovnUplinkIP)
-	log.Printf("  Container services accessible from host at %s subnet", subnet)
+	log.Printf("✓ OVN host route configured: %s via %s", subnet, ovnUplinkIP)
+	log.Printf("  Container services are accessible from your host machine")
 	return nil
 }
 

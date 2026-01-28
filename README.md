@@ -759,6 +759,49 @@ allow_local_network_access = true  # Allow all RFC1918, not just gateway
 
 **Connection tracking limitation:** Incus OVN ACLs don't support stateful connection tracking (like iptables `state ESTABLISHED,RELATED`). To allow host access, all traffic to the gateway IP is permitted, not just established connections. This is an acceptable trade-off since the gateway represents the host and you want to allow host access anyway.
 
+### Accessing Container Services from Host
+
+When using OVN networks (required for network isolation modes), your containers run on an isolated subnet (e.g., `10.215.220.0/24`) that's separate from your host machine. This means if you run a web server, database, or API inside the container, you won't be able to access it from your host browser or tools without proper routing.
+
+**COI automatically handles this for you** by detecting OVN networks and configuring the necessary host route when you start a container. You'll see a message like:
+
+```
+✓ OVN host route configured: 10.215.220.0/24 via 10.47.62.100
+  Container services are accessible from your host machine
+```
+
+**If automatic routing fails** (requires sudo permissions), you'll see:
+
+```
+ℹ️  OVN Network Routing
+
+Your container is on an OVN network (10.215.220.0/24). To access services running
+in the container from your host machine (web servers, databases, etc.),
+you need to add a route. This is independent of the network mode.
+
+Run this command to enable host-to-container connectivity:
+  sudo ip route add 10.215.220.0/24 via 10.47.62.100 dev incusbr0
+```
+
+**Key Points:**
+- **Network mode vs. Host routing are independent** - Even in `--network=open` mode, you need host routing for OVN networks
+- **Bridge networks don't need this** - Standard bridge networks (like default `incusbr0`) are directly accessible without extra routing
+- **Route persists until reboot** - Once added, the route remains until you reboot your machine
+- **Idempotent** - COI checks if the route exists before trying to add it, so it won't create duplicates
+
+**Common use cases that need this:**
+- Running Rails/Django/Node web servers in container, accessing from host browser
+- Running PostgreSQL/MySQL/Redis in container, connecting with TablePlus/DBeaver from host
+- API testing with Postman/Insomnia against services in container
+- Any scenario where you `curl` or connect to container IP from host
+
+**Troubleshooting:**
+If you see "Connection refused" when trying to access container services:
+1. Check if route exists: `ip route show | grep <container-subnet>`
+2. If missing, add manually with the command COI provided
+3. Verify container service is listening: `coi container exec <name> -- netstat -tlnp`
+4. Check container IP: `coi list` (shows IPv4 for running containers)
+
 ### OVN Network Setup
 
 Network isolation (restricted/allowlist modes) requires OVN (Open Virtual Network). If you see the error "network ACLs not supported", you have two options:
