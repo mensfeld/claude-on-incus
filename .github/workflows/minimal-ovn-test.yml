@@ -1,0 +1,169 @@
+name: Minimal OVN Test (Fixed Tests Only)
+
+# Temporary workflow to verify the 3 fixed tests work in OVN environment
+# Once green, we can re-enable full CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/ovn-network-isolation-bugs]
+
+permissions:
+  contents: read
+
+jobs:
+  minimal-ovn-test:
+    name: Test Fixed OVN Tests Only
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      GOTOOLCHAIN: local
+      CI_NETWORK_TYPE: ovn
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Python test dependencies
+        run: |
+          pip install pytest pytest-cov pexpect
+
+      - name: Lint Python tests
+        run: |
+          pip install ruff
+          echo "Running ruff linter on Python test code..."
+          ruff check tests/
+          echo "Checking Python code formatting..."
+          ruff format --check tests/
+
+      - name: Install Incus
+        run: |
+          # Add Zabbly repo for latest Incus
+          sudo mkdir -p /etc/apt/keyrings/
+          sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
+          sudo sh -c 'cat <<SOURCES > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: $(. /etc/os-release && echo ${VERSION_CODENAME})
+          Components: main
+          Architectures: $(dpkg --print-architecture)
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          SOURCES'
+
+          sudo apt-get update
+          sudo apt-get install -y incus ovn-host ovn-central
+
+      - name: Configure OVN
+        run: |
+          # Configure OVN to listen on TCP (required for Incus integration)
+          sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
+          sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
+
+          # Configure Open vSwitch to connect to OVN
+          sudo ovs-vsctl set open_vswitch . \
+            external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
+            external_ids:ovn-encap-type=geneve \
+            external_ids:ovn-encap-ip=127.0.0.1
+
+          # Verify OVS configuration
+          echo "OVN configuration:"
+          sudo ovs-vsctl get open_vswitch . external_ids
+
+      - name: Initialize Incus (OVN)
+        run: |
+          # Initialize Incus with OVN network integration
+          sudo incus admin init --auto \
+            --network-address=[:]:8443 \
+            --network-port=8443 \
+            --storage-backend=dir \
+            --storage-create-loop=10
+
+          # Configure OVN integration
+          sudo incus config set network.ovn.northbound_connection=tcp:127.0.0.1:6641
+
+          # Add current user to incus-admin group
+          sudo usermod -aG incus-admin $USER
+
+          # Test access without sudo
+          sg incus-admin -c "incus list"
+
+      - name: Create OVN network
+        run: |
+          sg incus-admin -c "
+            incus network create ovn-net \
+              --type=ovn \
+              network=incusbr0 \
+              ipv4.address=10.215.220.1/24 \
+              ipv4.nat=true \
+              ipv4.dhcp=true \
+              ipv6.address=none
+
+            incus network list
+            incus network show ovn-net
+          "
+
+          # Configure host routing for OVN network
+          OVN_UPLINK_IP=\$(sg incus-admin -c "incus network get ovn-net volatile.network.ipv4.address")
+          echo "OVN uplink IP: \$OVN_UPLINK_IP"
+          sudo ip route add 10.215.220.0/24 via \$OVN_UPLINK_IP dev incusbr0 || true
+
+      - name: Create OVN network profile
+        run: |
+          sg incus-admin -c "
+            incus profile create ovn-profile
+            incus profile device add ovn-profile eth0 nic \
+              network=ovn-net \
+              name=eth0
+            incus profile show ovn-profile
+          "
+
+      - name: Configure COI to use OVN network
+        run: |
+          mkdir -p ~/.config/coi
+          cat > ~/.config/coi/config.toml <<EOF
+          network = "ovn-net"
+          profile = "ovn-profile"
+          EOF
+
+          echo "COI config:"
+          cat ~/.config/coi/config.toml
+
+      - name: Build COI
+        run: |
+          echo "Building COI..."
+          go build -o coi ./cmd/coi
+          ./coi version
+
+      - name: Run only the 3 fixed tests
+        run: |
+          echo "Running the 3 tests we fixed:"
+          echo "1. test_ovn_route_added_automatically"
+          echo "2. test_list_format_json_empty"
+          echo "3. test_attach_shows_sessions"
+          echo ""
+
+          sg incus-admin -c "
+            python -m pytest -v --tb=short \
+              tests/network/test_ovn_routing.py::test_ovn_route_added_automatically \
+              tests/list/list_format_json_empty.py::test_list_format_json_empty \
+              tests/attach/no_sessions_attach.py::test_attach_shows_sessions
+          "
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sg incus-admin -c "./coi kill --all --force || true"
+          sg incus-admin -c "./coi clean --force || true"
