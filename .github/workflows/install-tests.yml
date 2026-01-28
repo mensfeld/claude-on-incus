@@ -320,32 +320,44 @@ jobs:
         run: |
           # Run from repository root (where scripts exist)
           #
-          # RETRY LOGIC: Colima/Lima VM networking can be flaky in GitHub Actions,
-          # causing intermittent "connection timed out" errors when the build container
-          # tries to download packages via apt. This is a known transient issue in virtualized
-          # environments, not caused by our code. We retry up to 3 times on network failures
-          # to make the test more resilient, while still failing immediately on actual build errors.
+          # RETRY LOGIC WITH TIMEOUT: Colima/Lima VM can have two types of failures:
+          # 1. Network failures: "connection timed out" when downloading packages
+          # 2. Build hangs: containerd/docker setup sometimes hangs in Colima VM
+          #
+          # We use timeout to catch hangs (15 min max per attempt) and retry on network failures.
           max_attempts=3
           attempt=1
+          build_timeout=900  # 15 minutes per attempt
 
           while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts..."
+            echo "Attempt $attempt of $max_attempts (timeout: ${build_timeout}s)..."
 
-            if coi build 2>&1 | tee /tmp/build-output.log; then
+            # Run with timeout to prevent hangs
+            if timeout $build_timeout coi build 2>&1 | tee /tmp/build-output.log; then
               echo "Build succeeded on attempt $attempt"
               coi images
               exit 0
             fi
 
+            exit_code=$?
+
+            # Check if it was a timeout (exit code 124)
+            if [ $exit_code -eq 124 ]; then
+              echo "Build timed out after ${build_timeout}s on attempt $attempt"
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Retrying in 10 seconds..."
+                sleep 10
+              fi
             # Check if failure was due to network issues
-            if grep -qi "failed to fetch\|could not connect\|connection timed out\|unable to connect" /tmp/build-output.log; then
+            elif grep -qi "failed to fetch\|could not connect\|connection timed out\|unable to connect" /tmp/build-output.log; then
               echo "Network failure detected on attempt $attempt"
               if [ $attempt -lt $max_attempts ]; then
                 echo "Retrying in 10 seconds..."
                 sleep 10
               fi
             else
-              echo "Non-network failure detected, not retrying"
+              echo "Non-network/non-timeout failure detected, not retrying"
+              cat /tmp/build-output.log
               exit 1
             fi
 
