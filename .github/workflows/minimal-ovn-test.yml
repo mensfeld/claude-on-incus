@@ -84,12 +84,45 @@ jobs:
 
       - name: Initialize Incus (OVN)
         run: |
-          # Initialize Incus with OVN network integration
-          sudo incus admin init --auto \
-            --network-address=[:]:8443 \
-            --network-port=8443 \
-            --storage-backend=dir \
-            --storage-create-loop=10
+          # Wait for Incus service to be ready
+          sudo systemctl start incus.socket || true
+          sleep 5
+
+          # Configure subuid/subgid for UID mapping (needed for raw.idmap)
+          echo "root:1001:1" | sudo tee -a /etc/subuid
+          echo "root:1001:1" | sudo tee -a /etc/subgid
+
+          # Restart Incus to pick up subuid/subgid changes
+          sudo systemctl restart incus || true
+          sleep 5
+
+          # Initialize Incus with preseed configuration
+          cat <<EOF | sudo incus admin init --preseed
+          config:
+            images.compression_algorithm: none
+          networks:
+          - config:
+              ipv4.address: 10.47.62.1/24
+              ipv4.nat: "true"
+              ipv4.dhcp.ranges: 10.47.62.2-10.47.62.99
+              ipv4.ovn.ranges: 10.47.62.100-10.47.62.200
+              ipv6.address: none
+            name: incusbr0
+            type: bridge
+          storage_pools:
+          - config:
+              size: 30GiB
+            driver: zfs
+            name: default
+          profiles:
+          - config: {}
+            devices:
+              root:
+                path: /
+                pool: default
+                type: disk
+            name: default
+          EOF
 
           # Configure OVN integration
           sudo incus config set network.ovn.northbound_connection=tcp:127.0.0.1:6641
