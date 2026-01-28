@@ -186,6 +186,27 @@ jobs:
           echo "COI version:"
           ./coi version
 
+      - name: Restore COI image from cache
+        id: cache-coi-image
+        uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: /tmp/coi-image.tar.gz
+          key: ${{ runner.os }}-coi-image-${{ hashFiles('internal/image/**', 'testdata/dummy/**', 'scripts/build/**') }}
+
+      - name: Import COI image from cache
+        if: steps.cache-coi-image.outputs.cache-hit == 'true'
+        run: |
+          echo "Restoring COI image from cache..."
+          incus image import /tmp/coi-image.tar.gz --alias coi
+          ./coi images
+
+      - name: Build COI image
+        if: steps.cache-coi-image.outputs.cache-hit != 'true'
+        run: |
+          echo "Building COI image (not cached)..."
+          ./coi build
+          ./coi images
+
       - name: Run only the 3 fixed tests
         run: |
           echo "===== RUNNING ONLY THE 3 FIXED TESTS ====="
