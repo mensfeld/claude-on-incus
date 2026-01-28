@@ -18,12 +18,15 @@ curl http://10.215.220.2:3000  # ❌ Connection timeout
 ```
 
 ### Root Cause
-OVN creates an isolated virtual network that routes through the uplink bridge (incusbr0) as a gateway. The host needs an explicit route to reach the OVN subnet:
+OVN creates an isolated virtual network with its own gateway. The OVN network gets an uplink IP on the bridge (e.g., 10.47.62.100 from the `ipv4.ovn.ranges` pool). The host needs an explicit route to reach the OVN subnet via this uplink IP:
 
 ```bash
-# Missing route
-sudo ip route add 10.215.220.0/24 via 10.47.62.1 dev incusbr0
+# Correct route (via OVN uplink IP, NOT the bridge gateway)
+sudo ip route add 10.215.220.0/24 via 10.47.62.100 dev incusbr0
+# NOT: via 10.47.62.1 ❌ (bridge gateway won't work)
 ```
+
+The OVN uplink IP is found in the network config at `volatile.network.ipv4.address`.
 
 ### Solution: Auto-Add Host Route
 
@@ -50,30 +53,30 @@ sudo ip route add 10.215.220.0/24 via 10.47.62.1 dev incusbr0
            return err
        }
 
-       // 3. Get uplink network and its gateway IP
-       uplinkName, err := getOVNUplink(networkName)
+       // 3. Get OVN uplink bridge name and OVN's uplink IP
+       uplinkBridge, err := getOVNUplinkBridge(networkName)
        if err != nil {
            return err
        }
-       gatewayIP, err := getNetworkGateway(uplinkName)
+       ovnUplinkIP, err := getOVNUplinkIP(networkName)
        if err != nil {
            return err
        }
 
        // 4. Check if route already exists
-       if routeExists(subnet, gatewayIP) {
+       if routeExists(subnet, ovnUplinkIP) {
            return nil // Already configured
        }
 
        // 5. Try to add route (requires sudo/root)
-       cmd := exec.Command("ip", "route", "add", subnet, "via", gatewayIP, "dev", uplinkName)
+       cmd := exec.Command("ip", "route", "add", subnet, "via", ovnUplinkIP, "dev", uplinkBridge)
        if err := cmd.Run(); err != nil {
            // Return instructional error if we can't add route
            return fmt.Errorf("could not add host route (need sudo): ip route add %s via %s dev %s",
-               subnet, gatewayIP, uplinkName)
+               subnet, ovnUplinkIP, uplinkBridge)
        }
 
-       log.Printf("Added host route: %s via %s (dev %s)", subnet, gatewayIP, uplinkName)
+       log.Printf("Added host route: %s via %s (dev %s)", subnet, ovnUplinkIP, uplinkBridge)
        return nil
    }
    ```
@@ -81,16 +84,16 @@ sudo ip route add 10.215.220.0/24 via 10.47.62.1 dev incusbr0
 3. **Helper functions:**
    ```go
    func isOVNNetwork(name string) (bool, error)
-   func getNetworkSubnet(name string) (string, error)  // Returns "10.215.220.0/24"
-   func getOVNUplink(name string) (string, error)      // Returns "incusbr0"
-   func getNetworkGateway(name string) (string, error) // Returns "10.47.62.1"
+   func getNetworkSubnet(name string) (string, error)     // Returns "10.215.220.0/24" from ipv4.address
+   func getOVNUplinkBridge(name string) (string, error)   // Returns "incusbr0" from network config
+   func getOVNUplinkIP(name string) (string, error)       // Returns "10.47.62.100" from volatile.network.ipv4.address
    func routeExists(subnet, gateway string) bool
    ```
 
 4. **User Experience:**
    ```
    Starting container on OVN network (ovn-net)...
-   ✓ Host route configured: 10.215.220.0/24 via 10.47.62.1
+   ✓ Host route configured: 10.215.220.0/24 via 10.47.62.100
 
    Container services accessible at: http://10.215.220.2:PORT
    ```
@@ -101,7 +104,7 @@ sudo ip route add 10.215.220.0/24 via 10.47.62.1 dev incusbr0
    ⚠️  Host route missing - container services won't be accessible from host
 
    To access services running in the container from your host:
-     sudo ip route add 10.215.220.0/24 via 10.47.62.1 dev incusbr0
+     sudo ip route add 10.215.220.0/24 via 10.47.62.100 dev incusbr0
 
    Container: coi-workspace-1
    ```
