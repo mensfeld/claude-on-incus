@@ -26,6 +26,10 @@ OVN host routing:
 - **Route Configuration**: Extracts OVN subnet (from `ipv4.address`), OVN uplink IP (from `volatile.network.ipv4.address`), and uplink bridge name (from `network` config)
 - **Key Insight**: Routes via OVN's uplink IP on the bridge (e.g., `10.47.62.100`) NOT the bridge's gateway IP (e.g., `10.47.62.1`). The OVN uplink IP acts as the gateway to the OVN network.
 - **Graceful Degradation**: If route already exists, skips addition. If sudo fails, shows helpful command instead of failing container startup
+- **Auto-healing**: Automatically checks and re-adds route on every container start, so routes are restored after reboot (requires sudo)
+- **IP Stability**: OVN uplink IP is relatively stable (changes only if OVN network is deleted/recreated)
+- **Persistence Options**: README documents three approaches for fully automatic routing after reboot: passwordless sudo (recommended for dev), systemd service, or netplan configuration
+- **Clear Messaging**: Improved messages explain OVN routing is independent of network mode and works in open/restricted/allowlist modes
 - **Use Case**: Essential for development workflows where users run web servers (Rails, Django, Node), databases (PostgreSQL, MySQL), or APIs in containers and need to access them from host browsers, database clients, or API testing tools
 - **CI Integration**: GitHub Actions CI now properly configures OVN routing, enabling integration tests for network isolation features
 

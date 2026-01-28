@@ -787,13 +787,117 @@ Run this command to enable host-to-container connectivity:
 - **Network mode vs. Host routing are independent** - Even in `--network=open` mode, you need host routing for OVN networks
 - **Bridge networks don't need this** - Standard bridge networks (like default `incusbr0`) are directly accessible without extra routing
 - **Route persists until reboot** - Once added, the route remains until you reboot your machine
+- **Auto-healing after reboot** - COI automatically checks and re-adds the route when starting containers (requires sudo)
 - **Idempotent** - COI checks if the route exists before trying to add it, so it won't create duplicates
+- **IP stability** - The OVN uplink IP is relatively stable (changes only if you delete/recreate the OVN network)
 
 **Common use cases that need this:**
 - Running Rails/Django/Node web servers in container, accessing from host browser
 - Running PostgreSQL/MySQL/Redis in container, connecting with TablePlus/DBeaver from host
 - API testing with Postman/Insomnia against services in container
 - Any scenario where you `curl` or connect to container IP from host
+
+#### Making Routes Persistent Across Reboots
+
+COI automatically checks and re-adds routes when starting containers, but this requires sudo permissions. For fully automatic setup after reboot, choose one of these options:
+
+**Option 1: Passwordless sudo for ip route (Recommended)**
+
+Allow COI to automatically manage routes without password prompts:
+
+```bash
+# Create sudoers file for ip route commands
+echo "$USER ALL=(ALL) NOPASSWD: /usr/sbin/ip route add *, /usr/sbin/ip route del *, /usr/sbin/ip route show *" | sudo tee /etc/sudoers.d/coi-routing
+
+# Set correct permissions
+sudo chmod 440 /etc/sudoers.d/coi-routing
+```
+
+With this setup, COI silently configures routing whenever you start a container - no manual intervention needed after reboots.
+
+**Option 2: systemd service (System-wide persistence)**
+
+Create a systemd service that adds the route on boot:
+
+```bash
+# Get your actual OVN subnet and uplink IP from COI's message
+# Example values shown - replace with your actual values
+SUBNET="10.215.220.0/24"
+UPLINK_IP="10.47.62.100"
+BRIDGE="incusbr0"
+
+# Create systemd service
+sudo tee /etc/systemd/system/ovn-host-route.service > /dev/null <<EOF
+[Unit]
+Description=OVN Host Route for Container Access
+After=network-online.target incus.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ip route add ${SUBNET} via ${UPLINK_IP} dev ${BRIDGE} || true
+RemainAfterExit=yes
+ExecStop=/usr/sbin/ip route del ${SUBNET} via ${UPLINK_IP} dev ${BRIDGE} || true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start the service
+sudo systemctl daemon-reload
+sudo systemctl enable --now ovn-host-route.service
+
+# Verify
+systemctl status ovn-host-route.service
+ip route show | grep ${SUBNET}
+```
+
+**Option 3: netplan (Ubuntu/Debian with netplan)**
+
+Add the route to your netplan configuration:
+
+```bash
+# Get your values from COI's message
+SUBNET="10.215.220.0/24"
+UPLINK_IP="10.47.62.100"
+BRIDGE="incusbr0"
+
+# Find your netplan config (usually in /etc/netplan/)
+ls /etc/netplan/
+
+# Edit your netplan config (example shown)
+sudo nano /etc/netplan/01-netcfg.yaml
+```
+
+Add this to your network configuration:
+```yaml
+network:
+  version: 2
+  ethernets:
+    # Your existing interface config
+    eth0:
+      # ... existing config ...
+  bridges:
+    incusbr0:
+      # ... existing incusbr0 config if any ...
+      routes:
+        - to: 10.215.220.0/24
+          via: 10.47.62.100
+```
+
+Then apply:
+```bash
+sudo netplan apply
+```
+
+**Which option should I choose?**
+
+- **Option 1** (passwordless sudo) - Best for development machines, seamless experience
+- **Option 2** (systemd) - Best for servers or if you don't want to modify sudoers
+- **Option 3** (netplan) - Best if you already manage network config with netplan
+
+**IP Address Stability:**
+The OVN uplink IP (e.g., `10.47.62.100`) is assigned from your `ipv4.ovn.ranges` pool and stored in the OVN network's `volatile.network.ipv4.address`. It remains stable unless you delete and recreate the OVN network. If the IP does change, you'll need to update your persistent route configuration accordingly.
 
 **Troubleshooting:**
 If you see "Connection refused" when trying to access container services:

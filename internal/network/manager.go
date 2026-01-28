@@ -462,8 +462,10 @@ func ensureHostRoute(containerName string) error {
 		log.Printf("Run this command to enable host-to-container connectivity:")
 		log.Printf("  sudo ip route add %s via %s dev %s", subnet, ovnUplinkIP, uplinkBridge)
 		log.Printf("")
-		log.Printf("Note: This route persists until reboot. COI will check if it exists")
-		log.Printf("on future container starts and only add it if missing.")
+		log.Printf("The route persists until reboot. COI automatically checks and re-adds it")
+		log.Printf("when starting containers. For fully automatic setup after reboot, either:")
+		log.Printf("  1. Configure passwordless sudo for 'ip route' (see README)")
+		log.Printf("  2. Add the route to your network configuration (netplan/systemd)")
 		log.Printf("")
 		return nil // Don't fail container startup
 	}
