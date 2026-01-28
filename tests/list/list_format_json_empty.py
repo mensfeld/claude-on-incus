@@ -4,8 +4,17 @@ import json
 import subprocess
 
 
-def test_list_format_json_empty(coi_binary):
+def test_list_format_json_empty(coi_binary, cleanup_containers):
     """Test that coi list --format=json outputs valid JSON with no containers."""
+    # cleanup_containers fixture ensures all test containers are cleaned up
+
+    # First, forcefully clean ALL containers to ensure truly empty state
+    subprocess.run(
+        [coi_binary, "kill", "--all", "--force"],
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
 
     # Run list with JSON format (no containers running)
     result = subprocess.run(
