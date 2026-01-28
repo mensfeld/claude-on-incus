@@ -170,10 +170,8 @@ jobs:
       - name: Configure COI for OVN
         run: |
           mkdir -p ~/.config/coi
-          cat > ~/.config/coi/config.toml <<EOF
-          network = "ovn-net"
-
-          [network_mode]
+          cat > ~/.config/coi/config.toml << 'EOF'
+          [network]
           mode = "open"
           EOF
 
