@@ -179,7 +179,8 @@ func listSavedSessions(sessionsDir string) ([]SessionInfo, error) {
 		return nil, err
 	}
 
-	var result []SessionInfo
+	// Initialize as empty slice instead of nil so the section always appears with --all
+	result := []SessionInfo{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
