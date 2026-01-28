@@ -14,7 +14,7 @@ permissions:
 jobs:
   minimal-ovn-test:
     name: Test Fixed OVN Tests Only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     env:
@@ -22,8 +22,7 @@ jobs:
       CI_NETWORK_TYPE: ovn
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
@@ -32,17 +31,25 @@ jobs:
           cache: true
 
       - name: Set up Python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.12'
 
-      - name: Install Python test dependencies
-        run: |
-          pip install pytest pytest-cov pexpect
+      - name: Cache Python dependencies
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Lint Python tests
+      - name: Install Python dependencies
         run: |
-          pip install ruff
+          python -m pip install --upgrade pip
+          pip install -r tests/support/requirements.txt
+
+      - name: Lint Python code with ruff
+        run: |
           echo "Running ruff linter on Python test code..."
           ruff check tests/
           echo "Checking Python code formatting..."
@@ -89,6 +96,7 @@ jobs:
           sleep 5
 
           # Configure subuid/subgid for UID mapping (needed for raw.idmap)
+          # Map runner UID 1001 to be available for container remapping
           echo "root:1001:1" | sudo tee -a /etc/subuid
           echo "root:1001:1" | sudo tee -a /etc/subgid
 
@@ -96,7 +104,10 @@ jobs:
           sudo systemctl restart incus || true
           sleep 5
 
-          # Initialize Incus with preseed configuration
+          # Configure OVN integration BEFORE initializing Incus
+          sudo incus config set network.ovn.northbound_connection=tcp:127.0.0.1:6641
+
+          # Initialize Incus with btrfs storage and OVN networking
           cat <<EOF | sudo incus admin init --preseed
           config:
             images.compression_algorithm: none
@@ -109,14 +120,27 @@ jobs:
               ipv6.address: none
             name: incusbr0
             type: bridge
+          - config:
+              bridge.mtu: "1442"
+              ipv4.address: 10.215.220.1/24
+              ipv4.nat: "true"
+              ipv6.address: none
+            description: OVN logical network
+            name: ovn-net
+            type: ovn
+            project: default
           storage_pools:
           - config:
-              size: 30GiB
-            driver: zfs
+              size: 15GiB
             name: default
+            driver: btrfs
           profiles:
           - config: {}
             devices:
+              eth0:
+                name: eth0
+                network: ovn-net
+                type: nic
               root:
                 path: /
                 pool: default
@@ -124,51 +148,33 @@ jobs:
             name: default
           EOF
 
-          # Configure OVN integration
-          sudo incus config set network.ovn.northbound_connection=tcp:127.0.0.1:6641
+          # Allow access without re-login by changing socket permissions
+          sudo chmod 666 /var/lib/incus/unix.socket
 
           # Add current user to incus-admin group
           sudo usermod -aG incus-admin $USER
 
-          # Test access without sudo
-          sg incus-admin -c "incus list"
+          echo "OVN network configured successfully"
+          incus network list
 
-      - name: Create OVN network
+      - name: Configure host routing for OVN
         run: |
-          sg incus-admin -c "
-            incus network create ovn-net \
-              --type=ovn \
-              network=incusbr0 \
-              ipv4.address=10.215.220.1/24 \
-              ipv4.nat=true \
-              ipv4.dhcp=true \
-              ipv6.address=none
+          # Get OVN uplink IP and configure host route
+          OVN_UPLINK_IP=$(incus network get ovn-net volatile.network.ipv4.address)
+          echo "OVN uplink IP: $OVN_UPLINK_IP"
+          sudo ip route add 10.215.220.0/24 via $OVN_UPLINK_IP dev incusbr0 || true
 
-            incus network list
-            incus network show ovn-net
-          "
+          echo "Routing table:"
+          ip route show
 
-          # Configure host routing for OVN network
-          OVN_UPLINK_IP=\$(sg incus-admin -c "incus network get ovn-net volatile.network.ipv4.address")
-          echo "OVN uplink IP: \$OVN_UPLINK_IP"
-          sudo ip route add 10.215.220.0/24 via \$OVN_UPLINK_IP dev incusbr0 || true
-
-      - name: Create OVN network profile
-        run: |
-          sg incus-admin -c "
-            incus profile create ovn-profile
-            incus profile device add ovn-profile eth0 nic \
-              network=ovn-net \
-              name=eth0
-            incus profile show ovn-profile
-          "
-
-      - name: Configure COI to use OVN network
+      - name: Configure COI for OVN
         run: |
           mkdir -p ~/.config/coi
           cat > ~/.config/coi/config.toml <<EOF
           network = "ovn-net"
-          profile = "ovn-profile"
+
+          [network_mode]
+          mode = "open"
           EOF
 
           echo "COI config:"
@@ -176,27 +182,25 @@ jobs:
 
       - name: Build COI
         run: |
-          echo "Building COI..."
-          go build -o coi ./cmd/coi
+          echo "Building COI binary..."
+          go build -v -o ./coi ./cmd/coi
+
+          echo "COI version:"
           ./coi version
 
       - name: Run only the 3 fixed tests
         run: |
-          echo "Running the 3 tests we fixed:"
+          echo "===== RUNNING ONLY THE 3 FIXED TESTS ====="
           echo "1. test_ovn_route_added_automatically"
           echo "2. test_list_format_json_empty"
           echo "3. test_attach_shows_sessions"
           echo ""
 
-          sg incus-admin -c "
-            python -m pytest -v --tb=short \
-              tests/network/test_ovn_routing.py::test_ovn_route_added_automatically \
-              tests/list/list_format_json_empty.py::test_list_format_json_empty \
-              tests/attach/no_sessions_attach.py::test_attach_shows_sessions
-          "
+          python -m pytest tests/ -v --tb=short --durations=0 \
+            -k "test_ovn_route_added_automatically or test_list_format_json_empty or test_attach_shows_sessions"
 
       - name: Cleanup
         if: always()
         run: |
-          sg incus-admin -c "./coi kill --all --force || true"
-          sg incus-admin -c "./coi clean --force || true"
+          ./coi kill --all --force || true
+          ./coi clean --force || true
