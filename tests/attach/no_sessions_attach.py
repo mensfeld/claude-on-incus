@@ -14,9 +14,19 @@ def test_attach_shows_sessions(coi_binary, cleanup_containers):
     Test that coi attach without arguments shows session list.
 
     Flow:
-    1. Run coi attach
-    2. Verify output shows session info or usage hint
+    1. Ensure clean state (no leftover containers from previous tests)
+    2. Run coi attach
+    3. Verify output shows session info or usage hint
     """
+    # Forcefully clean ALL containers to ensure clean state
+    # This prevents issues with leftover containers from previous tests
+    subprocess.run(
+        [coi_binary, "kill", "--all", "--force"],
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+
     # Run coi attach without container name
     result = subprocess.run(
         [coi_binary, "attach"],
