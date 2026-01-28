@@ -319,7 +319,12 @@ jobs:
       - name: Test coi build
         run: |
           # Run from repository root (where scripts exist)
-          # Retry up to 3 times on network failures (Colima networking can be flaky)
+          #
+          # RETRY LOGIC: Colima/Lima VM networking can be flaky in GitHub Actions,
+          # causing intermittent "connection timed out" errors when the build container
+          # tries to download packages via apt. This is a known transient issue in virtualized
+          # environments, not caused by our code. We retry up to 3 times on network failures
+          # to make the test more resilient, while still failing immediately on actual build errors.
           max_attempts=3
           attempt=1
 
