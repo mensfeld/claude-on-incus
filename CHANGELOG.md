@@ -8,6 +8,7 @@
 
 ### Features
 
+- [Feature] **Automatic OVN host routing** - COI now automatically configures host routes to OVN networks, allowing you to access container services (web servers, databases, APIs) directly from your host machine. When starting a container on an OVN network, COI detects the network type, extracts the OVN subnet and uplink IP, and adds the necessary routing rule. If sudo access is unavailable, COI displays the exact command needed: `sudo ip route add <subnet> via <uplink-ip> dev <bridge>`. This eliminates the "Connection refused" or "No route to host" errors when trying to curl/access services running in containers with network isolation (restricted/allowlist modes). Works automatically with all OVN-based networks - no configuration required. (#81)
 - [Feature] **Automatic Docker/nested container support** - COI now automatically enables Docker and container nesting support on all containers by setting `security.nesting=true`, `security.syscalls.intercept.mknod=true`, and `security.syscalls.intercept.setxattr=true`. This eliminates the "unable to start container process: error during container init: open sysctl net.ipv4.ip_unprivileged_port_start file: reopen fd 8: permission denied" error when running Docker inside Incus containers. No configuration required - Docker just works out of the box.
 - [Feature] **Automatic Colima/Lima environment detection** - COI now automatically detects when running inside a Colima or Lima VM and disables UID shifting. These VMs already handle UID mapping at the VM level via virtiofs, making Incus's `shift=true` unnecessary and problematic. Detection checks for virtiofs mounts in `/proc/mounts` and the `lima` user. Users no longer need to manually configure `disable_shift` option.
 - [Feature] **Manual UID shift override** - Added `disable_shift` config option for manual control in edge cases: `[incus]` `disable_shift = true` in `~/.config/coi/config.toml`. The auto-detection works in most cases, but this option allows manual override if needed.
@@ -19,6 +20,14 @@
 - [Bug Fix] **Exotic terminal type support** - Fixed tmux failing with "missing or unsuitable terminal" error when using modern terminals like Ghostty, WezTerm, Alacritty, or Kitty. These terminals set TERM to values (e.g., `xterm-ghostty`) that don't exist in container terminfo databases. Added automatic mapping to `xterm-256color` while preserving standard terminal types unchanged. Applies to both environment TERM and `-e TERM=...` flag. (#53)
 
 ### Technical Details
+
+OVN host routing:
+- **Automatic Detection**: Checks if container's network is OVN type (vs standard bridge)
+- **Route Configuration**: Extracts OVN subnet (from `ipv4.address`), OVN uplink IP (from `volatile.network.ipv4.address`), and uplink bridge name (from `network` config)
+- **Key Insight**: Routes via OVN's uplink IP on the bridge (e.g., `10.47.62.100`) NOT the bridge's gateway IP (e.g., `10.47.62.1`). The OVN uplink IP acts as the gateway to the OVN network.
+- **Graceful Degradation**: If route already exists, skips addition. If sudo fails, shows helpful command instead of failing container startup
+- **Use Case**: Essential for development workflows where users run web servers (Rails, Django, Node), databases (PostgreSQL, MySQL), or APIs in containers and need to access them from host browsers, database clients, or API testing tools
+- **CI Integration**: GitHub Actions CI now properly configures OVN routing, enabling integration tests for network isolation features
 
 Docker/nested container support:
 - **Automatic Configuration**: All containers automatically receive Docker support flags on launch
