@@ -89,7 +89,9 @@ def test_restricted_mode_acl_cleanup_no_warning(coi_binary, workspace_dir, clean
         text=True,
         timeout=30,
     )
-    assert stop_result.returncode == 0, f"Container stop should succeed. stderr: {stop_result.stderr}"
+    assert stop_result.returncode == 0, (
+        f"Container stop should succeed. stderr: {stop_result.stderr}"
+    )
 
     # Give shutdown time to complete
     time.sleep(2)
@@ -103,7 +105,9 @@ def test_restricted_mode_acl_cleanup_no_warning(coi_binary, workspace_dir, clean
     )
 
     # The cleanup should succeed
-    assert cleanup_result.returncode == 0, f"Cleanup should succeed. stderr: {cleanup_result.stderr}"
+    assert cleanup_result.returncode == 0, (
+        f"Cleanup should succeed. stderr: {cleanup_result.stderr}"
+    )
 
     combined_output = cleanup_result.stdout + cleanup_result.stderr
 
@@ -194,7 +198,9 @@ def test_allowlist_mode_acl_cleanup_no_warning(coi_binary, workspace_dir, cleanu
         text=True,
         timeout=30,
     )
-    assert stop_result.returncode == 0, f"Container stop should succeed. stderr: {stop_result.stderr}"
+    assert stop_result.returncode == 0, (
+        f"Container stop should succeed. stderr: {stop_result.stderr}"
+    )
 
     # Give shutdown time to complete
     time.sleep(2)
@@ -207,7 +213,9 @@ def test_allowlist_mode_acl_cleanup_no_warning(coi_binary, workspace_dir, cleanu
         timeout=30,
     )
 
-    assert cleanup_result.returncode == 0, f"Cleanup should succeed. stderr: {cleanup_result.stderr}"
+    assert cleanup_result.returncode == 0, (
+        f"Cleanup should succeed. stderr: {cleanup_result.stderr}"
+    )
 
     combined_output = cleanup_result.stdout + cleanup_result.stderr
 
@@ -287,7 +295,9 @@ def test_open_mode_no_acl_warnings(coi_binary, workspace_dir, cleanup_containers
         text=True,
         timeout=30,
     )
-    assert stop_result.returncode == 0, f"Container stop should succeed. stderr: {stop_result.stderr}"
+    assert stop_result.returncode == 0, (
+        f"Container stop should succeed. stderr: {stop_result.stderr}"
+    )
 
     # Give shutdown time to complete
     time.sleep(2)
@@ -300,7 +310,9 @@ def test_open_mode_no_acl_warnings(coi_binary, workspace_dir, cleanup_containers
         timeout=30,
     )
 
-    assert cleanup_result.returncode == 0, f"Cleanup should succeed. stderr: {cleanup_result.stderr}"
+    assert cleanup_result.returncode == 0, (
+        f"Cleanup should succeed. stderr: {cleanup_result.stderr}"
+    )
 
     combined_output = cleanup_result.stdout + cleanup_result.stderr
 
