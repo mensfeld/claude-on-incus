@@ -152,8 +152,16 @@ install_claude_cli() {
     # This installs to ~/.local/bin/claude for that user
     su - "$CODE_USER" -c 'curl -fsSL https://claude.ai/install.sh | bash'
 
+    # Verify that the installer actually created the Claude CLI binary
+    local CLAUDE_PATH="/home/$CODE_USER/.local/bin/claude"
+    if [[ ! -x "$CLAUDE_PATH" ]]; then
+        log "ERROR: Claude CLI binary not found at $CLAUDE_PATH after installation."
+        log "Installation may have failed or installed to an unexpected location."
+        exit 1
+    fi
+
     # Create a global symlink so it's accessible system-wide
-    ln -sf "/home/$CODE_USER/.local/bin/claude" /usr/local/bin/claude
+    ln -sf "$CLAUDE_PATH" /usr/local/bin/claude
 
     log "Claude CLI $(claude --version 2>/dev/null || echo 'installed')"
 }
