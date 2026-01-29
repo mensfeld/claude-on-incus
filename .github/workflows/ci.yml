@@ -132,9 +132,8 @@ jobs:
           sudo microovn cluster bootstrap
           sudo microovn status
 
-          echo "=== Finding MicroOVN sockets ==="
-          sudo find /var/snap/microovn -name "*.sock" -type s 2>/dev/null || true
-          sudo find /var/snap/microovn -name "db.sock" -type s 2>/dev/null || true
+          echo "=== MicroOVN certificates ==="
+          sudo microovn certificates list
 
           echo "=== MicroOVN OVS info ==="
           sudo microovn.ovs-vsctl show
@@ -142,32 +141,46 @@ jobs:
           echo "=== MicroOVN OVN NB connection ==="
           sudo microovn.ovn-nbctl get-connection || echo "No NB connection"
 
-          echo "=== Creating symlinks for apt-Incus ==="
-          # Find the actual OVS socket path in MicroOVN
-          OVS_SOCK=$(sudo find /var/snap/microovn -name "db.sock" -type s 2>/dev/null | head -1)
-          echo "Found OVS socket: $OVS_SOCK"
+          # Get MicroOVN certificates for Incus SSL connection
+          echo "=== Extracting MicroOVN certificates ==="
+          PKI_DIR="/var/snap/microovn/common/data/pki"
 
+          # Copy certificates to accessible location
+          sudo mkdir -p /etc/incus/ovn
+          sudo cp "$PKI_DIR/cacert.pem" /etc/incus/ovn/
+
+          # For client cert, use the ovn-northd cert or generate one
+          # MicroOVN generates certs for: ovn-northd, ovn-controller, ovs
+          if sudo test -f "$PKI_DIR/ovn-northd-cert.pem"; then
+            sudo cp "$PKI_DIR/ovn-northd-cert.pem" /etc/incus/ovn/client-cert.pem
+            sudo cp "$PKI_DIR/ovn-northd-privkey.pem" /etc/incus/ovn/client-key.pem
+          else
+            # Try alternative cert names
+            echo "Looking for available certificates..."
+            sudo ls -la "$PKI_DIR/"
+            # Use any available cert
+            CERT=$(sudo find "$PKI_DIR" -name "*-cert.pem" | head -1)
+            KEY=$(sudo find "$PKI_DIR" -name "*-privkey.pem" | head -1)
+            if [ -n "$CERT" ] && [ -n "$KEY" ]; then
+              sudo cp "$CERT" /etc/incus/ovn/client-cert.pem
+              sudo cp "$KEY" /etc/incus/ovn/client-key.pem
+            fi
+          fi
+
+          sudo chmod 644 /etc/incus/ovn/*.pem
+          ls -la /etc/incus/ovn/
+
+          # Also create OVS socket symlink for basic OVS access
+          OVS_SOCK=$(sudo find /var/snap/microovn -name "db.sock" -type s 2>/dev/null | head -1)
           if [ -n "$OVS_SOCK" ]; then
             sudo mkdir -p /run/openvswitch
             sudo ln -sf "$OVS_SOCK" /run/openvswitch/db.sock
-            echo "Symlinked OVS socket"
-          fi
-
-          # Find OVN sockets
-          OVN_NB_SOCK=$(sudo find /var/snap/microovn -name "ovnnb_db.sock" -type s 2>/dev/null | head -1)
-          OVN_SB_SOCK=$(sudo find /var/snap/microovn -name "ovnsb_db.sock" -type s 2>/dev/null | head -1)
-          echo "Found OVN NB socket: $OVN_NB_SOCK"
-          echo "Found OVN SB socket: $OVN_SB_SOCK"
-
-          if [ -n "$OVN_NB_SOCK" ]; then
-            sudo mkdir -p /var/run/ovn
-            sudo ln -sf "$OVN_NB_SOCK" /var/run/ovn/ovnnb_db.sock
-            sudo ln -sf "$OVN_SB_SOCK" /var/run/ovn/ovnsb_db.sock
-            echo "Symlinked OVN sockets"
+            # Fix permissions on actual socket
+            sudo chmod 666 "$OVS_SOCK" || true
+            echo "Symlinked OVS socket: $OVS_SOCK"
           fi
 
           ls -la /run/openvswitch/ || true
-          ls -la /var/run/ovn/ || true
 
       - name: Initialize Incus (OVN)
         if: matrix.network_type == 'ovn'
@@ -217,57 +230,52 @@ jobs:
       - name: Add OVN network
         if: matrix.network_type == 'ovn'
         run: |
-          # Fix socket permissions so Incus can access them
-          echo "=== Fixing socket permissions ==="
-          sudo chmod 666 /run/openvswitch/db.sock
-          sudo chmod 666 /var/run/ovn/ovnnb_db.sock
-          sudo chmod 666 /var/run/ovn/ovnsb_db.sock
+          echo "=== Checking OVS socket ==="
+          ls -la /run/openvswitch/ || true
 
-          # Debug: Check OVS and OVN sockets
-          echo "=== Checking sockets ==="
-          ls -la /run/openvswitch/
-          ls -la /var/run/ovn/
-          sudo ovs-vsctl show
-          sudo ovn-nbctl show
+          echo "=== Checking MicroOVN status ==="
+          sudo microovn.ovs-vsctl show
+          sudo microovn.ovn-nbctl show || true
 
-          # Restart Incus so it picks up OVS/OVN
-          echo "Restarting Incus to detect OVS/OVN..."
+          # Read the certificates for Incus config
+          echo "=== Reading certificates ==="
+          CA_CERT=$(sudo cat /etc/incus/ovn/cacert.pem)
+          CLIENT_CERT=$(sudo cat /etc/incus/ovn/client-cert.pem)
+          CLIENT_KEY=$(sudo cat /etc/incus/ovn/client-key.pem)
+
+          # Configure Incus with OVN SSL settings
+          echo "=== Configuring Incus OVN SSL connection ==="
+
+          # Set the SSL certificates
+          sudo incus config set network.ovn.ca_cert="$CA_CERT"
+          sudo incus config set network.ovn.client_cert="$CLIENT_CERT"
+          sudo incus config set network.ovn.client_key="$CLIENT_KEY"
+
+          # Set the OVN northbound connection (SSL to localhost)
+          sudo incus config set network.ovn.northbound_connection=ssl:127.0.0.1:6641
+
+          # Verify settings
+          echo "=== Verifying OVN config ==="
+          sudo incus config get network.ovn.northbound_connection || echo "northbound_connection not set"
+          sudo incus config show | head -30
+
+          # Restart Incus to apply OVN config
+          echo "Restarting Incus..."
           sudo systemctl restart incus
           sleep 5
 
-          # Check what config options are available
-          echo "=== Available Incus config ==="
-          incus config show || true
+          # Verify socket permissions
+          sudo chmod 666 /var/lib/incus/unix.socket
 
-          # Check Incus version
-          echo "=== Incus version ==="
-          incus version
-
-          # Check OVN default config (docs say to get value from here)
-          echo "=== /etc/default/ovn-central ==="
-          cat /etc/default/ovn-central || echo "File not found"
-
-          # Check what OVN northbound is listening on
-          echo "=== OVN NB connection info ==="
-          sudo ovn-nbctl get-connection || echo "No connection configured"
-
-          # Set OVN connection - use the same path we configured OVN to listen on
-          echo "Setting OVN northbound connection..."
-          sudo incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock
-
-          # Verify the setting was applied
-          echo "Verifying OVN connection setting..."
-          sudo incus config get network.ovn.northbound_connection || echo "Config get returned nothing"
-
-          # Show full config
-          echo "=== Full Incus config ==="
-          sudo incus config show
-
-          # Check Incus logs for OVN errors
+          # Check Incus logs
           echo "=== Incus logs ==="
-          sudo journalctl -u incus --no-pager -n 30 | grep -i "ovn\|ovs\|network" || echo "No relevant entries in logs"
+          sudo journalctl -u incus --no-pager -n 20 | grep -i "ovn\|ovs\|ssl\|tls" || echo "No relevant entries"
 
-          echo "Creating OVN network..."
+          # Test OVN connectivity directly
+          echo "=== Testing OVN NB connection ==="
+          sudo microovn.ovn-nbctl ls-list || echo "OVN NB direct test failed"
+
+          echo "=== Creating OVN network ==="
           incus network create ovn-net --type=ovn \
             network=incusbr0 \
             bridge.mtu=1442 \
