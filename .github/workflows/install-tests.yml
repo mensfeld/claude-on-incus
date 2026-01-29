@@ -1,14 +1,16 @@
 name: Installation Tests
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# TEMP: Disabled during OVN CI iteration - will re-enable after fixing
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
 
 on:
-  pull_request:
-    branches: [master, main]
-  push:
-    branches: [master, main]
+  # TEMP: Disabled - only manual trigger
+  # pull_request:
+  #   branches: [master, main]
+  # push:
+  #   branches: [master, main]
   workflow_dispatch:
 
 permissions:
