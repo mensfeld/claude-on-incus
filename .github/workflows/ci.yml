@@ -175,22 +175,14 @@ jobs:
       - name: Initialize Incus (OVN)
         if: matrix.network_type == 'ovn'
         run: |
-          sudo systemctl start incus.socket || true
-          sleep 5
-
-          # Configure subuid/subgid for UID mapping
+          # Configure subuid/subgid BEFORE first Incus start
           echo "root:1001:1" | sudo tee -a /etc/subuid
           echo "root:1001:1" | sudo tee -a /etc/subgid
 
-          # Restart Incus to pick up subuid/subgid changes
-          sudo systemctl restart incus || true
-          sleep 5
-
-          # Use preseed like master branch, but add OVN connection setting
+          # Initialize with just bridge (no OVN yet) - avoid OVS validation
           cat <<EOF | sudo incus admin init --preseed
           config:
             images.compression_algorithm: none
-            network.ovn.northbound_connection: tcp:127.0.0.1:6641
           networks:
           - config:
               ipv4.address: 10.47.62.1/24
@@ -200,14 +192,6 @@ jobs:
               ipv6.address: none
             name: incusbr0
             type: bridge
-          - config:
-              bridge.mtu: "1442"
-              ipv4.address: 10.215.220.1/24
-              ipv4.nat: "true"
-              ipv6.address: none
-              network: incusbr0
-            name: ovn-net
-            type: ovn
           storage_pools:
           - config:
               size: 15GiB
@@ -218,7 +202,7 @@ jobs:
             devices:
               eth0:
                 name: eth0
-                network: ovn-net
+                network: incusbr0
                 type: nic
               root:
                 path: /
@@ -230,8 +214,31 @@ jobs:
           sudo chmod 666 /var/lib/incus/unix.socket
           sudo usermod -aG incus-admin $USER
 
-          echo "OVN network configured successfully"
+          echo "✓ Incus initialized with bridge"
           incus network list
+
+      - name: Add OVN network
+        if: matrix.network_type == 'ovn'
+        run: |
+          # Now set OVN connection and create OVN network
+          echo "Setting OVN northbound connection..."
+          incus config set network.ovn.northbound_connection tcp:127.0.0.1:6641
+
+          echo "Creating OVN network..."
+          incus network create ovn-net --type=ovn \
+            network=incusbr0 \
+            bridge.mtu=1442 \
+            ipv4.address=10.215.220.1/24 \
+            ipv4.nat=true \
+            ipv6.address=none
+
+          # Update default profile to use OVN network
+          incus profile device remove default eth0
+          incus profile device add default eth0 nic network=ovn-net
+
+          echo "✓ OVN network configured"
+          incus network list
+          incus profile show default
 
       - name: Initialize Incus (Bridge)
         if: matrix.network_type == 'bridge'
