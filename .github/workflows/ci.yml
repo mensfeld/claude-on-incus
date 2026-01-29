@@ -213,11 +213,37 @@ jobs:
           sudo ovs-vsctl show
           sudo ovn-nbctl --db=tcp:127.0.0.1:6641 show || echo "OVN NB show failed"
 
-          # Restart Incus after OVS/OVN are running
+          # Check socket permissions
+          echo "=== OVS socket permissions ==="
+          ls -la /run/openvswitch/
+
+          # Test socket connectivity as root (how incusd runs)
+          echo "=== Testing OVS socket as root ==="
+          sudo ovsdb-client list-dbs unix:/run/openvswitch/db.sock
+
+          # Check AppArmor status
+          echo "=== AppArmor status ==="
+          sudo aa-status | grep incus || echo "No incus AppArmor profiles loaded"
+          sudo cat /etc/apparmor.d/incus 2>/dev/null | head -20 || echo "No incus AppArmor config"
+
+          # Try disabling AppArmor for incusd temporarily
+          echo "=== Disabling AppArmor for incus ==="
+          sudo aa-disable /etc/apparmor.d/incus 2>/dev/null || echo "No incus AppArmor to disable"
+          sudo systemctl restart apparmor || true
+
+          # Make sure OVS socket is world-accessible
+          sudo chmod 777 /run/openvswitch/
+          sudo chmod 666 /run/openvswitch/db.sock
+
+          # Restart Incus after AppArmor change
           echo "=== Restarting Incus ==="
           sudo systemctl restart incus
           sleep 5
           sudo chmod 666 /var/lib/incus/unix.socket
+
+          # Check Incus logs for OVS errors
+          echo "=== Incus logs ==="
+          sudo journalctl -u incus --no-pager -n 30 | grep -i "ovs\|ovn\|network\|error" || echo "No relevant logs"
 
           # Set OVN northbound connection via TCP
           echo "=== Setting OVN connection ==="
