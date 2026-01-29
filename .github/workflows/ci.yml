@@ -417,29 +417,47 @@ jobs:
           incus image import /tmp/ubuntu-22.04-image.tar.gz --alias ubuntu-22.04
           incus image list
 
-      - name: Add Ubuntu cloud images remote
-        if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
-        run: |
-          # Add Ubuntu's official cloud images server as fallback
-          incus remote add ubuntu-images https://cloud-images.ubuntu.com/releases --protocol simplestreams --public || true
-          incus remote list
-
       - name: Download Ubuntu image
         if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
         run: |
-          echo "Downloading Ubuntu 22.04 base image..."
-          # Try ubuntu-images: remote first (Ubuntu's official server), fallback to images.linuxcontainers.org
-          if incus image copy ubuntu-images:22.04 local: --alias ubuntu-22.04 --auto-update=false 2>&1; then
-            echo "✓ Downloaded from ubuntu-images: remote (Ubuntu's official server)"
-          elif incus image copy images:ubuntu/22.04 local: --alias ubuntu-22.04 --auto-update=false 2>&1; then
-            echo "✓ Downloaded from images: remote (fallback)"
-          else
-            echo "✗ Failed to download from both remotes"
-            exit 1
-          fi
+          echo "Downloading Ubuntu 22.04 base image directly from Ubuntu..."
+
+          # Download rootfs and metadata from Ubuntu's cloud images
+          # This bypasses the need for image servers (no dependency on images.linuxcontainers.org)
+          cd /tmp
+
+          # Download the latest Ubuntu 22.04 (jammy) cloud image
+          UBUNTU_VERSION="22.04"
+          UBUNTU_CODENAME="jammy"
+          BASE_URL="https://cloud-images.ubuntu.com/releases/${UBUNTU_VERSION}/release"
+
+          echo "Downloading Ubuntu ${UBUNTU_VERSION} rootfs..."
+          curl -L -o ubuntu-rootfs.tar.xz "${BASE_URL}/ubuntu-${UBUNTU_VERSION}-server-cloudimg-amd64-root.tar.xz"
+
+          echo "Creating metadata..."
+          cat > metadata.yaml << EOF
+          architecture: x86_64
+          creation_date: $(date +%s)
+          properties:
+            description: Ubuntu ${UBUNTU_VERSION} (${UBUNTU_CODENAME})
+            os: Ubuntu
+            release: ${UBUNTU_CODENAME}
+          EOF
+
+          # Create metadata tarball
+          tar -czf metadata.tar.gz metadata.yaml
+
+          echo "Importing image into Incus..."
+          incus image import metadata.tar.gz ubuntu-rootfs.tar.xz --alias ubuntu-22.04
+
+          echo "✓ Successfully imported Ubuntu 22.04 image"
           incus image list
+
           # Export image for caching
           incus image export ubuntu-22.04 /tmp/ubuntu-22.04-image
+
+          # Cleanup
+          rm -f ubuntu-rootfs.tar.xz metadata.yaml metadata.tar.gz
 
       - name: Save Ubuntu image to cache
         if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
