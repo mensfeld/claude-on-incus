@@ -213,71 +213,62 @@ jobs:
           sudo ovs-vsctl show
           sudo ovn-nbctl --db=tcp:127.0.0.1:6641 show || echo "OVN NB show failed"
 
-          # Check socket permissions
-          echo "=== OVS socket permissions ==="
-          ls -la /run/openvswitch/
-
-          # Test socket connectivity as root (how incusd runs)
-          echo "=== Testing OVS socket as root ==="
-          sudo ovsdb-client list-dbs unix:/run/openvswitch/db.sock
-
-          # Check AppArmor status
-          echo "=== AppArmor status ==="
-          sudo aa-status | grep incus || echo "No incus AppArmor profiles loaded"
-          sudo cat /etc/apparmor.d/incus 2>/dev/null | head -20 || echo "No incus AppArmor config"
-
-          # Try disabling AppArmor for incusd temporarily
-          echo "=== Disabling AppArmor for incus ==="
-          sudo aa-disable /etc/apparmor.d/incus 2>/dev/null || echo "No incus AppArmor to disable"
-          sudo systemctl restart apparmor || true
-
-          # Make sure OVS socket is world-accessible
+          # Check socket permissions and fix them
+          echo "=== Fixing OVS socket permissions ==="
           sudo chmod 777 /run/openvswitch/
           sudo chmod 666 /run/openvswitch/db.sock
+          ls -la /run/openvswitch/
 
-          # Restart Incus after AppArmor change
+          # Restart Incus to detect OVS
           echo "=== Restarting Incus ==="
           sudo systemctl restart incus
           sleep 5
           sudo chmod 666 /var/lib/incus/unix.socket
 
-          # Check Incus logs for OVS errors
-          echo "=== Incus logs ==="
-          sudo journalctl -u incus --no-pager -n 30 | grep -i "ovs\|ovn\|network\|error" || echo "No relevant logs"
+          # Check Incus info for OVN support
+          echo "=== Incus info ==="
+          incus info | head -30
 
-          # Debug: Check what Incus sees when connecting to OVS
-          echo "=== Debug: Testing Incus OVS connectivity ==="
-          # Install strace for debugging
-          sudo apt-get install -y strace 2>/dev/null || true
-
-          # Try a simple incus command and trace its OVS connection
-          echo "Running incus info with strace on OVS socket..."
-          sudo timeout 10 strace -f -e connect,read,write -s 1000 incus info 2>&1 | grep -i "openvswitch\|db.sock" | head -20 || echo "Strace completed"
-
-          # Check if there's a different OVS socket Incus is expecting
-          echo "=== All potential OVS sockets ==="
-          sudo find / -name "*.sock" 2>/dev/null | grep -i ovs | head -10 || true
-
-          # Check Incus environment
-          echo "=== Incus daemon environment ==="
-          sudo cat /proc/$(pgrep -f incusd | head -1)/environ 2>/dev/null | tr '\0' '\n' | grep -i ovs || echo "No OVS env vars"
-
-          # Set OVN northbound connection via TCP
-          echo "=== Setting OVN connection ==="
-          sudo incus config set network.ovn.northbound_connection tcp:127.0.0.1:6641
-
-          # Verify
-          echo "=== Verifying OVN config ==="
-          incus config show
-
-          # Create OVN network
-          echo "=== Creating OVN network ==="
+          # Try creating OVN network directly WITHOUT setting config first
+          # Maybe Incus will auto-detect OVN from the running services
+          echo "=== Attempting to create OVN network directly ==="
           incus network create ovn-net --type=ovn \
             network=incusbr0 \
             bridge.mtu=1442 \
             ipv4.address=10.215.220.1/24 \
             ipv4.nat=true \
-            ipv6.address=none
+            ipv6.address=none || {
+            echo "Direct creation failed. Checking if OVN is detected..."
+
+            # Check what Incus thinks about OVN
+            incus info | grep -i ovn || echo "No OVN info in incus info"
+
+            # Check if maybe we need different OVS external-ids config
+            echo "=== Setting OVS external-ids for OVN ==="
+            sudo ovs-vsctl set open_vswitch . \
+              external-ids:ovn-encap-type=geneve \
+              external-ids:ovn-encap-ip=127.0.0.1 \
+              external-ids:ovn-remote=tcp:127.0.0.1:6642 \
+              external-ids:system-id=$(hostname)
+
+            # Restart OVN controller to pick up changes
+            sudo systemctl restart ovn-host || true
+            sleep 3
+
+            # Restart Incus again
+            sudo systemctl restart incus
+            sleep 5
+            sudo chmod 666 /var/lib/incus/unix.socket
+
+            # Try again
+            echo "=== Retrying OVN network creation ==="
+            incus network create ovn-net --type=ovn \
+              network=incusbr0 \
+              bridge.mtu=1442 \
+              ipv4.address=10.215.220.1/24 \
+              ipv4.nat=true \
+              ipv6.address=none
+          }
 
           # Update default profile to use OVN network
           incus profile device remove default eth0
