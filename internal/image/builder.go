@@ -155,7 +155,7 @@ func (b *Builder) ensureBaseImage() error {
 	// Create temporary directory for download
 	tmpDir := "/tmp/coi-ubuntu-download"
 	os.RemoveAll(tmpDir) // Clean up any previous failed attempts
-	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
@@ -182,7 +182,7 @@ properties:
 `, time.Now().Unix(), version, codename, codename)
 
 	metadataPath := fmt.Sprintf("%s/metadata.yaml", tmpDir)
-	if err := os.WriteFile(metadataPath, []byte(metadata), 0644); err != nil {
+	if err := os.WriteFile(metadataPath, []byte(metadata), 0o644); err != nil {
 		return fmt.Errorf("failed to create metadata: %w", err)
 	}
 
