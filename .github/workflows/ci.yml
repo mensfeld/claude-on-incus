@@ -165,11 +165,23 @@ jobs:
           echo "MicroOVN status:"
           sudo microovn status
 
+          # Find where MicroOVN puts OVS socket
+          echo "Looking for OVS sockets..."
+          sudo find /var/snap/microovn -name "*.sock" 2>/dev/null || true
+          sudo find /run -name "db.sock" 2>/dev/null || true
+          sudo find /var/run -name "db.sock" 2>/dev/null || true
+
           # Create symlink so apt-installed Incus can find OVS socket
-          # MicroOVN puts socket at /var/snap/microovn/common/run/openvswitch/
           sudo mkdir -p /run/openvswitch
-          sudo ln -sf /var/snap/microovn/common/run/openvswitch/db.sock /run/openvswitch/db.sock
-          ls -la /run/openvswitch/
+          if [ -S /var/snap/microovn/common/run/openvswitch/db.sock ]; then
+            sudo ln -sf /var/snap/microovn/common/run/openvswitch/db.sock /run/openvswitch/db.sock
+          elif [ -S /var/snap/microovn/common/data/run/openvswitch/db.sock ]; then
+            sudo ln -sf /var/snap/microovn/common/data/run/openvswitch/db.sock /run/openvswitch/db.sock
+          else
+            echo "ERROR: Could not find MicroOVN OVS socket"
+            sudo find /var/snap/microovn -type s 2>/dev/null || true
+          fi
+          ls -la /run/openvswitch/ || true
 
       - name: Initialize Incus (OVN)
         if: matrix.network_type == 'ovn'
