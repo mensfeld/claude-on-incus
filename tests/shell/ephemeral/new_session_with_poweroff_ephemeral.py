@@ -120,4 +120,6 @@ def test_ephemeral_session_with_shutdown(coi_binary, cleanup_containers, workspa
     )
 
     # Step 7: Verify container was deleted
-    assert container_deleted, f"Container {container_name} should be deleted after poweroff (waited 60s)"
+    assert container_deleted, (
+        f"Container {container_name} should be deleted after poweroff (waited 60s)"
+    )

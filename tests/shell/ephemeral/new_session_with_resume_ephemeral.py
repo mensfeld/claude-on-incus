@@ -109,14 +109,12 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
     except Exception:
         child.close(force=True)
 
-    # Give cleanup process time to detect stopped container and initiate deletion
-    # The cleanup loop checks if container is stopped (up to 5s), then saves session
-    # data, then starts container deletion
-    time.sleep(5)
-
-    # Wait for container deletion (60s to account for OVN network teardown)
+    # Wait for container deletion (60s to account for cleanup detection + OVN teardown)
+    # The wait function polls, so no need for a sleep before waiting
     container_deleted = wait_for_specific_container_deletion(container_name, timeout=60)
-    assert container_deleted, f"Container {container_name} should be deleted after poweroff (waited 60s)"
+    assert container_deleted, (
+        f"Container {container_name} should be deleted after poweroff (waited 60s)"
+    )
 
     # Verify session was saved
     assert "Session data saved" in output1 or "Saving session data" in output1, (
@@ -172,10 +170,7 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
     except Exception:
         child2.close(force=True)
 
-    # Give cleanup process time to detect stopped container and initiate deletion
-    time.sleep(5)
-
-    # Wait for second container to be deleted (60s to account for OVN network teardown)
+    # Wait for second container to be deleted (60s to account for cleanup detection + OVN teardown)
     container_name2 = calculate_container_name(workspace_dir, 1)
     deleted = wait_for_specific_container_deletion(container_name2, timeout=60)
 

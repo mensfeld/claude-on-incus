@@ -56,23 +56,14 @@ def cleanup_containers(workspace_dir, coi_binary):
     containers = get_container_list()
     for container in containers:
         if container in workspace_containers:
-            # First, explicitly clean up network ACLs for this container
-            # This ensures OVN state is fully removed before deleting the container
-            _cleanup_container_acls(container)
-
-            # Then delete the container
+            # Delete the container
+            # Note: ACLs are already cleaned up by coi shell cleanup when it exits
             subprocess.run(
                 [coi_binary, "container", "delete", container, "--force"],
                 capture_output=True,
                 timeout=30,
                 check=False,
             )
-
-    # Give OVN time to fully process ACL deletions and network cleanup
-    # OVN operations are asynchronous and need time to propagate
-    import time
-
-    time.sleep(2)
 
     # Kill any orphaned tmux sessions to prevent test pollution
     # This ensures clean state between tests, especially after tmux command tests
@@ -82,44 +73,6 @@ def cleanup_containers(workspace_dir, coi_binary):
         timeout=5,
         check=False,
     )
-
-
-def _cleanup_container_acls(container_name):
-    """
-    Clean up all network ACLs associated with a container.
-
-    Removes both restricted and allowlist mode ACLs that may have been
-    created during network tests. This ensures OVN state is fully cleaned
-    up before the container is deleted.
-
-    Args:
-        container_name: Name of the container whose ACLs should be removed
-    """
-    # ACL naming patterns from internal/network/manager.go:
-    # - Restricted mode: coi-<containerName>-restricted
-    # - Allowlist mode: coi-<containerName>-allowlist
-    acl_patterns = [
-        f"coi-{container_name}-restricted",
-        f"coi-{container_name}-allowlist",
-    ]
-
-    for acl_name in acl_patterns:
-        # Check if ACL exists first
-        result = subprocess.run(
-            ["incus", "network", "acl", "show", acl_name],
-            capture_output=True,
-            timeout=5,
-            check=False,
-        )
-
-        if result.returncode == 0:
-            # ACL exists, delete it
-            subprocess.run(
-                ["incus", "network", "acl", "delete", acl_name],
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
 
 
 @pytest.fixture(scope="session")
