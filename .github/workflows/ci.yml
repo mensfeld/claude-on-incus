@@ -158,8 +158,19 @@ jobs:
       - name: Configure OVN (deb packages)
         if: matrix.network_type == 'ovn'
         run: |
-          # Configure OVS to connect to OVN (like Canonical lxd-ci does)
-          # Do NOT set network.ovn.northbound_connection - let Incus auto-detect
+          # Configure OVN databases to listen for connections
+          # This was missing! OVN services were running but not accepting connections
+          echo "Configuring OVN to listen..."
+          sudo ovn-nbctl set-connection punix:/var/run/ovn/ovnnb_db.sock
+          sudo ovn-sbctl set-connection punix:/var/run/ovn/ovnsb_db.sock
+
+          # Verify OVN is now listening
+          echo "OVN NB connection:"
+          sudo ovn-nbctl get-connection
+          echo "OVN SB connection:"
+          sudo ovn-sbctl get-connection
+
+          # Configure OVS to connect to OVN
           sudo ovs-vsctl set open_vswitch . \
             external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
             external_ids:ovn-encap-type=geneve \
@@ -250,9 +261,9 @@ jobs:
           echo "=== OVN NB connection info ==="
           sudo ovn-nbctl get-connection || echo "No connection configured"
 
-          # Try setting OVN connection with sudo
-          echo "Setting OVN northbound connection (with sudo)..."
-          sudo incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock 2>&1
+          # Set OVN connection - use the same path we configured OVN to listen on
+          echo "Setting OVN northbound connection..."
+          sudo incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock
 
           # Verify the setting was applied
           echo "Verifying OVN connection setting..."
