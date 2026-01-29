@@ -224,6 +224,9 @@ jobs:
           # Step 7: Configure project to allow bridge as OVN uplink
           incus project set default restricted.networks.uplinks=incusbr0
 
+          # Tell Incus where to find OVN northbound database
+          incus config set network.ovn.northbound_connection tcp:127.0.0.1:6641
+
           # Step 8: Create OVN network
           incus network create ovn-net --type=ovn \
             network=incusbr0 \
