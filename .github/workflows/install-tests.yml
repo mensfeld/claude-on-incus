@@ -35,12 +35,29 @@ jobs:
           go-version: '1.24'
           cache: true
 
+      - name: Cache Incus packages
+        id: cache-incus
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: ~/incus-cache
+          key: ${{ runner.os }}-incus-install-test-${{ hashFiles('.github/workflows/install-tests.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-incus-install-test-
+            ${{ runner.os }}-incus-
+
       - name: Install Incus (Ubuntu)
         run: |
-          # Add Zabbly repo for latest Incus
-          sudo mkdir -p /etc/apt/keyrings/
-          sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
-          sudo sh -c 'cat <<SOURCES > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+          # Try to restore from cache first
+          if [ -d ~/incus-cache ] && [ "$(ls -A ~/incus-cache/*.deb 2>/dev/null)" ]; then
+            echo "Installing Incus from cache..."
+            sudo dpkg -i ~/incus-cache/*.deb || true
+            sudo apt-get install -f -y
+          else
+            echo "Downloading Incus from Zabbly repository..."
+            # Add Zabbly repo for latest Incus
+            sudo mkdir -p /etc/apt/keyrings/
+            sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
+            sudo sh -c 'cat <<SOURCES > /etc/apt/sources.list.d/zabbly-incus-stable.sources
           Enabled: yes
           Types: deb
           URIs: https://pkgs.zabbly.com/incus/stable
@@ -50,8 +67,16 @@ jobs:
           Signed-By: /etc/apt/keyrings/zabbly.asc
           SOURCES'
 
-          sudo apt-get update
-          sudo apt-get install -y incus
+            sudo apt-get update
+
+            # Download packages to cache directory
+            mkdir -p ~/incus-cache
+            sudo apt-get install -y --download-only -o Dir::Cache::archives="$(realpath ~/incus-cache)" incus
+            sudo apt-get install -y incus
+          fi
+
+          # Verify installation
+          incus version || echo "Incus not yet ready"
 
       - name: Initialize Incus
         run: |
