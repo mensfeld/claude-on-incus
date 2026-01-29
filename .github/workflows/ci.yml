@@ -157,32 +157,56 @@ jobs:
           incus version
           echo "✓ Using Incus from Ubuntu official repos (stable, reliable)"
 
-      - name: Configure OVN
+      - name: Start and configure OVN
         if: matrix.network_type == 'ovn'
         run: |
-          # Start OVN services using Ubuntu's meta-services
-          echo "Starting OVN and OVS services..."
+          echo "=== Starting OVN and OVS services ==="
 
-          # Start base OVS services first
-          sudo systemctl enable --now openvswitch-switch
+          # Start base OVS services (database and switch daemon)
+          sudo systemctl start ovsdb-server
+          sudo systemctl start ovs-vswitchd
+          sleep 3
+
+          # Start OVN database servers
+          sudo systemctl start ovn-ovsdb-server-nb
+          sudo systemctl start ovn-ovsdb-server-sb
+          sleep 3
+
+          # Start OVN northd (central control daemon)
+          sudo systemctl start ovn-northd
           sleep 2
 
-          # Start OVN central components (northbound/southbound databases)
-          sudo systemctl enable --now ovn-central
+          # Start OVN controller (local host daemon)
+          sudo systemctl start ovn-controller
           sleep 2
 
-          # Start OVN host components (controller)
-          sudo systemctl enable --now ovn-host
-          sleep 2
+          echo "=== Verifying all services are active ==="
+          services=(
+            "ovsdb-server"
+            "ovs-vswitchd"
+            "ovn-ovsdb-server-nb"
+            "ovn-ovsdb-server-sb"
+            "ovn-northd"
+            "ovn-controller"
+          )
 
-          # Verify critical services are running
-          echo "Checking service status..."
-          sudo systemctl is-active openvswitch-switch || (echo "ERROR: openvswitch-switch not running" && exit 1)
-          sudo systemctl is-active ovn-northd || (echo "ERROR: ovn-northd not running" && exit 1)
-          sudo systemctl is-active ovn-controller || (echo "ERROR: ovn-controller not running" && exit 1)
+          for service in "${services[@]}"; do
+            if sudo systemctl is-active --quiet "$service"; then
+              echo "✓ $service is active"
+            else
+              echo "✗ ERROR: $service is NOT active"
+              sudo systemctl status "$service" --no-pager || true
+              exit 1
+            fi
+          done
 
-          echo "All OVN services are running ✓"
+          echo "=== Verifying OVN sockets exist ==="
+          ls -la /var/run/ovn/*.sock || (echo "ERROR: OVN sockets not found" && exit 1)
 
+          echo "=== Testing OVN database connectivity ==="
+          sudo ovn-nbctl show || (echo "ERROR: Cannot connect to OVN northbound database" && exit 1)
+
+          echo "=== Configuring OVN ==="
           # Configure OVN to listen on TCP (required for Incus integration)
           sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
           sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
