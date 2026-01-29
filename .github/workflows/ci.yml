@@ -268,11 +268,93 @@ jobs:
           sudo systemctl status incus --no-pager || true
           sudo journalctl -u incus -n 20 --no-pager || true
 
-          # Verify OVN is still available after Incus restart
-          echo "Verifying OVN availability after Incus restart..."
-          sudo systemctl is-active ovn-northd || (echo "ERROR: OVN northd stopped" && sudo systemctl restart ovn-northd && sleep 3)
-          sudo systemctl is-active ovn-controller || (echo "ERROR: OVN controller stopped" && sudo systemctl restart ovn-controller && sleep 3)
-          sudo ovn-nbctl show || echo "WARNING: OVN database not responsive"
+          # Verify and restore OVN services after Incus restart
+          echo "=== Verifying OVN services after Incus restart ==="
+
+          # Check and restart OVN services if needed
+          ovn_services=(
+            "ovsdb-server"
+            "ovs-vswitchd"
+            "ovn-ovsdb-server-nb"
+            "ovn-ovsdb-server-sb"
+            "ovn-northd"
+            "ovn-controller"
+          )
+
+          for service in "${ovn_services[@]}"; do
+            if ! sudo systemctl is-active --quiet "$service"; then
+              echo "Restarting $service..."
+              sudo systemctl restart "$service"
+              sleep 2
+            fi
+          done
+
+          # Wait for OVN sockets to exist
+          echo "Waiting for OVN sockets..."
+          for i in {1..30}; do
+            if ls /var/run/ovn/*.sock >/dev/null 2>&1; then
+              echo "✓ OVN sockets are ready"
+              break
+            fi
+            echo "Waiting for OVN sockets... ($i/30)"
+            sleep 1
+          done
+
+          # Wait for OVN northbound database to be responsive
+          echo "Waiting for OVN northbound database..."
+          for i in {1..30}; do
+            if sudo ovn-nbctl --timeout=3 show >/dev/null 2>&1; then
+              echo "✓ OVN northbound database is ready"
+              break
+            fi
+            echo "Waiting for OVN NB database... ($i/30)"
+            sleep 1
+          done
+
+          # Wait for OVN TCP listeners to be ready (required for Incus)
+          echo "Waiting for OVN TCP listeners on ports 6641 and 6642..."
+          for i in {1..30}; do
+            nb_ready=false
+            sb_ready=false
+
+            if nc -z 127.0.0.1 6641 2>/dev/null; then
+              nb_ready=true
+            fi
+            if nc -z 127.0.0.1 6642 2>/dev/null; then
+              sb_ready=true
+            fi
+
+            if [ "$nb_ready" = true ] && [ "$sb_ready" = true ]; then
+              echo "✓ OVN TCP listeners are ready (6641, 6642)"
+              break
+            fi
+
+            echo "Waiting for OVN TCP listeners... ($i/30) NB=$nb_ready SB=$sb_ready"
+            sleep 1
+          done
+
+          # Final verification - if TCP is still not ready, reconfigure
+          if ! nc -z 127.0.0.1 6641 2>/dev/null || ! nc -z 127.0.0.1 6642 2>/dev/null; then
+            echo "WARNING: OVN TCP listeners not ready, reconfiguring..."
+            sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1 || true
+            sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1 || true
+            sleep 3
+
+            # Final check
+            for i in {1..10}; do
+              if nc -z 127.0.0.1 6641 && nc -z 127.0.0.1 6642; then
+                echo "✓ OVN TCP listeners now ready"
+                break
+              fi
+              echo "Final wait for TCP listeners... ($i/10)"
+              sleep 1
+            done
+          fi
+
+          # Show OVN status for debugging
+          echo "=== OVN Status ==="
+          sudo ovn-nbctl show || echo "WARNING: Cannot show OVN NB"
+          ss -tlnp | grep -E "6641|6642" || echo "WARNING: TCP listeners not visible"
 
           # Initialize Incus with btrfs storage and OVN networking
           # Using preseed for explicit configuration
