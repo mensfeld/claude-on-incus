@@ -12,7 +12,6 @@ Tests that:
 """
 
 import json
-import os
 import subprocess
 import time
 
@@ -23,11 +22,12 @@ from support.helpers import (
     spawn_coi,
     wait_for_container_ready,
     wait_for_prompt,
-    with_live_screen,
 )
 
 
-def test_settings_json_merge_preserves_user_config(coi_binary, cleanup_containers, workspace_dir, tmp_path):
+def test_settings_json_merge_preserves_user_config(
+    coi_binary, cleanup_containers, workspace_dir, tmp_path
+):
     """
     Test that settings.json is merged, not overwritten.
 
@@ -55,9 +55,9 @@ def test_settings_json_merge_preserves_user_config(coi_binary, cleanup_container
             "AWS_PROFILE": "bedrock-users",
             "AWS_REGION": "us-west-2",
             "CLAUDE_CODE_USE_BEDROCK": "true",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         },
-        "userCustomSetting": "should_be_preserved"
+        "userCustomSetting": "should_be_preserved",
     }
 
     settings_file = claude_dir / "settings.json"
@@ -91,7 +91,12 @@ def test_settings_json_merge_preserves_user_config(coi_binary, cleanup_container
     time.sleep(2)  # Give container a moment to be ready
 
     result = subprocess.run(
-        ["sg", "incus-admin", "-c", f"incus exec {container_name} -- cat /home/code/.claude/settings.json"],
+        [
+            "sg",
+            "incus-admin",
+            "-c",
+            f"incus exec {container_name} -- cat /home/code/.claude/settings.json",
+        ],
         capture_output=True,
         text=True,
         timeout=30,
@@ -100,7 +105,12 @@ def test_settings_json_merge_preserves_user_config(coi_binary, cleanup_container
     if result.returncode != 0:
         # Try to get some debug info
         debug_result = subprocess.run(
-            ["sg", "incus-admin", "-c", f"incus exec {container_name} -- ls -la /home/code/.claude/"],
+            [
+                "sg",
+                "incus-admin",
+                "-c",
+                f"incus exec {container_name} -- ls -la /home/code/.claude/",
+            ],
             capture_output=True,
             text=True,
             timeout=30,
@@ -148,29 +158,37 @@ def test_settings_json_merge_preserves_user_config(coi_binary, cleanup_container
         )
 
     # Verify user settings are preserved
-    assert "awsAuthRefresh" in container_settings, \
+    assert "awsAuthRefresh" in container_settings, (
         f"User setting 'awsAuthRefresh' should be preserved. Got: {json.dumps(container_settings, indent=2)}"
+    )
 
-    assert container_settings["awsAuthRefresh"] == "aws sso login --profile bedrock-users", \
+    assert container_settings["awsAuthRefresh"] == "aws sso login --profile bedrock-users", (
         f"User setting 'awsAuthRefresh' value should be preserved. Got: {container_settings['awsAuthRefresh']}"
+    )
 
-    assert "env" in container_settings, \
+    assert "env" in container_settings, (
         f"User setting 'env' should be preserved. Got: {json.dumps(container_settings, indent=2)}"
+    )
 
-    assert "AWS_PROFILE" in container_settings["env"], \
+    assert "AWS_PROFILE" in container_settings["env"], (
         f"User env var 'AWS_PROFILE' should be preserved. Got env: {container_settings.get('env', {})}"
+    )
 
-    assert container_settings["env"]["AWS_PROFILE"] == "bedrock-users", \
+    assert container_settings["env"]["AWS_PROFILE"] == "bedrock-users", (
         f"User env var 'AWS_PROFILE' value should be preserved. Got: {container_settings['env']['AWS_PROFILE']}"
+    )
 
-    assert "userCustomSetting" in container_settings, \
+    assert "userCustomSetting" in container_settings, (
         f"User custom setting should be preserved. Got: {json.dumps(container_settings, indent=2)}"
+    )
 
     # Verify sandbox settings are also present
-    assert "allowDangerouslySkipPermissions" in container_settings, \
+    assert "allowDangerouslySkipPermissions" in container_settings, (
         f"Sandbox setting 'allowDangerouslySkipPermissions' should be added. Got: {json.dumps(container_settings, indent=2)}"
+    )
 
-    assert container_settings["allowDangerouslySkipPermissions"] is True, \
+    assert container_settings["allowDangerouslySkipPermissions"] is True, (
         f"Sandbox setting 'allowDangerouslySkipPermissions' should be True. Got: {container_settings['allowDangerouslySkipPermissions']}"
+    )
 
     print("✓ All assertions passed: User settings preserved AND sandbox settings added")
