@@ -37,8 +37,10 @@ The tool abstraction layer makes it easy to add support for new AI coding assist
 - Session resume - Resume conversations with full history and credentials restored (workspace-scoped)
 - Persistent containers - Keep containers alive between sessions (installed tools preserved)
 - Workspace isolation - Each session mounts your project directory
+- **Custom mounts** - Mount additional directories (data, credentials, configs) via `--mount` flag or config
 - **Slot isolation** - Each parallel slot has its own home directory (files don't leak between slots)
 - **Workspace files persist even in ephemeral mode** - Only the container is deleted, your work is always saved
+- **Convert ephemeral to persistent** - Use `coi persist` to keep a container you originally started as ephemeral
 
 **Security & Isolation**
 - Automatic UID mapping - No permission hell, files owned correctly
@@ -247,12 +249,15 @@ coi build custom my-image --base coi --script setup.sh
 
 **What's included in the `coi` image:**
 - Ubuntu 22.04 base
-- Docker (full Docker-in-container support)
+- Docker (full Docker-in-container support with automatic nesting configuration)
 - Node.js 20 + npm
-- Claude Code CLI (default AI tool)
+- Claude Code CLI (default AI tool, installed via native installer)
 - GitHub CLI (`gh`)
 - tmux for session management
 - Common build tools (git, curl, build-essential, etc.)
+
+**Automatic Docker Support:**
+All containers automatically receive Docker and container nesting support by setting `security.nesting=true` and related syscall interception flags. Docker works out of the box without any configuration - just run `docker` commands inside your container.
 
 **Custom images:** Build your own specialized images using build scripts that run on top of the base `coi` image.
 
@@ -260,7 +265,7 @@ coi build custom my-image --base coi --script setup.sh
 
 COI can run on macOS by using Incus inside a [Colima](https://github.com/abiosoft/colima) or [Lima](https://github.com/lima-vm/lima) VM. These tools provide Linux VMs on macOS that can run Incus.
 
-**Automatic Environment Detection**: COI automatically detects when running inside a Colima or Lima VM and adjusts its configuration accordingly. No manual configuration needed!
+**Automatic Environment Detection**: COI automatically detects when running inside a Colima or Lima VM (by checking for virtiofs mounts and the `lima` user) and adjusts its configuration accordingly. **No manual configuration needed!** UID shifting is automatically disabled since Colima/Lima VMs already handle UID mapping at the VM level.
 
 ### How It Works
 
@@ -344,9 +349,62 @@ coi clean
 --continue [SESSION_ID] # Alias for --resume
 --profile NAME         # Use named profile
 --image NAME           # Use custom image (default: coi)
---env KEY=VALUE        # Set environment variables
---storage PATH         # Mount persistent storage
+--env KEY=VALUE        # Set environment variables (repeatable)
+--mount HOST:CONTAINER # Mount custom directory (repeatable, e.g., --mount ~/data:/data)
+--network MODE         # Network mode: restricted (default), open, allowlist
 ```
+
+### Custom Mounts
+
+Mount additional directories into your containers using the `--mount` flag or configuration file.
+
+**Via CLI:**
+```bash
+# Mount a single directory
+coi shell --mount ~/data:/data
+
+# Mount multiple directories (repeatable flag)
+coi shell --mount ~/datasets:/datasets --mount ~/.ssh:/home/code/.ssh
+
+# Combine with other options
+coi shell --persistent --mount ~/models:/models
+```
+
+**Via config file (recommended for default mounts):**
+```toml
+# ~/.config/coi/config.toml
+[mounts]
+default = [
+  { host = "~/data", container = "/data" },
+  { host = "~/.aws", container = "/home/code/.aws" },
+  { host = "/mnt/storage", container = "/storage" },
+]
+```
+
+**Key Points:**
+- **Format**: `HOST:CONTAINER` where CONTAINER must be an absolute path
+- **Tilde expansion**: `~` in host paths expands to your home directory
+- **CLI overrides config**: `--mount` flags can override config file mounts at the same container path
+- **Permissions**: Files are accessible with correct ownership thanks to automatic UID mapping
+- **Validation**: COI prevents nested mounts (e.g., can't mount both `/data` and `/data/subdir`)
+- **Works with all commands**: Use with `shell`, `run`, and other container-launching commands
+
+**Common Use Cases:**
+```bash
+# Mount credentials for cloud services
+coi shell --mount ~/.aws:/home/code/.aws --mount ~/.gcloud:/home/code/.gcloud
+
+# Mount dataset directory for machine learning
+coi shell --mount ~/datasets:/datasets --mount ~/models:/models
+
+# Mount SSH keys for git operations (alternative to agent forwarding)
+coi shell --mount ~/.ssh:/home/code/.ssh
+
+# Mount docker config for authenticated registry access
+coi shell --mount ~/.docker:/home/code/.docker
+```
+
+**Security Note:** Only mount directories you trust. AI tools running in the container will have read/write access to all mounted paths. For sensitive credentials (SSH keys, AWS credentials), consider whether you really need them mounted or if there are safer alternatives (e.g., environment variables for API keys).
 
 ### Container Management
 
@@ -358,9 +416,14 @@ coi list --all
 coi list --format=json
 coi list --all --format=json
 
-# Output shows container mode:
-#   coi-abc12345-1 (ephemeral)   - will be deleted on exit
-#   coi-abc12345-2 (persistent)  - will be kept for reuse
+# Output shows:
+# - Container mode: (ephemeral) or (persistent)
+# - IPv4 address: For running containers, shows the container's IP address
+# - Status: RUNNING or STOPPED
+#
+# Example:
+#   coi-abc12345-1 (ephemeral)  RUNNING  10.215.220.4
+#   coi-abc12345-2 (persistent) STOPPED  -
 
 # Kill specific container (stop and delete)
 coi kill <container-name>
@@ -377,6 +440,11 @@ coi kill --all --force
 # Clean up stopped/orphaned containers
 coi clean
 coi clean --force  # Skip confirmation
+
+# Convert ephemeral containers to persistent
+coi persist <container-name>  # Convert single container
+coi persist --all              # Convert all containers (with confirmation)
+coi persist --all --force      # Convert all without confirmation
 ```
 
 ### Advanced Container Operations
@@ -557,6 +625,14 @@ storage_dir = "~/.coi/storage"
 project = "default"
 group = "incus-admin"
 claude_uid = 1000
+# disable_shift = true  # Disable UID shifting (auto-detected for Colima/Lima)
+
+[mounts]
+# Default mounts for all sessions (can be overridden with --mount flag)
+default = [
+  { host = "~/data", container = "/data" },
+  { host = "~/.aws", container = "/home/code/.aws" },
+]
 
 [profiles.rust]
 image = "coi-rust"
@@ -597,6 +673,28 @@ Understanding how containers and sessions work in `coi`:
 |------|----------------|-----------------|-----------------|
 | **Default (ephemeral)** | Always saved | Always saved | Deleted |
 | **`--persistent`** | Always saved | Always saved | Kept |
+
+### Converting Ephemeral to Persistent
+
+If you started a container in ephemeral mode but decide you want to keep it, use the `coi persist` command:
+
+```bash
+# Convert a running container to persistent mode
+coi persist coi-abc12345-1
+
+# Convert all containers at once
+coi persist --all
+
+# Skip confirmation prompt
+coi persist --all --force
+```
+
+**Use cases:**
+- You installed many packages and don't want to reinstall them
+- You built large artifacts and want to preserve them
+- You realized you'll need this environment for multiple sessions
+
+**Note:** `coi list` shows the persistence mode for each container (`ephemeral` or `persistent`), making it easy to verify the change.
 
 ### Session vs Container Persistence
 
