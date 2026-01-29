@@ -238,17 +238,25 @@ jobs:
           echo "=== Available Incus config ==="
           incus config show || true
 
-          # Set OVN connection explicitly via unix socket
-          echo "Setting OVN northbound connection..."
-          incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock 2>&1 || echo "Config set failed!"
+          # Check Incus version
+          echo "=== Incus version ==="
+          incus version
+
+          # Try setting OVN connection with sudo (server config may need root)
+          echo "Setting OVN northbound connection (with sudo)..."
+          sudo incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock 2>&1
 
           # Verify the setting was applied
           echo "Verifying OVN connection setting..."
-          incus config get network.ovn.northbound_connection || echo "Config get returned nothing"
+          sudo incus config get network.ovn.northbound_connection || echo "Config get returned nothing"
+
+          # Show full config
+          echo "=== Full Incus config ==="
+          sudo incus config show
 
           # Check Incus logs for OVN errors
           echo "=== Incus logs ==="
-          sudo journalctl -u incus --no-pager -n 30 | grep -i ovn || echo "No OVN entries in logs"
+          sudo journalctl -u incus --no-pager -n 30 | grep -i "ovn\|ovs\|network" || echo "No relevant entries in logs"
 
           echo "Creating OVN network..."
           incus network create ovn-net --type=ovn \
