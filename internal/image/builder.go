@@ -213,6 +213,32 @@ func (b *Builder) launchBuildContainer() error {
 
 	// Wait for container to start
 	time.Sleep(3 * time.Second)
+
+	// Configure networking for Ubuntu 24.04 cloud images
+	// These images don't have netplan config and expect cloud-init to configure networking
+	// But containers don't run cloud-init, so we need to configure manually
+	b.opts.Logger("Configuring container networking...")
+	networkConfig := `network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
+      dhcp6: true
+`
+	// Write netplan config
+	writeCmd := fmt.Sprintf("cat > /etc/netplan/01-netcfg.yaml << 'EOF'\n%sEOF\nchmod 600 /etc/netplan/01-netcfg.yaml", networkConfig)
+	if _, err := b.mgr.ExecCommand(writeCmd, container.ExecCommandOptions{Capture: true}); err != nil {
+		b.opts.Logger("Warning: Failed to write netplan config (may already be configured)")
+	}
+
+	// Apply netplan configuration
+	if _, err := b.mgr.ExecCommand("netplan apply", container.ExecCommandOptions{Capture: true}); err != nil {
+		b.opts.Logger("Warning: Failed to apply netplan (may already be configured)")
+	}
+
+	// Wait for DHCP to complete
+	time.Sleep(5 * time.Second)
+
 	return nil
 }
 
