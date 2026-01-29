@@ -417,11 +417,26 @@ jobs:
           incus image import /tmp/ubuntu-22.04-image.tar.gz --alias ubuntu-22.04
           incus image list
 
+      - name: Add Ubuntu cloud images remote
+        if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
+        run: |
+          # Add Ubuntu's official cloud images server as fallback
+          incus remote add ubuntu-images https://cloud-images.ubuntu.com/releases --protocol simplestreams --public || true
+          incus remote list
+
       - name: Download Ubuntu image
         if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
         run: |
           echo "Downloading Ubuntu 22.04 base image..."
-          incus image copy images:ubuntu/22.04 local: --alias ubuntu-22.04 --auto-update=false
+          # Try ubuntu-images: remote first (Ubuntu's official server), fallback to images.linuxcontainers.org
+          if incus image copy ubuntu-images:22.04 local: --alias ubuntu-22.04 --auto-update=false 2>&1; then
+            echo "✓ Downloaded from ubuntu-images: remote (Ubuntu's official server)"
+          elif incus image copy images:ubuntu/22.04 local: --alias ubuntu-22.04 --auto-update=false 2>&1; then
+            echo "✓ Downloaded from images: remote (fallback)"
+          else
+            echo "✗ Failed to download from both remotes"
+            exit 1
+          fi
           incus image list
           # Export image for caching
           incus image export ubuntu-22.04 /tmp/ubuntu-22.04-image
