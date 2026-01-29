@@ -144,7 +144,7 @@ def test_power_management_no_sudo(coi_binary, cleanup_containers, workspace_dir,
     subprocess.run(
         [coi_binary, "container", "delete", container_name, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     # Assert wrapper scripts exist

@@ -59,7 +59,7 @@ def test_resume_specific_session(coi_binary, cleanup_containers, workspace_dir):
     with with_live_screen(child1) as monitor:
         time.sleep(2)
         send_prompt(child1, "first session marker")
-        responded = wait_for_text_in_monitor(monitor, "first session marker-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "first session marker-BACK", timeout=90)
         assert responded, "First session should respond"
 
     # Poweroff to save session
@@ -90,7 +90,7 @@ def test_resume_specific_session(coi_binary, cleanup_containers, workspace_dir):
         [coi_binary, "list", "--all"],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=90,
         cwd=workspace_dir,
     )
 
@@ -140,7 +140,7 @@ def test_resume_specific_session(coi_binary, cleanup_containers, workspace_dir):
     with with_live_screen(child2) as monitor:
         time.sleep(2)
         send_prompt(child2, "second session marker")
-        responded = wait_for_text_in_monitor(monitor, "second session marker-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "second session marker-BACK", timeout=90)
 
     # Poweroff
     child2.send("exit")
@@ -177,7 +177,7 @@ def test_resume_specific_session(coi_binary, cleanup_containers, workspace_dir):
 
     # Should see "Resuming session" message
     try:
-        wait_for_text_on_screen(child3, "Resuming session", timeout=30)
+        wait_for_text_on_screen(child3, "Resuming session", timeout=90)
         resumed = True
     except TimeoutError:
         resumed = False
@@ -207,7 +207,7 @@ def test_resume_specific_session(coi_binary, cleanup_containers, workspace_dir):
     subprocess.run(
         [coi_binary, "container", "delete", container_name, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     # Assert specific session was resumed

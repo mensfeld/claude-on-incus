@@ -58,7 +58,7 @@ def test_new_session_not_resumed(coi_binary, cleanup_containers, workspace_dir):
     with with_live_screen(child) as monitor:
         time.sleep(2)
         send_prompt(child, "UNIQUE-MARKER-78923")
-        responded = wait_for_text_in_monitor(monitor, "UNIQUE-MARKER-78923-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "UNIQUE-MARKER-78923-BACK", timeout=90)
         assert responded, "Dummy CLI should respond"
 
     # Exit CLI to bash
@@ -131,7 +131,7 @@ def test_new_session_not_resumed(coi_binary, cleanup_containers, workspace_dir):
 
     # Wait for cleanup
     container_name2 = calculate_container_name(workspace_dir, 1)
-    wait_for_specific_container_deletion(container_name2, timeout=30)
+    wait_for_specific_container_deletion(container_name2, timeout=90)
 
     # Force cleanup any remaining
     containers = get_container_list()

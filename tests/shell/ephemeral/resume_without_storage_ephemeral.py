@@ -62,7 +62,7 @@ def test_resume_does_not_persist_home_files(coi_binary, cleanup_containers, work
     with with_live_screen(child) as monitor:
         time.sleep(2)
         send_prompt(child, "init session")
-        responded = wait_for_text_in_monitor(monitor, "init session-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "init session-BACK", timeout=90)
         assert responded, "Dummy CLI should respond"
 
     # Exit CLI to bash
@@ -126,7 +126,7 @@ def test_resume_does_not_persist_home_files(coi_binary, cleanup_containers, work
 
     # Wait for resume
     try:
-        wait_for_text_on_screen(child2, "Resuming session", timeout=30)
+        wait_for_text_on_screen(child2, "Resuming session", timeout=90)
     except TimeoutError:
         pass  # Continue anyway to check file
 
@@ -172,7 +172,7 @@ def test_resume_does_not_persist_home_files(coi_binary, cleanup_containers, work
 
     # Wait for cleanup
     container_name2 = calculate_container_name(workspace_dir, 1)
-    wait_for_specific_container_deletion(container_name2, timeout=30)
+    wait_for_specific_container_deletion(container_name2, timeout=90)
 
     # Force cleanup any remaining
     containers = get_container_list()

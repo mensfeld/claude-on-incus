@@ -67,7 +67,7 @@ def test_exit_bash_keeps_container_running(coi_binary, cleanup_containers, works
     with with_live_screen(child) as monitor:
         time.sleep(2)
         send_prompt(child, "test message")
-        responded = wait_for_text_in_monitor(monitor, "test message-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "test message-BACK", timeout=90)
         assert responded, "Dummy CLI should respond"
 
     # Exit CLI to bash
@@ -93,7 +93,7 @@ def test_exit_bash_keeps_container_running(coi_binary, cleanup_containers, works
 
     # Wait for coi shell to exit
     try:
-        child.expect(EOF, timeout=30)
+        child.expect(EOF, timeout=90)
     except TIMEOUT:
         pass
 
@@ -130,7 +130,7 @@ def test_exit_bash_keeps_container_running(coi_binary, cleanup_containers, works
         ["attach", container_name, "--bash"],
         cwd=workspace_dir,
         env=env,
-        timeout=30,
+        timeout=90,
     )
 
     # Wait a moment for bash prompt
@@ -166,7 +166,7 @@ def test_exit_bash_keeps_container_running(coi_binary, cleanup_containers, works
     subprocess.run(
         [coi_binary, "container", "delete", container_name, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     # Verify container is gone

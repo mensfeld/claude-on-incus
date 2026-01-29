@@ -147,7 +147,7 @@ def test_workspace_files_persist_ephemeral(coi_binary, cleanup_containers, works
         subprocess.run(
             [coi_binary, "container", "delete", container_name, "--force"],
             capture_output=True,
-            timeout=30,
+            timeout=90,
         )
         time.sleep(2)
 

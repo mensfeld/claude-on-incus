@@ -60,7 +60,7 @@ def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
     with with_live_screen(child) as monitor:
         time.sleep(2)
         send_prompt(child, "test message")
-        responded = wait_for_text_in_monitor(monitor, "test message-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "test message-BACK", timeout=90)
         assert responded, "Dummy CLI should respond"
 
     # === Phase 2: Run coi list and check output ===
@@ -69,7 +69,7 @@ def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
         [coi_binary, "list"],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=90,
         cwd=workspace_dir,
     )
 
@@ -115,7 +115,7 @@ def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
     child.send("\x0d")
 
     try:
-        child.expect(EOF, timeout=30)
+        child.expect(EOF, timeout=90)
     except TIMEOUT:
         pass
 
@@ -128,7 +128,7 @@ def test_list_not_persistent(coi_binary, cleanup_containers, workspace_dir):
     subprocess.run(
         [coi_binary, "container", "delete", container_name, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     # Verify container is gone

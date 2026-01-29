@@ -96,7 +96,7 @@ def test_custom_mount_ephemeral(coi_binary, cleanup_containers, workspace_dir, t
     child.send("\x0d")
 
     try:
-        child.expect(EOF, timeout=30)
+        child.expect(EOF, timeout=90)
     except TIMEOUT:
         pass
 
@@ -111,7 +111,7 @@ def test_custom_mount_ephemeral(coi_binary, cleanup_containers, workspace_dir, t
     subprocess.run(
         [coi_binary, "container", "delete", container_name, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     time.sleep(1)

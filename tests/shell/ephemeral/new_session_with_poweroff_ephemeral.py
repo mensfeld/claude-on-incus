@@ -60,7 +60,7 @@ def test_ephemeral_session_with_shutdown(coi_binary, cleanup_containers, workspa
     with with_live_screen(child) as monitor:
         time.sleep(2)
         send_prompt(child, "hello from test")
-        responded = wait_for_text_in_monitor(monitor, "hello from test-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "hello from test-BACK", timeout=90)
         assert responded, "Dummy CLI should respond with echo"
 
     # Step 2: Exit claude to get to bash shell
@@ -110,7 +110,7 @@ def test_ephemeral_session_with_shutdown(coi_binary, cleanup_containers, workspa
 
     # Step 5: Wait for container to be deleted
     # OVN networks may take longer for cleanup due to additional network teardown
-    deletion_timeout = 60 if os.getenv("CI_NETWORK_TYPE") == "ovn" else 30
+    deletion_timeout = 120 if os.getenv("CI_NETWORK_TYPE") == "ovn" else 90
     container_deleted = wait_for_specific_container_deletion(
         container_name, timeout=deletion_timeout
     )

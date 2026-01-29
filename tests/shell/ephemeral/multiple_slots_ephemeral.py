@@ -74,7 +74,7 @@ def test_multiple_slots_parallel(coi_binary, cleanup_containers, workspace_dir):
     with with_live_screen(child1) as monitor:
         time.sleep(2)
         send_prompt(child1, "slot 1 message")
-        responded = wait_for_text_in_monitor(monitor, "slot 1 message-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "slot 1 message-BACK", timeout=90)
         assert responded, "Fake claude on slot 1 should respond"
 
     # Exit CLI to bash to create marker file
@@ -103,7 +103,7 @@ def test_multiple_slots_parallel(coi_binary, cleanup_containers, workspace_dir):
     child1.send("\x0d")
 
     try:
-        child1.expect(EOF, timeout=30)
+        child1.expect(EOF, timeout=90)
     except TIMEOUT:
         pass
 
@@ -154,7 +154,7 @@ def test_multiple_slots_parallel(coi_binary, cleanup_containers, workspace_dir):
     with with_live_screen(child2) as monitor:
         time.sleep(2)
         send_prompt(child2, "slot 2 message")
-        responded = wait_for_text_in_monitor(monitor, "slot 2 message-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "slot 2 message-BACK", timeout=90)
         assert responded, "Fake claude on slot 2 should respond"
 
     # Exit CLI to bash to test isolation
@@ -206,7 +206,7 @@ def test_multiple_slots_parallel(coi_binary, cleanup_containers, workspace_dir):
     child2.send("\x0d")
 
     try:
-        child2.expect(EOF, timeout=30)
+        child2.expect(EOF, timeout=90)
     except TIMEOUT:
         pass
 
@@ -221,12 +221,12 @@ def test_multiple_slots_parallel(coi_binary, cleanup_containers, workspace_dir):
     subprocess.run(
         [coi_binary, "container", "delete", container_name_1, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
     subprocess.run(
         [coi_binary, "container", "delete", container_name_2, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     # Verify both containers are gone

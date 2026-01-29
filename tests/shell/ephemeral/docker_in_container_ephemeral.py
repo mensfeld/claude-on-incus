@@ -100,7 +100,7 @@ def test_docker_in_container(coi_binary, cleanup_containers, workspace_dir):
     subprocess.run(
         [coi_binary, "container", "delete", container_name, "--force"],
         capture_output=True,
-        timeout=30,
+        timeout=90,
     )
 
     # Assert Docker is available

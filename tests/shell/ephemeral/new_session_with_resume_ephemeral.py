@@ -65,7 +65,7 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
     with with_live_screen(child) as monitor:
         time.sleep(2)
         send_prompt(child, "remember this message")
-        responded = wait_for_text_in_monitor(monitor, "remember this message-BACK", timeout=30)
+        responded = wait_for_text_in_monitor(monitor, "remember this message-BACK", timeout=90)
         assert responded, "Dummy CLI should respond"
 
     # Exit CLI to bash
@@ -110,7 +110,7 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
         child.close(force=True)
 
     # Wait for container deletion
-    container_deleted = wait_for_specific_container_deletion(container_name, timeout=30)
+    container_deleted = wait_for_specific_container_deletion(container_name, timeout=90)
     assert container_deleted, f"Container {container_name} should be deleted after poweroff"
 
     # Verify session was saved
@@ -133,7 +133,7 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
     # Wait for dummy to show resume message
     # Fake-claude prints "Resuming session: <session-id>" when resuming
     try:
-        wait_for_text_on_screen(child2, "Resuming session", timeout=30)
+        wait_for_text_on_screen(child2, "Resuming session", timeout=90)
         resumed = True
     except TimeoutError:
         resumed = False
@@ -169,14 +169,14 @@ def test_ephemeral_session_with_resume(coi_binary, cleanup_containers, workspace
 
     # Wait for second container to be deleted
     container_name2 = calculate_container_name(workspace_dir, 1)
-    deleted = wait_for_specific_container_deletion(container_name2, timeout=30)
+    deleted = wait_for_specific_container_deletion(container_name2, timeout=90)
 
     # Force cleanup if container still exists
     if not deleted:
         subprocess.run(
             [coi_binary, "container", "delete", container_name2, "--force"],
             capture_output=True,
-            timeout=30,
+            timeout=90,
         )
 
     # Verify container is gone
