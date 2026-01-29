@@ -22,12 +22,12 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_restricted_blocks_host_services(coi_binary, workspace_dir, cleanup_containers):
+def test_restricted_blocks_rfc1918_addresses(coi_binary, workspace_dir, cleanup_containers):
     """
     Test that RESTRICTED mode blocks container access to RFC1918 private networks.
 
-    Verifies that containers cannot reach RFC1918 addresses that should be blocked
-    by the ACL rules (10.0.0.1, 172.16.0.1, 192.168.1.1).
+    Verifies that containers cannot reach RFC1918 addresses (10.0.0.1, 172.16.0.1,
+    192.168.1.1) due to ACL blocking, not just network unreachability.
     """
     # Create temporary config with RESTRICTED mode
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
@@ -79,7 +79,7 @@ mode = "restricted"
                     container_name,
                     "--",
                     "curl",
-                    "-s",
+                    "-v",  # Verbose to get error details
                     "-m",
                     "3",
                     f"http://{test_ip}",
@@ -94,16 +94,27 @@ mode = "restricted"
                 f"Container should not reach RFC1918 address {test_ip}: {result.stderr}"
             )
 
+            # Verify it's an ACL timeout (not immediate connection refused from real host)
+            # ACL blocking typically results in connection timeout, not immediate rejection
+            error_output = (result.stdout + result.stderr).lower()
+            assert (
+                "timeout" in error_output
+                or "timed out" in error_output
+                or "network is unreachable" in error_output
+            ), (
+                f"Expected ACL timeout for {test_ip}, but got different error: {result.stderr}"
+            )
+
     finally:
         os.unlink(config_file)
 
 
-def test_allowlist_blocks_host_services(coi_binary, workspace_dir, cleanup_containers):
+def test_allowlist_blocks_rfc1918_addresses(coi_binary, workspace_dir, cleanup_containers):
     """
     Test that ALLOWLIST mode blocks container access to RFC1918 private networks.
 
-    Verifies that containers cannot reach RFC1918 addresses even with
-    permissive allowlist (RFC1918 blocking + default-deny protects the host).
+    Verifies that containers cannot reach RFC1918 addresses (10.0.0.1, 172.16.0.1,
+    192.168.1.1) due to ACL blocking, even with permissive allowlist configuration.
     """
     # Create temporary config with ALLOWLIST mode
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
@@ -159,7 +170,7 @@ refresh_interval_minutes = 30
                     container_name,
                     "--",
                     "curl",
-                    "-s",
+                    "-v",  # Verbose to get error details
                     "-m",
                     "3",
                     f"http://{test_ip}",
@@ -172,6 +183,17 @@ refresh_interval_minutes = 30
             # Connection should fail (blocked by RFC1918 + allowlist)
             assert result.returncode != 0, (
                 f"Container should not reach RFC1918 address {test_ip}: {result.stderr}"
+            )
+
+            # Verify it's an ACL timeout (not immediate connection refused from real host)
+            # ACL blocking typically results in connection timeout, not immediate rejection
+            error_output = (result.stdout + result.stderr).lower()
+            assert (
+                "timeout" in error_output
+                or "timed out" in error_output
+                or "network is unreachable" in error_output
+            ), (
+                f"Expected ACL timeout for {test_ip}, but got different error: {result.stderr}"
             )
 
     finally:
