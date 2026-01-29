@@ -165,6 +165,12 @@ jobs:
           echo "MicroOVN status:"
           sudo microovn status
 
+          # Create symlink so apt-installed Incus can find OVS socket
+          # MicroOVN puts socket at /var/snap/microovn/common/run/openvswitch/
+          sudo mkdir -p /run/openvswitch
+          sudo ln -sf /var/snap/microovn/common/run/openvswitch/db.sock /run/openvswitch/db.sock
+          ls -la /run/openvswitch/
+
       - name: Initialize Incus (OVN)
         if: matrix.network_type == 'ovn'
         run: |
