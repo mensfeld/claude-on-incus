@@ -101,9 +101,7 @@ mode = "restricted"
                 "timeout" in error_output
                 or "timed out" in error_output
                 or "network is unreachable" in error_output
-            ), (
-                f"Expected ACL timeout for {test_ip}, but got different error: {result.stderr}"
-            )
+            ), f"Expected ACL timeout for {test_ip}, but got different error: {result.stderr}"
 
     finally:
         os.unlink(config_file)
@@ -192,9 +190,7 @@ refresh_interval_minutes = 30
                 "timeout" in error_output
                 or "timed out" in error_output
                 or "network is unreachable" in error_output
-            ), (
-                f"Expected ACL timeout for {test_ip}, but got different error: {result.stderr}"
-            )
+            ), f"Expected ACL timeout for {test_ip}, but got different error: {result.stderr}"
 
     finally:
         os.unlink(config_file)
