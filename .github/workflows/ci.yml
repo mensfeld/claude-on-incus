@@ -160,6 +160,20 @@ jobs:
       - name: Configure OVN
         if: matrix.network_type == 'ovn'
         run: |
+          # Start OVN services (required before Incus can use OVN)
+          echo "Starting OVN services..."
+          sudo systemctl enable --now ovs-vswitchd
+          sudo systemctl enable --now ovsdb-server
+          sudo systemctl enable --now ovn-northd
+          sudo systemctl enable --now ovn-controller
+
+          # Wait for OVN services to be ready
+          sleep 5
+
+          # Verify services are running
+          sudo systemctl status ovs-vswitchd --no-pager || true
+          sudo systemctl status ovn-northd --no-pager || true
+
           # Configure OVN to listen on TCP (required for Incus integration)
           sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
           sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
@@ -173,6 +187,8 @@ jobs:
           # Verify OVS configuration
           echo "OVN configuration:"
           sudo ovs-vsctl get open_vswitch . external_ids
+
+          echo "✓ OVN services started and configured"
 
       - name: Initialize Incus (OVN)
         if: matrix.network_type == 'ovn'
