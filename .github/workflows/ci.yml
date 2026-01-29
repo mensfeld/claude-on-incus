@@ -388,12 +388,35 @@ jobs:
 
           echo "OVN network configuration complete"
 
-      - name: Pre-cache base Ubuntu image
+      - name: Cache Ubuntu base image
+        id: cache-ubuntu-image
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: /tmp/ubuntu-22.04-image.tar.gz
+          key: ${{ runner.os }}-ubuntu-22.04-image-v1
+
+      - name: Restore Ubuntu image from cache
+        if: steps.cache-ubuntu-image.outputs.cache-hit == 'true'
         run: |
-          # Pre-download the base image to speed up builds
-          echo "Pre-caching Ubuntu 22.04 base image..."
-          incus image copy images:ubuntu/22.04 local: --alias ubuntu-22.04 --auto-update=false || true
+          echo "Restoring Ubuntu 22.04 image from cache..."
+          incus image import /tmp/ubuntu-22.04-image.tar.gz --alias ubuntu-22.04
           incus image list
+
+      - name: Download Ubuntu image
+        if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
+        run: |
+          echo "Downloading Ubuntu 22.04 base image..."
+          incus image copy images:ubuntu/22.04 local: --alias ubuntu-22.04 --auto-update=false
+          incus image list
+          # Export image for caching
+          incus image export ubuntu-22.04 /tmp/ubuntu-22.04-image
+
+      - name: Save Ubuntu image to cache
+        if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
+        uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: /tmp/ubuntu-22.04-image.tar.gz
+          key: ${{ runner.os }}-ubuntu-22.04-image-v1
 
       - name: Build COI binary
         run: |
@@ -419,8 +442,8 @@ jobs:
           mkdir -p /tmp/test-bind-mount
           echo "test-content" > /tmp/test-bind-mount/test-file.txt
 
-          # Launch test container
-          incus launch images:ubuntu/22.04 test-bind-mount-container
+          # Launch test container using pre-cached image
+          incus launch ubuntu-22.04 test-bind-mount-container
           sleep 5
 
           # Add bind mount with shift=true
