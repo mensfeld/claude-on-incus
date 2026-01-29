@@ -242,7 +242,15 @@ jobs:
           echo "=== Incus version ==="
           incus version
 
-          # Try setting OVN connection with sudo (server config may need root)
+          # Check OVN default config (docs say to get value from here)
+          echo "=== /etc/default/ovn-central ==="
+          cat /etc/default/ovn-central || echo "File not found"
+
+          # Check what OVN northbound is listening on
+          echo "=== OVN NB connection info ==="
+          sudo ovn-nbctl get-connection || echo "No connection configured"
+
+          # Try setting OVN connection with sudo
           echo "Setting OVN northbound connection (with sudo)..."
           sudo incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock 2>&1
 
