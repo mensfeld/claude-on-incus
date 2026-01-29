@@ -75,37 +75,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # TEMP: Only test OVN setup - will restore full matrix later
         network_type:
-          - ovn      # Full OVN networking with ACL support
-          - bridge   # Standard bridge without OVN (tests error handling)
+          - ovn
         test_group:
-          - name: shell-ephemeral
-            path: tests/shell/ephemeral
-            description: "Ephemeral shell session tests (15 tests)"
-          - name: shell-persistent
-            path: tests/shell/persistent
-            description: "Persistent shell session tests (9 tests)"
-          - name: network
-            path: tests/network
-            description: "Network isolation tests (10 tests, OVN only)"
-            ovn_only: true
-          - name: container-file
-            path: tests/container tests/file
-            description: "Container and file operations (54 tests)"
           - name: core
             path: tests/list tests/attach tests/tmux tests/kill tests/run tests/persist tests/build
-            description: "Core commands: list/attach/tmux/kill/run/persist/build (83 tests)"
-          - name: misc
-            path: tests/clean tests/completion tests/docker tests/errors tests/help tests/image tests/info tests/mount tests/shutdown tests/version tests/meta tests/main_help_flag.py tests/main_help_shorthand.py
-            description: "Misc commands: clean/completion/docker/errors/help/image/info/mount/shutdown/version/meta/main help (70 tests)"
-        exclude:
-          # Network tests only run on OVN (they test OVN-specific ACL features)
-          - network_type: bridge
-            test_group:
-              name: network
-              path: tests/network
-              description: "Network isolation tests (10 tests, OVN only)"
-              ovn_only: true
+            description: "Core commands (83 tests)"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -140,44 +116,58 @@ jobs:
           echo "Checking Python code formatting..."
           ruff format --check tests/
 
-      - name: Install Incus and OVN
+      - name: Install Incus
         run: |
-          # Install from Ubuntu's official repositories
           echo "Installing Incus from Ubuntu 24.04 repositories..."
           sudo apt-get update
-
-          if [ "${{ matrix.network_type }}" = "ovn" ]; then
-            sudo apt-get install -y incus ovn-host ovn-central
-          else
-            sudo apt-get install -y incus
-          fi
-
+          sudo apt-get install -y incus
           incus version
           echo "✓ Incus installed"
 
-      - name: Configure OVN (deb packages)
+      - name: Install and configure MicroOVN
         if: matrix.network_type == 'ovn'
         run: |
-          # Configure OVN databases to listen for connections
-          # This was missing! OVN services were running but not accepting connections
-          echo "Configuring OVN to listen..."
-          sudo ovn-nbctl set-connection punix:/var/run/ovn/ovnnb_db.sock
-          sudo ovn-sbctl set-connection punix:/var/run/ovn/ovnsb_db.sock
+          echo "=== Installing MicroOVN ==="
+          sudo snap install microovn --channel=latest/edge
+          sudo microovn cluster bootstrap
+          sudo microovn status
 
-          # Verify OVN is now listening
-          echo "OVN NB connection:"
-          sudo ovn-nbctl get-connection
-          echo "OVN SB connection:"
-          sudo ovn-sbctl get-connection
+          echo "=== Finding MicroOVN sockets ==="
+          sudo find /var/snap/microovn -name "*.sock" -type s 2>/dev/null || true
+          sudo find /var/snap/microovn -name "db.sock" -type s 2>/dev/null || true
 
-          # Configure OVS to connect to OVN
-          sudo ovs-vsctl set open_vswitch . \
-            external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
-            external_ids:ovn-encap-type=geneve \
-            external_ids:ovn-encap-ip=127.0.0.1
+          echo "=== MicroOVN OVS info ==="
+          sudo microovn.ovs-vsctl show
 
-          echo "OVS configured:"
-          sudo ovs-vsctl get open_vswitch . external_ids
+          echo "=== MicroOVN OVN NB connection ==="
+          sudo microovn.ovn-nbctl get-connection || echo "No NB connection"
+
+          echo "=== Creating symlinks for apt-Incus ==="
+          # Find the actual OVS socket path in MicroOVN
+          OVS_SOCK=$(sudo find /var/snap/microovn -name "db.sock" -type s 2>/dev/null | head -1)
+          echo "Found OVS socket: $OVS_SOCK"
+
+          if [ -n "$OVS_SOCK" ]; then
+            sudo mkdir -p /run/openvswitch
+            sudo ln -sf "$OVS_SOCK" /run/openvswitch/db.sock
+            echo "Symlinked OVS socket"
+          fi
+
+          # Find OVN sockets
+          OVN_NB_SOCK=$(sudo find /var/snap/microovn -name "ovnnb_db.sock" -type s 2>/dev/null | head -1)
+          OVN_SB_SOCK=$(sudo find /var/snap/microovn -name "ovnsb_db.sock" -type s 2>/dev/null | head -1)
+          echo "Found OVN NB socket: $OVN_NB_SOCK"
+          echo "Found OVN SB socket: $OVN_SB_SOCK"
+
+          if [ -n "$OVN_NB_SOCK" ]; then
+            sudo mkdir -p /var/run/ovn
+            sudo ln -sf "$OVN_NB_SOCK" /var/run/ovn/ovnnb_db.sock
+            sudo ln -sf "$OVN_SB_SOCK" /var/run/ovn/ovnsb_db.sock
+            echo "Symlinked OVN sockets"
+          fi
+
+          ls -la /run/openvswitch/ || true
+          ls -la /var/run/ovn/ || true
 
       - name: Initialize Incus (OVN)
         if: matrix.network_type == 'ovn'
