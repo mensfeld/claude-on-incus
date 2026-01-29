@@ -207,11 +207,7 @@ jobs:
           sudo ovn-nbctl show || (echo "ERROR: Cannot connect to OVN northbound database" && exit 1)
 
           echo "=== Configuring OVN ==="
-          # Configure OVN to listen on TCP (required for Incus integration)
-          sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
-          sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
-
-          # Configure Open vSwitch to connect to OVN
+          # Configure Open vSwitch to connect to OVN via unix socket
           sudo ovs-vsctl set open_vswitch . \
             external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
             external_ids:ovn-encap-type=geneve \
@@ -220,6 +216,10 @@ jobs:
           # Verify OVS configuration
           echo "OVS external IDs:"
           sudo ovs-vsctl get open_vswitch . external_ids
+
+          # Make OVN sockets accessible
+          sudo chmod 666 /var/run/ovn/ovnnb_db.sock
+          sudo chmod 666 /var/run/ovn/ovnsb_db.sock
 
           echo "✓ OVN fully configured and ready for Incus"
 
@@ -338,58 +338,25 @@ jobs:
             sleep 1
           done
 
-          # Wait for OVN TCP listeners to be ready (required for Incus)
-          echo "Waiting for OVN TCP listeners on ports 6641 and 6642..."
-          for i in {1..30}; do
-            nb_ready=false
-            sb_ready=false
-
-            if nc -z 127.0.0.1 6641 2>/dev/null; then
-              nb_ready=true
-            fi
-            if nc -z 127.0.0.1 6642 2>/dev/null; then
-              sb_ready=true
-            fi
-
-            if [ "$nb_ready" = true ] && [ "$sb_ready" = true ]; then
-              echo "✓ OVN TCP listeners are ready (6641, 6642)"
-              break
-            fi
-
-            echo "Waiting for OVN TCP listeners... ($i/30) NB=$nb_ready SB=$sb_ready"
-            sleep 1
-          done
-
-          # Final verification - if TCP is still not ready, reconfigure
-          if ! nc -z 127.0.0.1 6641 2>/dev/null || ! nc -z 127.0.0.1 6642 2>/dev/null; then
-            echo "WARNING: OVN TCP listeners not ready, reconfiguring..."
-            sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1 || true
-            sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1 || true
-            sleep 3
-
-            # Final check
-            for i in {1..10}; do
-              if nc -z 127.0.0.1 6641 && nc -z 127.0.0.1 6642; then
-                echo "✓ OVN TCP listeners now ready"
-                break
-              fi
-              echo "Final wait for TCP listeners... ($i/10)"
-              sleep 1
-            done
-          fi
-
           # Show status for debugging
           echo "=== OVS/OVN Status ==="
           sudo ovs-vsctl show || echo "WARNING: Cannot show OVS"
           sudo ovn-nbctl show || echo "WARNING: Cannot show OVN NB"
-          ss -tlnp | grep -E "6641|6642" || echo "WARNING: TCP listeners not visible"
+          ls -la /var/run/ovn/*.sock || echo "WARNING: OVN sockets not accessible"
           ls -la /run/openvswitch/ || echo "WARNING: OVS socket dir not accessible"
 
           # Initialize Incus step-by-step (more reliable than preseed)
           echo "=== Initializing Incus ==="
 
-          # Basic init with btrfs storage (creates default pool and bridge)
-          sudo incus admin init --auto --storage-backend=btrfs --storage-create-loop=15
+          # Fix OVS socket permissions so Incus can connect
+          sudo chmod 666 /run/openvswitch/db.sock
+
+          # Minimal init (less auto-detection than --auto)
+          sudo incus admin init --minimal
+
+          # Create storage pool manually
+          echo "Creating storage pool..."
+          sudo incus storage create default btrfs size=15GiB
 
           # Allow access without re-login
           sudo chmod 666 /var/lib/incus/unix.socket
@@ -399,9 +366,9 @@ jobs:
           echo "Configuring Incus..."
           incus config set images.compression_algorithm none
 
-          # Tell Incus where to find OVN (this is the key setting!)
+          # Tell Incus where to find OVN via unix socket (same as local setup)
           echo "Configuring OVN connection..."
-          incus config set network.ovn.northbound_connection tcp:127.0.0.1:6641
+          incus config set network.ovn.northbound_connection unix:/var/run/ovn/ovnnb_db.sock
 
           # Configure the default bridge for OVN uplink
           echo "Configuring bridge network for OVN uplink..."
