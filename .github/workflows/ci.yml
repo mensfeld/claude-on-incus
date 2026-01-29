@@ -209,7 +209,8 @@ jobs:
           echo "OVS external IDs:"
           sudo ovs-vsctl get open_vswitch . external_ids
 
-          # Step 5: Delete existing default bridge
+          # Step 5: Remove network from profile, then delete and recreate with OVN ranges
+          incus profile device remove default eth0 || true
           incus network delete incusbr0 || true
 
           # Step 6: Create bridge with OVN ranges (using incusbr0 name for consistency)
