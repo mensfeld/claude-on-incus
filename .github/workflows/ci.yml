@@ -385,57 +385,52 @@ jobs:
           ss -tlnp | grep -E "6641|6642" || echo "WARNING: TCP listeners not visible"
           ls -la /run/openvswitch/ || echo "WARNING: OVS socket dir not accessible"
 
-          # Initialize Incus with btrfs storage and OVN networking
-          # Using preseed for explicit configuration
-          # IMPORTANT: network.ovn.northbound_connection tells Incus where to find OVN
-          cat <<EOF | sudo incus admin init --preseed
-          config:
-            images.compression_algorithm: none
-            network.ovn.northbound_connection: tcp:127.0.0.1:6641
-          networks:
-          - config:
-              ipv4.address: 10.47.62.1/24
-              ipv4.nat: "true"
-              ipv4.dhcp.ranges: 10.47.62.2-10.47.62.99
-              ipv4.ovn.ranges: 10.47.62.100-10.47.62.200
-              ipv6.address: none
-            name: incusbr0
-            type: bridge
-          - config:
-              bridge.mtu: "1442"
-              ipv4.address: 10.215.220.1/24
-              ipv4.nat: "true"
-              ipv6.address: none
-              network: incusbr0
-            name: ovn-net
-            type: ovn
-          storage_pools:
-          - config:
-              size: 15GiB
-            name: default
-            driver: btrfs
-          profiles:
-          - config: {}
-            devices:
-              eth0:
-                name: eth0
-                network: ovn-net
-                type: nic
-              root:
-                path: /
-                pool: default
-                type: disk
-            name: default
-          EOF
+          # Initialize Incus step-by-step (more reliable than preseed)
+          echo "=== Initializing Incus ==="
 
-          # Allow access without re-login by changing socket permissions
+          # Basic init with btrfs storage (creates default pool and bridge)
+          sudo incus admin init --auto --storage-backend=btrfs --storage-create-loop=15
+
+          # Allow access without re-login
           sudo chmod 666 /var/lib/incus/unix.socket
-
-          # Add current user to incus-admin group
           sudo usermod -aG incus-admin $USER
 
-          echo "OVN network configured successfully"
+          # Configure Incus settings
+          echo "Configuring Incus..."
+          incus config set images.compression_algorithm none
+
+          # Tell Incus where to find OVN (this is the key setting!)
+          echo "Configuring OVN connection..."
+          incus config set network.ovn.northbound_connection tcp:127.0.0.1:6641
+
+          # Configure the default bridge for OVN uplink
+          echo "Configuring bridge network for OVN uplink..."
+          # Delete auto-created network and recreate with OVN uplink settings
+          incus network delete incusbr0 || true
+          incus network create incusbr0 \
+            ipv4.address=10.47.62.1/24 \
+            ipv4.nat=true \
+            ipv4.dhcp.ranges=10.47.62.2-10.47.62.99 \
+            ipv4.ovn.ranges=10.47.62.100-10.47.62.200 \
+            ipv6.address=none
+
+          # Create OVN network
+          echo "Creating OVN network..."
+          incus network create ovn-net --type=ovn \
+            network=incusbr0 \
+            bridge.mtu=1442 \
+            ipv4.address=10.215.220.1/24 \
+            ipv4.nat=true \
+            ipv6.address=none
+
+          # Update default profile to use OVN network
+          echo "Updating default profile..."
+          incus profile device remove default eth0 || true
+          incus profile device add default eth0 nic network=ovn-net
+
+          echo "=== OVN network configured successfully ==="
           incus network list
+          incus profile show default
 
       - name: Initialize Incus (Bridge)
         if: matrix.network_type == 'bridge'
