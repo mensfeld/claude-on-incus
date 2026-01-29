@@ -248,7 +248,7 @@ coi build custom my-image --base coi --script setup.sh
 ```
 
 **What's included in the `coi` image:**
-- Ubuntu 22.04 base
+- Ubuntu 24.04 LTS base
 - Docker (full Docker-in-container support with automatic nesting configuration)
 - Node.js 20 + npm
 - Claude Code CLI (default AI tool, installed via native installer)

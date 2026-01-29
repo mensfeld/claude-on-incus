@@ -407,14 +407,14 @@ jobs:
         id: cache-ubuntu-image
         uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
-          path: /tmp/ubuntu-22.04-image.tar.gz
-          key: ${{ runner.os }}-ubuntu-22.04-image-v1
+          path: /tmp/ubuntu-24.04-image.tar.gz
+          key: ${{ runner.os }}-ubuntu-24.04-image-v1
 
       - name: Restore Ubuntu image from cache
         if: steps.cache-ubuntu-image.outputs.cache-hit == 'true'
         run: |
           echo "Restoring Ubuntu 22.04 image from cache..."
-          incus image import /tmp/ubuntu-22.04-image.tar.gz --alias ubuntu-22.04
+          incus image import /tmp/ubuntu-24.04-image.tar.gz --alias ubuntu-24.04
           incus image list
 
       - name: Download Ubuntu image
@@ -426,9 +426,9 @@ jobs:
           # This bypasses the need for image servers (no dependency on images.linuxcontainers.org)
           cd /tmp
 
-          # Download the latest Ubuntu 22.04 (jammy) cloud image
-          UBUNTU_VERSION="22.04"
-          UBUNTU_CODENAME="jammy"
+          # Download the latest Ubuntu 24.04 (noble) cloud image
+          UBUNTU_VERSION="24.04"
+          UBUNTU_CODENAME="noble"
           BASE_URL="https://cloud-images.ubuntu.com/releases/${UBUNTU_VERSION}/release"
 
           echo "Downloading Ubuntu ${UBUNTU_VERSION} rootfs..."
@@ -448,13 +448,13 @@ jobs:
           tar -czf metadata.tar.gz metadata.yaml
 
           echo "Importing image into Incus..."
-          incus image import metadata.tar.gz ubuntu-rootfs.tar.xz --alias ubuntu-22.04
+          incus image import metadata.tar.gz ubuntu-rootfs.tar.xz --alias ubuntu-24.04
 
           echo "✓ Successfully imported Ubuntu 22.04 image"
           incus image list
 
           # Export image for caching
-          incus image export ubuntu-22.04 /tmp/ubuntu-22.04-image
+          incus image export ubuntu-24.04 /tmp/ubuntu-24.04-image
 
           # Cleanup
           rm -f ubuntu-rootfs.tar.xz metadata.yaml metadata.tar.gz
@@ -463,8 +463,8 @@ jobs:
         if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
         uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
-          path: /tmp/ubuntu-22.04-image.tar.gz
-          key: ${{ runner.os }}-ubuntu-22.04-image-v1
+          path: /tmp/ubuntu-24.04-image.tar.gz
+          key: ${{ runner.os }}-ubuntu-24.04-image-v1
 
       - name: Build COI binary
         run: |
@@ -491,7 +491,7 @@ jobs:
           echo "test-content" > /tmp/test-bind-mount/test-file.txt
 
           # Launch test container using pre-cached image
-          incus launch ubuntu-22.04 test-bind-mount-container
+          incus launch ubuntu-24.04 test-bind-mount-container
           sleep 5
 
           # Configure UID mapping for CI environment (runner UID 1001 → container UID 0)

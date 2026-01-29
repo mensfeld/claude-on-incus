@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	DefaultImage = "images:ubuntu/22.04"
+	DefaultImage = "images:ubuntu/24.04"
 	CoiImage     = "coi"
 )
 
