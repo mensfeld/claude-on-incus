@@ -130,6 +130,19 @@ jobs:
           sudo apt-get install -y firewalld
           sudo systemctl enable --now firewalld
 
+          # Configure polkit to allow non-root users to manage firewalld
+          # This is needed because COI runs firewall-cmd as the current user
+          sudo tee /etc/polkit-1/rules.d/50-firewalld.rules > /dev/null <<'POLKIT'
+          polkit.addRule(function(action, subject) {
+              if (action.id.indexOf("org.fedoraproject.FirewallD1") === 0) {
+                  return polkit.Result.YES;
+              }
+          });
+          POLKIT
+
+          # Restart polkit to apply the rule
+          sudo systemctl restart polkit
+
           # Configure firewalld to allow forwarding (masquerade enables NAT)
           sudo firewall-cmd --permanent --add-masquerade
 
@@ -141,7 +154,10 @@ jobs:
 
           # Verify firewalld is running
           sudo firewall-cmd --state
-          echo "Firewalld configured"
+
+          # Test that non-sudo firewall-cmd works
+          firewall-cmd --state
+          echo "Firewalld configured with polkit permissions"
 
       - name: Initialize Incus
         run: |
