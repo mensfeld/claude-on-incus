@@ -229,10 +229,11 @@ jobs:
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
           echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding > /dev/null
 
-          # NOTE: We do NOT add explicit iptables ACCEPT rules here.
-          # Firewalld's trusted zone handles allowing traffic, and
-          # COI's firewall rules need to be able to REJECT traffic for
-          # network isolation tests (restricted/allowlist modes).
+          # Set FORWARD chain policy to ACCEPT
+          # This allows containers without explicit firewall rules to have full network access
+          # COI's firewall rules use REJECT (not DROP) so they explicitly block traffic
+          # regardless of the default policy
+          sudo iptables -P FORWARD ACCEPT
 
           # Ensure NAT/masquerade is working for container internet access
           # This is needed in addition to firewalld's masquerade for reliability
