@@ -165,10 +165,13 @@ jobs:
           sudo systemctl stop incus.socket incus || true
 
           # Configure subuid/subgid for UID mapping BEFORE Incus starts
-          # Append our entries to the existing config (don't replace, might have needed entries)
+          # Remove the billion-UID range which causes kernel issues, keep smaller ranges
+
+          # Remove the problematic large range (root:1000000:1000000000)
+          sudo sed -i '/^root:1000000:1000000000/d' /etc/subuid || true
+          sudo sed -i '/^root:1000000:1000000000/d' /etc/subgid || true
 
           # Add entries for raw.idmap workspace mounts (UID 1000, 1001)
-          # Only add if not already present
           if ! grep -q "^root:1000:2" /etc/subuid 2>/dev/null; then
             echo "root:1000:2" | sudo tee -a /etc/subuid
           fi
