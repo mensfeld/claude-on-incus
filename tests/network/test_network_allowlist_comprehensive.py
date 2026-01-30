@@ -10,6 +10,7 @@ Network isolation is implemented using firewalld direct rules.
 import os
 import subprocess
 import tempfile
+import time
 
 
 def test_allowlist_allows_specified_domains(coi_binary, workspace_dir, cleanup_containers):
@@ -172,6 +173,9 @@ refresh_interval_minutes = 30
             capture_output=True,
             timeout=10,
         )
+
+        # Wait for firewall rules to be fully applied (CI timing issue)
+        time.sleep(2)
 
         # Test: curl example.com (NOT in allowlist, should fail)
         result = subprocess.run(
