@@ -145,10 +145,18 @@ jobs:
 
           # Enable masquerading for container NAT
           sudo firewall-cmd --permanent --add-masquerade
+
+          # Allow all forwarding (required for container networking)
+          # This sets the default FORWARD policy to ACCEPT
+          sudo firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 -j ACCEPT
+          sudo firewall-cmd --permanent --direct --add-rule ipv6 filter FORWARD 0 -j ACCEPT
+
           sudo firewall-cmd --reload
 
           # Verify firewalld is running
           sudo firewall-cmd --state
+          echo "Direct rules:"
+          sudo firewall-cmd --direct --get-all-rules
 
       - name: Initialize Incus
         run: |
@@ -222,10 +230,6 @@ jobs:
           # Enable IP forwarding (required for container networking)
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
           echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding > /dev/null
-
-          # Add incusbr0 to trusted zone for container traffic
-          sudo firewall-cmd --permanent --zone=trusted --add-interface=incusbr0
-          sudo firewall-cmd --reload
 
           echo "Network configuration complete"
 
