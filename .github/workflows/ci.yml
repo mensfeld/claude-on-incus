@@ -350,8 +350,26 @@ jobs:
           mkdir -p /tmp/test-bind-mount
           echo "test-content" > /tmp/test-bind-mount/test-file.txt
 
-          # Launch test container using pre-cached image
-          incus launch ubuntu-24.04 test-bind-mount-container
+          # First just init (create) the container without starting
+          echo "Creating container..."
+          incus init ubuntu-24.04 test-bind-mount-container
+
+          # Show container config
+          echo "Container config:"
+          incus config show test-bind-mount-container
+
+          # Try to start with debug output
+          echo "Starting container..."
+          if ! incus start test-bind-mount-container 2>&1; then
+            echo "Container failed to start. Checking logs..."
+            # Check incusd logs
+            sudo journalctl -u incus --no-pager -n 50 || true
+            # Check dmesg for kernel errors
+            sudo dmesg | tail -30 || true
+            # Check AppArmor
+            sudo aa-status || true
+            exit 1
+          fi
           sleep 5
 
           # Configure UID mapping for CI environment (runner UID 1001 -> container UID 1000)
