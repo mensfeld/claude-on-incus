@@ -138,25 +138,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y incus firewalld
 
-      - name: Configure Firewalld
+      - name: Configure Firewalld for network isolation tests
         run: |
-          # Enable and start firewalld
-          sudo systemctl enable --now firewalld
+          # Firewalld is installed but we need to configure it to not interfere
+          # with basic container networking while still being available for
+          # network isolation tests (restricted/allowlist modes)
 
-          # Enable masquerading for container NAT
-          sudo firewall-cmd --permanent --add-masquerade
+          # Stop firewalld - we'll use iptables for basic networking
+          # Network isolation tests will start firewalld when needed
+          sudo systemctl stop firewalld || true
 
-          # Allow all forwarding (required for container networking)
-          # This sets the default FORWARD policy to ACCEPT
-          sudo firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 -j ACCEPT
-          sudo firewall-cmd --permanent --direct --add-rule ipv6 filter FORWARD 0 -j ACCEPT
-
-          sudo firewall-cmd --reload
-
-          # Verify firewalld is running
-          sudo firewall-cmd --state
-          echo "Direct rules:"
-          sudo firewall-cmd --direct --get-all-rules
+          echo "Firewalld installed and available for network isolation tests"
 
       - name: Initialize Incus
         run: |
@@ -182,7 +174,6 @@ jobs:
               ipv4.address: 10.47.62.1/24
               ipv4.nat: "true"
               ipv6.address: none
-              dns.nameservers: 8.8.8.8,1.1.1.1
             name: incusbr0
             type: bridge
           storage_pools:
@@ -228,9 +219,24 @@ jobs:
 
       - name: Configure networking for Incus
         run: |
-          # Enable IP forwarding (required for container networking)
+          # Enable IP forwarding (required for ALL container networking)
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
           echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding > /dev/null
+
+          # Get default interface for outbound traffic
+          DEFAULT_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+
+          # Allow container traffic through firewall
+          if sudo iptables -nL DOCKER-USER 2>/dev/null; then
+            # Use DOCKER-USER chain if it exists
+            sudo iptables -I DOCKER-USER -i incusbr0 -j ACCEPT
+            sudo iptables -I DOCKER-USER -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          else
+            # Fallback to FORWARD chain
+            sudo iptables -P FORWARD ACCEPT
+            sudo iptables -I FORWARD 1 -i incusbr0 -j ACCEPT
+            sudo iptables -I FORWARD 1 -o incusbr0 -j ACCEPT
+          fi
 
           echo "Network configuration complete"
 
