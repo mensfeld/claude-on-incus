@@ -165,19 +165,24 @@ jobs:
           sudo systemctl stop incus.socket incus || true
 
           # Configure subuid/subgid for UID mapping BEFORE Incus starts
-          # Replace the default config with sensible ranges
-          # The default root:1000000:1000000000 range causes issues
+          # Append our entries to the existing config (don't replace, might have needed entries)
 
-          # Create clean subuid/subgid files with only needed entries
-          sudo tee /etc/subuid > /dev/null << 'EOF'
-          root:100000:65536
-          root:1000:2
-          EOF
+          # Add entries for raw.idmap workspace mounts (UID 1000, 1001)
+          # Only add if not already present
+          if ! grep -q "^root:1000:2" /etc/subuid 2>/dev/null; then
+            echo "root:1000:2" | sudo tee -a /etc/subuid
+          fi
+          if ! grep -q "^root:1000:2" /etc/subgid 2>/dev/null; then
+            echo "root:1000:2" | sudo tee -a /etc/subgid
+          fi
 
-          sudo tee /etc/subgid > /dev/null << 'EOF'
-          root:100000:65536
-          root:1000:2
-          EOF
+          # Add range for unprivileged containers if not present
+          if ! grep -q "^root:100000:65536" /etc/subuid 2>/dev/null; then
+            echo "root:100000:65536" | sudo tee -a /etc/subuid
+          fi
+          if ! grep -q "^root:100000:65536" /etc/subgid 2>/dev/null; then
+            echo "root:100000:65536" | sudo tee -a /etc/subgid
+          fi
 
           # Verify subuid/subgid configuration
           echo "subuid configuration:"
