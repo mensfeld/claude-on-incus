@@ -8,13 +8,8 @@ Tests that:
 
 This test temporarily modifies the Incus network configuration to simulate
 the DNS misconfiguration that occurs on Ubuntu systems with systemd-resolved.
-
-Note: This test only runs in bridge network environment because OVN networks
-use different DNS mechanisms that can't be easily broken with raw.dnsmasq.
-The DNS auto-fix functionality is sufficiently tested in bridge environment.
 """
 
-import os
 import subprocess
 import time
 
@@ -80,12 +75,6 @@ def test_build_dns_autofix(coi_binary, tmp_path):
     6. Verify DNS auto-fix messages appear in output
     7. Restore DNS configuration
     """
-    # Skip in OVN environment - OVN networks use different DNS mechanisms
-    # that can't be easily broken with raw.dnsmasq. DNS auto-fix is
-    # sufficiently tested in bridge environment.
-    if os.getenv("CI_NETWORK_TYPE") == "ovn":
-        pytest.skip("Test only runs in bridge environment (OVN DNS config differs)")
-
     # Get network name
     network_name = get_incus_network()
     if not network_name:

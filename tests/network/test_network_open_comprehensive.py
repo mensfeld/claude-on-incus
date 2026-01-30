@@ -4,20 +4,13 @@ Integration tests for network OPEN mode.
 Tests that OPEN mode allows unrestricted network access to all destinations,
 including public internet, RFC1918 private networks, and metadata endpoints.
 
-Note: These tests require OVN networking (now configured in CI).
+Network isolation is implemented using firewalld direct rules in restricted/allowlist modes.
+OPEN mode has no firewall rules applied.
 """
 
 import os
 import subprocess
 import tempfile
-
-import pytest
-
-# Skip all tests in this module when running on bridge network (no OVN/ACL support)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI_NETWORK_TYPE") == "bridge",
-    reason="Network mode tests require OVN networking (ACL support)",
-)
 
 
 def test_open_allows_public_internet(coi_binary, workspace_dir, cleanup_containers):

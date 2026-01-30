@@ -4,20 +4,12 @@ Integration tests for network RESTRICTED mode.
 Tests that RESTRICTED mode blocks RFC1918 private networks and metadata endpoint
 while allowing access to public internet and gateway.
 
-Note: These tests require OVN networking (now configured in CI).
+Network isolation is implemented using firewalld direct rules.
 """
 
 import os
 import subprocess
 import tempfile
-
-import pytest
-
-# Skip all tests in this module when running on bridge network (no OVN/ACL support)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI_NETWORK_TYPE") == "bridge",
-    reason="Network mode tests require OVN networking (ACL support)",
-)
 
 
 def test_restricted_allows_public_internet(coi_binary, workspace_dir, cleanup_containers):

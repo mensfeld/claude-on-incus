@@ -7,20 +7,11 @@ Tests that:
 3. Blocks 172.16.0.0/12
 4. Blocks 192.168.0.0/16
 
-Note: This test requires OVN networking (now configured in CI).
+Network isolation is implemented using firewalld direct rules.
 """
 
-import os
 import subprocess
 import time
-
-import pytest
-
-# Skip all tests in this module when running on bridge network (no OVN/ACL support)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI_NETWORK_TYPE") == "bridge",
-    reason="Restricted mode requires OVN networking (ACL support)",
-)
 
 
 def test_restricted_blocks_private_networks(coi_binary, workspace_dir, cleanup_containers):

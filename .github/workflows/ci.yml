@@ -57,27 +57,16 @@ jobs:
           go tool cover -func=coverage.out | tail -1  # Show total coverage
 
   # Integration tests run in parallel with unit tests (after build passes)
-  # Matrix runs tests in both OVN and bridge-only environments
-  # Split into 6 test groups for parallel execution:
-  #   - shell-ephemeral (15 tests) × 2 network types = 2 jobs
-  #   - shell-persistent (9 tests) × 2 network types = 2 jobs
-  #   - network (10 tests) × OVN only = 1 job
-  #   - container-file (54 tests) × 2 network types = 2 jobs
-  #   - core (83 tests) × 2 network types = 2 jobs
-  #   - misc (70 tests) × 2 network types = 2 jobs
-  # Total: 11 parallel jobs instead of 2 sequential
-  # Result: ~15-20min total (down from 37min), 2x faster CI feedback
+  # Split into 6 test groups for parallel execution
+  # Network isolation uses firewalld (works with any bridge network)
   integration:
-    name: Integration Tests (${{ matrix.test_group.name }}, ${{ matrix.network_type }})
+    name: Integration Tests (${{ matrix.test_group.name }})
     runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        network_type:
-          - ovn      # Full OVN networking with ACL support
-          - bridge   # Standard bridge without OVN (tests error handling)
         test_group:
           - name: shell-ephemeral
             path: tests/shell/ephemeral
@@ -87,8 +76,7 @@ jobs:
             description: "Persistent shell session tests (9 tests)"
           - name: network
             path: tests/network
-            description: "Network isolation tests (10 tests, OVN only)"
-            ovn_only: true
+            description: "Network isolation tests (10 tests)"
           - name: container-file
             path: tests/container tests/file
             description: "Container and file operations (54 tests)"
@@ -98,14 +86,6 @@ jobs:
           - name: misc
             path: tests/clean tests/completion tests/docker tests/errors tests/help tests/image tests/info tests/mount tests/shutdown tests/version tests/meta tests/main_help_flag.py tests/main_help_shorthand.py
             description: "Misc commands: clean/completion/docker/errors/help/image/info/mount/shutdown/version/meta/main help (70 tests)"
-        exclude:
-          # Network tests only run on OVN (they test OVN-specific ACL features)
-          - network_type: bridge
-            test_group:
-              name: network
-              path: tests/network
-              description: "Network isolation tests (10 tests, OVN only)"
-              ovn_only: true
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -140,7 +120,7 @@ jobs:
           echo "Checking Python code formatting..."
           ruff format --check tests/
 
-      - name: Install Incus
+      - name: Install Incus and Firewalld
         run: |
           # Add Zabbly repo for latest Incus
           sudo mkdir -p /etc/apt/keyrings/
@@ -156,99 +136,21 @@ jobs:
           SOURCES'
 
           sudo apt-get update
+          sudo apt-get install -y incus firewalld
 
-          # Install OVN packages only for OVN matrix
-          if [ "${{ matrix.network_type }}" = "ovn" ]; then
-            sudo apt-get install -y incus ovn-host ovn-central
-          else
-            sudo apt-get install -y incus
-          fi
-
-      - name: Configure OVN
-        if: matrix.network_type == 'ovn'
+      - name: Configure Firewalld
         run: |
-          # Configure OVN to listen on TCP (required for Incus integration)
-          sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
-          sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
+          # Enable and start firewalld
+          sudo systemctl enable --now firewalld
 
-          # Configure Open vSwitch to connect to OVN
-          sudo ovs-vsctl set open_vswitch . \
-            external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
-            external_ids:ovn-encap-type=geneve \
-            external_ids:ovn-encap-ip=127.0.0.1
+          # Enable masquerading for container NAT
+          sudo firewall-cmd --permanent --add-masquerade
+          sudo firewall-cmd --reload
 
-          # Verify OVS configuration
-          echo "OVN configuration:"
-          sudo ovs-vsctl get open_vswitch . external_ids
+          # Verify firewalld is running
+          sudo firewall-cmd --state
 
-      - name: Initialize Incus (OVN)
-        if: matrix.network_type == 'ovn'
-        run: |
-          # Wait for Incus service to be ready
-          sudo systemctl start incus.socket || true
-          sleep 5
-
-          # Configure subuid/subgid for UID mapping (needed for raw.idmap)
-          # Map runner UID 1001 to be available for container remapping
-          echo "root:1001:1" | sudo tee -a /etc/subuid
-          echo "root:1001:1" | sudo tee -a /etc/subgid
-
-          # Restart Incus to pick up subuid/subgid changes
-          sudo systemctl restart incus || true
-          sleep 5
-
-          # Initialize Incus with btrfs storage and OVN networking
-          # Using preseed for explicit configuration
-          cat <<EOF | sudo incus admin init --preseed
-          config:
-            images.compression_algorithm: none
-          networks:
-          - config:
-              ipv4.address: 10.47.62.1/24
-              ipv4.nat: "true"
-              ipv4.dhcp.ranges: 10.47.62.2-10.47.62.99
-              ipv4.ovn.ranges: 10.47.62.100-10.47.62.200
-              ipv6.address: none
-            name: incusbr0
-            type: bridge
-          - config:
-              bridge.mtu: "1442"
-              ipv4.address: 10.215.220.1/24
-              ipv4.nat: "true"
-              ipv6.address: none
-              network: incusbr0
-            name: ovn-net
-            type: ovn
-          storage_pools:
-          - config:
-              size: 15GiB
-            name: default
-            driver: btrfs
-          profiles:
-          - config: {}
-            devices:
-              eth0:
-                name: eth0
-                network: ovn-net
-                type: nic
-              root:
-                path: /
-                pool: default
-                type: disk
-            name: default
-          EOF
-
-          # Allow access without re-login by changing socket permissions
-          sudo chmod 666 /var/lib/incus/unix.socket
-
-          # Add current user to incus-admin group
-          sudo usermod -aG incus-admin $USER
-
-          echo "OVN network configured successfully"
-          incus network list
-
-      - name: Initialize Incus (Bridge)
-        if: matrix.network_type == 'bridge'
+      - name: Initialize Incus
         run: |
           # Wait for Incus service to be ready
           sudo systemctl start incus.socket || true
@@ -264,7 +166,6 @@ jobs:
           sleep 5
 
           # Initialize Incus with btrfs storage and standard bridge networking
-          # NO OVN - this tests error handling for non-OVN networks
           cat <<EOF | sudo incus admin init --preseed
           config:
             images.compression_algorithm: none
@@ -316,50 +217,17 @@ jobs:
           echo "Checking if AppArmor is blocking bind mounts:"
           sudo dmesg | grep -i "apparmor.*denied" | tail -20 || echo "No recent AppArmor denials"
 
-      - name: Configure basic networking for Incus
+      - name: Configure networking for Incus
         run: |
-          # Enable IP forwarding (required for ALL container networking)
+          # Enable IP forwarding (required for container networking)
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
           echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding > /dev/null
 
-          # Get default interface for outbound traffic
-          DEFAULT_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+          # Add incusbr0 to trusted zone for container traffic
+          sudo firewall-cmd --permanent --zone=trusted --add-interface=incusbr0
+          sudo firewall-cmd --reload
 
-          # Allow container traffic through firewall
-          if sudo iptables -nL DOCKER-USER 2>/dev/null; then
-            # Use DOCKER-USER chain if it exists
-            sudo iptables -I DOCKER-USER -i incusbr0 -j ACCEPT
-            sudo iptables -I DOCKER-USER -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-          else
-            # Fallback to FORWARD chain
-            sudo iptables -P FORWARD ACCEPT
-            sudo iptables -I FORWARD 1 -i incusbr0 -j ACCEPT
-            sudo iptables -I FORWARD 1 -o incusbr0 -j ACCEPT
-          fi
-
-          echo "Basic network configuration complete"
-
-      - name: Configure OVN-specific networking
-        if: matrix.network_type == 'ovn'
-        run: |
-          # Get default interface for outbound traffic
-          DEFAULT_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
-
-          # Allow traffic to/from OVN subnet through firewall
-          # Allow traffic destined for OVN subnet (host-to-container)
-          sudo iptables -I FORWARD 1 -d 10.215.220.0/24 -j ACCEPT
-          # Allow return traffic from OVN subnet (container-to-host responses)
-          sudo iptables -I FORWARD 1 -s 10.215.220.0/24 -j ACCEPT
-
-          # Add NAT/MASQUERADE rules for OVN subnet (10.215.220.0/24)
-          sudo iptables -t nat -I POSTROUTING 1 -s 10.215.220.0/24 -o $DEFAULT_IFACE -j MASQUERADE
-
-          # Add route so host can reach OVN network (10.215.220.0/24) via OVN uplink IP
-          # The OVN network uses 10.47.62.100 as its uplink IP on the bridge
-          # This allows tests to curl container services from the host
-          sudo ip route add 10.215.220.0/24 via 10.47.62.100 dev incusbr0 || true
-
-          echo "OVN network configuration complete"
+          echo "Network configuration complete"
 
       - name: Pre-cache base Ubuntu image
         run: |
@@ -457,7 +325,6 @@ jobs:
         run: |
           echo "============================================"
           echo "Running: ${{ matrix.test_group.description }}"
-          echo "Network: ${{ matrix.network_type }}"
           echo "Path: ${{ matrix.test_group.path }}"
           echo "============================================"
 
@@ -465,7 +332,6 @@ jobs:
           python -m pytest ${{ matrix.test_group.path }} -v --tb=short --durations=0 --cov=tests --cov-report=term-missing
         env:
           COI_BINARY: ./coi
-          CI_NETWORK_TYPE: ${{ matrix.network_type }}
           GITHUB_REPOSITORY_URL: ${{ github.event.pull_request.head.repo.clone_url || format('https://github.com/{0}.git', github.repository) }}
 
       - name: Cleanup
