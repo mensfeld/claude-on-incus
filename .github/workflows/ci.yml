@@ -140,15 +140,20 @@ jobs:
 
       - name: Configure Firewalld for network isolation tests
         run: |
-          # Firewalld is installed but we need to configure it to not interfere
-          # with basic container networking while still being available for
-          # network isolation tests (restricted/allowlist modes)
+          # Start firewalld for network isolation tests
+          sudo systemctl enable --now firewalld
 
-          # Stop firewalld - we'll use iptables for basic networking
-          # Network isolation tests will start firewalld when needed
-          sudo systemctl stop firewalld || true
+          # Set trusted zone as default (allows all traffic)
+          sudo firewall-cmd --set-default-zone=trusted
 
-          echo "Firewalld installed and available for network isolation tests"
+          # Enable masquerading for container NAT
+          sudo firewall-cmd --zone=trusted --add-masquerade
+
+          # Verify firewalld is running
+          sudo firewall-cmd --state
+          sudo firewall-cmd --get-default-zone
+
+          echo "Firewalld configured with trusted zone (allows all traffic by default)"
 
       - name: Initialize Incus
         run: |
