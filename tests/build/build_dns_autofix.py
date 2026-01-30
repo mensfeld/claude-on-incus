@@ -183,32 +183,31 @@ def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
     image_name = "coi-test-dns-persistence"
     container_name = "coi-test-dns-container"
 
-    # Create build script that configures static DNS (simulates what coi.sh does)
+    # Create build script that ALWAYS configures static DNS for persistence
+    # This must be unconditional because the builder's tryFixDNS() may have
+    # already fixed DNS temporarily, but we need a permanent fix in the image
     build_script = tmp_path / "build.sh"
     build_script.write_text(
         """#!/bin/bash
 set -e
 echo "Configuring static DNS for persistence test..."
 
-# Check if DNS works, if not configure static DNS (like coi.sh does)
-if ! getent hosts archive.ubuntu.com > /dev/null 2>&1; then
-    echo "DNS broken, configuring static DNS..."
-    # Disable systemd-resolved if present
-    systemctl disable systemd-resolved 2>/dev/null || true
-    systemctl stop systemd-resolved 2>/dev/null || true
-    systemctl mask systemd-resolved 2>/dev/null || true
+# ALWAYS configure static DNS for image persistence
+# (Don't check if DNS works - the builder may have already fixed it temporarily)
 
-    # Configure static DNS
-    rm -f /etc/resolv.conf
-    cat > /etc/resolv.conf << 'DNSEOF'
+# Disable systemd-resolved if present
+systemctl disable systemd-resolved 2>/dev/null || true
+systemctl stop systemd-resolved 2>/dev/null || true
+systemctl mask systemd-resolved 2>/dev/null || true
+
+# Configure static DNS
+rm -f /etc/resolv.conf
+cat > /etc/resolv.conf << 'DNSEOF'
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
 DNSEOF
-    echo "Static DNS configured."
-else
-    echo "DNS already works."
-fi
+echo "Static DNS configured."
 """
     )
 
