@@ -68,16 +68,30 @@ func (f *FirewallManager) ApplyRestricted(cfg *config.NetworkConfig) error {
 		}
 	}
 
-	// No default deny rule - allow all other traffic (internet)
+	// Explicitly allow all other traffic (internet)
+	// Needed because FORWARD chain policy might be DROP with firewalld
+	if err := f.addRule(50, f.containerIP, "0.0.0.0/0", "ACCEPT"); err != nil {
+		return fmt.Errorf("failed to add default allow rule: %w", err)
+	}
+
 	return nil
 }
 
 // ApplyAllowlist applies allowlist mode rules (allow specific IPs, block all else)
 func (f *FirewallManager) ApplyAllowlist(cfg *config.NetworkConfig, allowedIPs []string) error {
-	// Priority 0: Allow gateway (for host communication)
+	// Priority 0: Allow gateway (for host communication and DNS)
 	if f.gatewayIP != "" {
 		if err := f.addRule(0, f.containerIP, f.gatewayIP+"/32", "ACCEPT"); err != nil {
 			return fmt.Errorf("failed to add gateway allow rule: %w", err)
+		}
+	}
+
+	// Priority 0: Always allow common public DNS servers
+	// This ensures DNS resolution works even in strict allowlist mode
+	dnsServers := []string{"8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1"}
+	for _, dns := range dnsServers {
+		if err := f.addRule(0, f.containerIP, dns+"/32", "ACCEPT"); err != nil {
+			return fmt.Errorf("failed to add DNS allow rule for %s: %w", dns, err)
 		}
 	}
 
