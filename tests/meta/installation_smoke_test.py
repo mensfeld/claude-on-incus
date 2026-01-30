@@ -21,6 +21,17 @@ import time
 import pytest
 
 
+def images_remote_available():
+    """Check if the 'images' remote is available."""
+    result = subprocess.run(
+        ["incus", "remote", "list", "--format=csv"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return "images," in result.stdout
+
+
 @pytest.fixture(scope="module")
 def meta_container():
     """
@@ -29,6 +40,10 @@ def meta_container():
     This validates that the README installation steps work correctly
     and produce a functioning coi binary.
     """
+    # Skip if images remote not available (CI removes it to avoid network dependencies)
+    if not images_remote_available():
+        pytest.skip("images remote not available (CI environment)")
+
     container_name = "coi-meta-test"
 
     # Clean up any existing test container

@@ -21,6 +21,17 @@ import time
 import pytest
 
 
+def images_remote_available():
+    """Check if the 'images' remote is available."""
+    result = subprocess.run(
+        ["incus", "remote", "list", "--format=csv"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return "images," in result.stdout
+
+
 def get_incus_network():
     """Get the name of the Incus bridge network."""
     result = subprocess.run(
@@ -80,6 +91,10 @@ def test_build_dns_autofix(coi_binary, tmp_path):
     6. Verify DNS auto-fix messages appear in output
     7. Restore DNS configuration
     """
+    # Skip if images remote not available (CI removes it to avoid network dependencies)
+    if not images_remote_available():
+        pytest.skip("images remote not available (CI environment)")
+
     # Skip in OVN environment - OVN networks use different DNS mechanisms
     # that can't be easily broken with raw.dnsmasq. DNS auto-fix is
     # sufficiently tested in bridge environment.
@@ -187,6 +202,10 @@ def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
     4. Test DNS resolution inside the container
     5. Verify it works (image has static DNS from coi.sh fix)
     """
+    # Skip if images remote not available (CI removes it to avoid network dependencies)
+    if not images_remote_available():
+        pytest.skip("images remote not available (CI environment)")
+
     network_name = get_incus_network()
     if not network_name:
         pytest.skip("Could not determine Incus network name")

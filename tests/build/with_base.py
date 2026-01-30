@@ -10,8 +10,25 @@ Tests:
 import json
 import subprocess
 
+import pytest
+
+
+def images_remote_available():
+    """Check if the 'images' remote is available."""
+    result = subprocess.run(
+        ["incus", "remote", "list", "--format=csv"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return "images," in result.stdout
+
 
 def test_build_custom_with_base(coi_binary, tmp_path):
+    """Test building a custom image with explicit base."""
+    if not images_remote_available():
+        pytest.skip("images remote not available (CI environment)")
+
     """Test building a custom image with explicit base."""
     image_name = "coi-test-custom-base"
 
