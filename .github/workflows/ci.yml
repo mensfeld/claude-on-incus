@@ -229,11 +229,21 @@ jobs:
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
           echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding > /dev/null
 
-          # FORWARD policy stays ACCEPT (firewalld default with public zone)
-          # Our REJECT rules are explicit and will fire regardless of default policy
-          # This allows builds and non-isolated containers to work
+          # Ensure FORWARD chain allows container traffic
+          # Trusted zone should do this, but be explicit for reliability
+          sudo iptables -I FORWARD -i incusbr0 -j ACCEPT
+          sudo iptables -I FORWARD -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+          # Ensure NAT/masquerade is working for container internet access
+          # Get the default outbound interface
+          DEFAULT_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+          sudo iptables -t nat -A POSTROUTING -s 10.47.62.0/24 -o $DEFAULT_IFACE -j MASQUERADE
 
           echo "Network configuration complete"
+          echo "FORWARD chain:"
+          sudo iptables -L FORWARD -n --line-numbers | head -10
+          echo "NAT POSTROUTING:"
+          sudo iptables -t nat -L POSTROUTING -n
 
       - name: Pre-cache base Ubuntu image
         run: |
