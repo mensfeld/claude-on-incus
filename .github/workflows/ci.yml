@@ -120,8 +120,10 @@ jobs:
         run: |
           echo "Installing Incus from Ubuntu 24.04 repositories..."
           sudo apt-get update
-          sudo apt-get install -y incus
+          sudo apt-get install -y incus uidmap
           incus version
+          echo "Checking uidmap tools:"
+          which newuidmap newgidmap
           echo "Incus installed"
 
       - name: Setup Firewalld

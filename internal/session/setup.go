@@ -78,6 +78,77 @@ func setupMounts(mgr *container.Manager, mountConfig *MountConfig, useShift bool
 	return nil
 }
 
+// setupContainerForCI configures container for CI environment using raw.idmap
+// CI environments don't have kernel idmap support, so we use raw.idmap instead of shift=true
+// Must follow specific order: start -> set raw.idmap -> restart -> add devices
+func setupContainerForCI(mgr *container.Manager, containerName, workspacePath string, mountConfig *MountConfig, logger func(string)) error {
+	// Start container first (without devices)
+	logger("Starting container...")
+	if err := mgr.Start(); err != nil {
+		return fmt.Errorf("failed to start container: %w", err)
+	}
+
+	// Wait for container to be ready before configuring
+	logger("Waiting for container to be ready...")
+	if err := waitForReady(mgr, 30, logger); err != nil {
+		return err
+	}
+
+	// Set raw.idmap on running container
+	logger("Configuring UID/GID mapping for CI environment...")
+	if err := container.IncusExec("config", "set", containerName, "raw.idmap", "both 1001 1000"); err != nil {
+		logger(fmt.Sprintf("Warning: Failed to set raw.idmap: %v", err))
+	}
+
+	// Restart container to apply raw.idmap
+	logger("Restarting container to apply UID mapping...")
+	if err := container.IncusExec("restart", containerName); err != nil {
+		return fmt.Errorf("failed to restart container: %w", err)
+	}
+
+	// Wait for container to be ready again
+	time.Sleep(3 * time.Second)
+	if err := waitForReady(mgr, 30, logger); err != nil {
+		return err
+	}
+
+	// Now add disk devices (hot-add to running container)
+	logger(fmt.Sprintf("Adding workspace mount: %s", workspacePath))
+	if err := mgr.MountDisk("workspace", workspacePath, "/workspace", false); err != nil {
+		return fmt.Errorf("failed to add workspace device: %w", err)
+	}
+
+	// Mount all configured directories
+	if err := setupMounts(mgr, mountConfig, false, logger); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// setupContainerLocal configures container for local environment using shift=true
+// Adds devices before starting container (standard Incus workflow)
+func setupContainerLocal(mgr *container.Manager, workspacePath string, mountConfig *MountConfig, useShift bool, logger func(string)) error {
+	// Add disk devices BEFORE starting container
+	logger(fmt.Sprintf("Adding workspace mount: %s", workspacePath))
+	if err := mgr.MountDisk("workspace", workspacePath, "/workspace", useShift); err != nil {
+		return fmt.Errorf("failed to add workspace device: %w", err)
+	}
+
+	// Mount all configured directories
+	if err := setupMounts(mgr, mountConfig, useShift, logger); err != nil {
+		return err
+	}
+
+	// Now start the container
+	logger("Starting container...")
+	if err := mgr.Start(); err != nil {
+		return fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return nil
+}
+
 // SetupOptions contains options for setting up a session
 type SetupOptions struct {
 	WorkspacePath string
@@ -204,6 +275,11 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 			return nil, fmt.Errorf("failed to create container: %w", err)
 		}
 
+		// Enable Docker/nested container support (security flags)
+		if err := container.EnableDockerSupport(result.ContainerName); err != nil {
+			return nil, fmt.Errorf("failed to enable Docker support: %w", err)
+		}
+
 		// Configure UID/GID mapping for bind mounts based on environment
 		// Local: Use shift=true (kernel idmap support)
 		// CI: Use raw.idmap (kernel lacks idmap support, runner UID 1001 → container UID 1000)
@@ -220,35 +296,23 @@ func Setup(opts SetupOptions) (*SetupResult, error) {
 		isCI := os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
 
 		if isCI {
-			opts.Logger("Configuring UID/GID mapping for CI environment...")
-			if err := container.IncusExec("config", "set", result.ContainerName, "raw.idmap", "both 1001 1000"); err != nil {
-				opts.Logger(fmt.Sprintf("Warning: Failed to set raw.idmap: %v", err))
+			// CI environment: use raw.idmap instead of shift
+			opts.Logger("CI environment detected - using raw.idmap for UID mapping")
+			if err := setupContainerForCI(result.Manager, result.ContainerName, opts.WorkspacePath, opts.MountConfig, opts.Logger); err != nil {
+				return nil, err
 			}
-			useShift = false // Don't use shift=true with raw.idmap
-		} else if disableShift {
-			if !opts.DisableShift {
-				// Was auto-detected, not explicitly configured
-				opts.Logger("UID shifting disabled (auto-detected Colima/Lima environment)")
-			} else {
-				opts.Logger("UID shifting disabled (configured via disable_shift option)")
+		} else {
+			// Non-CI environment: add devices before starting
+			if disableShift {
+				if !opts.DisableShift {
+					opts.Logger("UID shifting disabled (auto-detected Colima/Lima environment)")
+				} else {
+					opts.Logger("UID shifting disabled (configured via disable_shift option)")
+				}
 			}
-		}
-
-		// Add disk devices BEFORE starting container
-		opts.Logger(fmt.Sprintf("Adding workspace mount: %s", opts.WorkspacePath))
-		if err := result.Manager.MountDisk("workspace", opts.WorkspacePath, "/workspace", useShift); err != nil {
-			return nil, fmt.Errorf("failed to add workspace device: %w", err)
-		}
-
-		// Mount all configured directories
-		if err := setupMounts(result.Manager, opts.MountConfig, useShift, opts.Logger); err != nil {
-			return nil, err
-		}
-
-		// Now start the container
-		opts.Logger("Starting container...")
-		if err := result.Manager.Start(); err != nil {
-			return nil, fmt.Errorf("failed to start container: %w", err)
+			if err := setupContainerLocal(result.Manager, opts.WorkspacePath, opts.MountConfig, useShift, opts.Logger); err != nil {
+				return nil, err
+			}
 		}
 
 		// Setup network isolation (after container starts, so it has an IP)
