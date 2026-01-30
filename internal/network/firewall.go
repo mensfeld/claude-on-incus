@@ -29,6 +29,11 @@ func NewFirewallManager(containerIP, gatewayIP string) *FirewallManager {
 
 // ApplyRestricted applies restricted mode rules (block RFC1918, allow internet)
 func (f *FirewallManager) ApplyRestricted(cfg *config.NetworkConfig) error {
+	// Ensure base rules for return traffic are in place
+	if err := EnsureBaseRules(); err != nil {
+		log.Printf("Warning: failed to ensure base rules: %v", err)
+	}
+
 	// Priority 0: Allow gateway (for host communication)
 	if f.gatewayIP != "" {
 		if err := f.addRule(0, f.containerIP, f.gatewayIP+"/32", "ACCEPT"); err != nil {
@@ -79,6 +84,11 @@ func (f *FirewallManager) ApplyRestricted(cfg *config.NetworkConfig) error {
 
 // ApplyAllowlist applies allowlist mode rules (allow specific IPs, block all else)
 func (f *FirewallManager) ApplyAllowlist(cfg *config.NetworkConfig, allowedIPs []string) error {
+	// Ensure base rules for return traffic are in place
+	if err := EnsureBaseRules(); err != nil {
+		log.Printf("Warning: failed to ensure base rules: %v", err)
+	}
+
 	// Priority 0: Allow gateway (for host communication and DNS via dnsmasq)
 	// DNS works through the bridge's dnsmasq - no public DNS servers allowed
 	// to prevent DNS exfiltration attacks
@@ -160,6 +170,25 @@ func (f *FirewallManager) RemoveRules() error {
 			if err := f.removeRule(rule); err != nil {
 				log.Printf("Warning: failed to remove firewall rule: %v", err)
 			}
+		}
+	}
+
+	return nil
+}
+
+// EnsureBaseRules adds the base iptables rules needed for container networking
+// These rules allow return traffic and must be in place before container-specific rules
+func EnsureBaseRules() error {
+	// Add conntrack rule for return traffic (must be at top of FORWARD chain)
+	// Using iptables directly since firewalld direct rules don't support conntrack well
+	cmd := exec.Command("sudo", "-n", "iptables", "-C", "FORWARD",
+		"-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT")
+	if err := cmd.Run(); err != nil {
+		// Rule doesn't exist, add it
+		cmd = exec.Command("sudo", "-n", "iptables", "-I", "FORWARD", "1",
+			"-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			log.Printf("Warning: failed to add conntrack rule: %s", strings.TrimSpace(string(output)))
 		}
 	}
 
