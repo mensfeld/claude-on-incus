@@ -186,6 +186,7 @@ def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
     # Create build script that ALWAYS configures static DNS for persistence
     # This must be unconditional because the builder's tryFixDNS() may have
     # already fixed DNS temporarily, but we need a permanent fix in the image
+    # Also disable cloud-init network to prevent DNS reconfiguration on boot
     build_script = tmp_path / "build.sh"
     build_script.write_text(
         """#!/bin/bash
@@ -200,6 +201,14 @@ systemctl disable systemd-resolved 2>/dev/null || true
 systemctl stop systemd-resolved 2>/dev/null || true
 systemctl mask systemd-resolved 2>/dev/null || true
 
+# Disable cloud-init network configuration (prevents DNS reconfiguration on boot)
+mkdir -p /etc/cloud/cloud.cfg.d
+echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+
+# Disable NetworkManager if present (common on some Ubuntu variants)
+systemctl disable NetworkManager 2>/dev/null || true
+systemctl mask NetworkManager 2>/dev/null || true
+
 # Configure static DNS
 rm -f /etc/resolv.conf
 cat > /etc/resolv.conf << 'DNSEOF'
@@ -207,7 +216,11 @@ nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
 DNSEOF
-echo "Static DNS configured."
+
+# Make resolv.conf immutable to prevent any service from changing it
+chattr +i /etc/resolv.conf 2>/dev/null || true
+
+echo "Static DNS configured and protected."
 """
     )
 
