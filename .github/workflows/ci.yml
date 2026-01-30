@@ -229,18 +229,12 @@ jobs:
           echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward > /dev/null
           echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding > /dev/null
 
-          # Get default interface for outbound traffic
-          DEFAULT_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
-
-          # Allow container traffic through firewall
-          # These rules are needed even with firewalld because our direct rules
-          # only handle outbound filtering - return traffic needs explicit allow
-          sudo iptables -I FORWARD 1 -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-          sudo iptables -I FORWARD 2 -i incusbr0 -j ACCEPT
+          # Return traffic is handled by firewalld conntrack rule (EnsureBaseRules)
+          # Outbound filtering is done by firewalld direct rules (ApplyRestricted/ApplyAllowlist)
+          # We do NOT add a blanket ACCEPT for -i incusbr0 as that would bypass filtering
 
           # Also add to DOCKER-USER if it exists (for Docker compatibility)
           if sudo iptables -nL DOCKER-USER 2>/dev/null; then
-            sudo iptables -I DOCKER-USER -i incusbr0 -j ACCEPT
             sudo iptables -I DOCKER-USER -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
           fi
 
