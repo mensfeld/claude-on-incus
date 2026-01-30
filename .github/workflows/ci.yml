@@ -208,6 +208,8 @@ jobs:
           profiles:
           - config:
               security.nesting: "true"
+              security.syscalls.intercept.mknod: "true"
+              security.syscalls.intercept.setxattr: "true"
             devices:
               eth0:
                 name: eth0
