@@ -144,17 +144,28 @@ jobs:
           # Start firewalld for network isolation tests
           sudo systemctl enable --now firewalld
 
-          # Set trusted zone as default (allows all traffic)
-          sudo firewall-cmd --set-default-zone=trusted
+          # Use public zone (more restrictive than trusted)
+          sudo firewall-cmd --set-default-zone=public
 
           # Enable masquerading for container NAT
-          sudo firewall-cmd --zone=trusted --add-masquerade
+          sudo firewall-cmd --zone=public --add-masquerade
+
+          # Set FORWARD policy to DROP - forces all traffic through explicit rules
+          # This is critical for network isolation to work
+          sudo iptables -P FORWARD DROP
+
+          # Add fallback rules at priority 100 for non-COI Incus containers
+          # COI's rules at priority 0-99 will override these for isolated containers
+          sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 100 -i incusbr0 -j ACCEPT
+          sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 100 -o incusbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
           # Verify firewalld is running
           sudo firewall-cmd --state
           sudo firewall-cmd --get-default-zone
+          echo "Direct rules:"
+          sudo firewall-cmd --direct --get-all-rules
 
-          echo "Firewalld configured with trusted zone (allows all traffic by default)"
+          echo "Firewalld configured with FORWARD DROP policy and fallback ACCEPT at priority 100"
 
       - name: Initialize Incus
         run: |
@@ -331,6 +342,17 @@ jobs:
         with:
           path: /tmp/coi-image.tar.gz
           key: ${{ runner.os }}-coi-image-${{ hashFiles('internal/image/**', 'testdata/dummy/**', 'scripts/build/**') }}
+
+      - name: Debug iptables state before tests
+        run: |
+          echo "=== FORWARD chain policy and rules ==="
+          sudo iptables -L FORWARD -n -v --line-numbers
+          echo ""
+          echo "=== Firewalld direct rules ==="
+          sudo firewall-cmd --direct --get-all-rules
+          echo ""
+          echo "=== NAT table ==="
+          sudo iptables -t nat -L -n -v | head -30
 
       - name: Run ${{ matrix.test_group.name }} tests with coverage
         run: |
