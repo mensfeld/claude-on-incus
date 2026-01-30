@@ -161,6 +161,9 @@ jobs:
 
       - name: Initialize Incus
         run: |
+          # Stop Incus if running (to apply subuid/subgid changes cleanly)
+          sudo systemctl stop incus.socket incus || true
+
           # Configure subuid/subgid for UID mapping BEFORE Incus starts
           # This is needed for raw.idmap to work properly
           # root:1000:2 allows mapping UIDs 1000 and 1001
@@ -177,8 +180,8 @@ jobs:
           echo "subgid configuration:"
           cat /etc/subgid
 
-          # Wait for Incus service to be ready
-          sudo systemctl start incus.socket || true
+          # Start Incus fresh with the new subuid/subgid configuration
+          sudo systemctl start incus.socket
           sleep 5
 
           # Initialize Incus with btrfs storage and standard bridge networking
