@@ -268,17 +268,47 @@ COI can run on macOS by using Incus inside a [Colima](https://github.com/abiosof
 2. **COI detects the environment** - Checks for virtiofs mounts in `/proc/mounts` and the `lima` user
 3. **UID shifting is auto-disabled** - COI automatically disables Incus's `shift=true` option to avoid conflicts with VM-level mapping
 
+### Network Mode on macOS
+
+**Important:** Network isolation modes (`restricted`, `allowlist`) require firewalld, which is not available in Colima/Lima VMs by default. Use `--network=open` for unrestricted network access:
+
+```bash
+# Inside Colima/Lima VM
+coi shell --network=open
+```
+
+Or set it as default in your config:
+
+```toml
+# ~/.config/coi/config.toml
+[network]
+mode = "open"
+```
+
 ### Setup
 
 ```bash
 # Install Colima (example)
 brew install colima
 
-# Start Colima VM
-colima start
+# Start Colima VM with sufficient resources
+colima start --cpu 4 --memory 8 --disk 50
 
-# Inside the VM, install Incus and COI following normal Linux instructions
-# COI will automatically detect it's running in Colima/Lima
+# SSH into the VM
+colima ssh
+
+# Inside the VM, install Incus
+sudo apt update && sudo apt install -y incus
+sudo incus admin init --auto
+sudo usermod -aG incus-admin $USER
+newgrp incus-admin
+
+# Install COI
+curl -fsSL https://raw.githubusercontent.com/mensfeld/code-on-incus/master/install.sh | bash
+
+# Build image and start a session
+coi build
+coi shell --network=open
 ```
 
 **Manual Override**: In rare cases where auto-detection doesn't work, you can manually configure:

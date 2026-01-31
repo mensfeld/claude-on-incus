@@ -71,6 +71,9 @@ func (m *Manager) SetupForContainer(ctx context.Context, containerName string) e
 			if err := EnsureOpenModeRules(containerIP); err != nil {
 				log.Printf("Warning: could not add open mode rules: %v", err)
 			}
+		} else {
+			log.Println("Warning: firewalld not available - container has unrestricted network access")
+			log.Println("         Network isolation (restricted/allowlist modes) requires firewalld")
 		}
 		return nil
 
