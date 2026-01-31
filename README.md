@@ -677,7 +677,7 @@ coi shutdown --all
 
 COI provides network isolation to protect your host and private networks from container access.
 
-**Important:** Network isolation (restricted/allowlist modes) requires an **OVN network** in Incus. Standard bridge networks (like the default `incusbr0`) do not support the `security.acls` feature needed for egress filtering. If OVN is not configured, you'll need to use `--network=open` or set up OVN networking. See [OVN Network Setup](#ovn-network-setup) below for instructions.
+**Requirements:** Network isolation (restricted/allowlist modes) requires **firewalld** to be installed and running. COI uses firewalld direct rules to filter container traffic in the FORWARD chain. If firewalld is not available, you'll need to use `--network=open` or install and configure firewalld. See [Firewalld Setup](#firewalld-setup) below for instructions.
 
 ### Network Modes
 
@@ -723,9 +723,9 @@ refresh_interval_minutes = 30  # IP refresh interval (0 to disable)
 ```
 
 **Important for allowlist mode:**
-- **Gateway IP is auto-detected** - COI automatically detects and allows your OVN network gateway IP (e.g., `10.128.178.1`). You don't need to add it manually. Containers must reach their gateway to route traffic.
-- **Public DNS servers required** - `8.8.8.8` and `1.1.1.1` must be in the allowlist for DNS resolution to work. The OVN network is configured to use these public DNS servers directly.
-- **ACL rule ordering** - OVN network ACLs are evaluated in the order they're added. COI adds ALLOW rules first (for gateway, allowed domains/IPs), then REJECT rules (for RFC1918 ranges). OVN applies implicit default-deny for any traffic not explicitly allowed.
+- **Gateway IP is auto-detected** - COI automatically detects and allows your network gateway IP. You don't need to add it manually. Containers must reach their gateway to route traffic.
+- **Public DNS servers required** - `8.8.8.8` and `1.1.1.1` must be in the allowlist for DNS resolution to work.
+- **Firewall rule ordering** - COI adds ALLOW rules first (for gateway, allowed domains/IPs), then REJECT rules (for RFC1918 ranges), then a default REJECT rule for allowlist mode.
 - Supports both domain names (`github.com`) and raw IPv4 addresses (`8.8.8.8`)
 - Subdomains must be listed explicitly (`github.com` ≠ `api.github.com`)
 - Domains behind CDNs may have many IPs that change frequently
@@ -735,7 +735,7 @@ refresh_interval_minutes = 30  # IP refresh interval (0 to disable)
 
 **Accessing services from the host** (e.g., Puma web server, HTTP servers):
 
-By default, COI allows the **host machine** to access services running in containers. This works by adding an allow rule for the gateway IP (which represents the host) **before** the RFC1918 block rules. Since OVN evaluates rules in order, the gateway IP is allowed while other private IPs are still blocked.
+By default, COI allows the **host machine** to access services running in containers. This works by adding an allow rule for the gateway IP (which represents the host) **before** the RFC1918 block rules. Since firewalld evaluates rules by priority, the gateway IP is allowed while other private IPs are still blocked.
 
 For example, if a web server runs on port 3000 in the container:
 ```bash
@@ -757,158 +757,29 @@ allow_local_network_access = true  # Allow all RFC1918, not just gateway
 
 **Default behavior:** Only the host (gateway IP) can access container services. Other machines on your local network cannot, even if they're on the same subnet.
 
-**Connection tracking limitation:** Incus OVN ACLs don't support stateful connection tracking (like iptables `state ESTABLISHED,RELATED`). To allow host access, all traffic to the gateway IP is permitted, not just established connections. This is an acceptable trade-off since the gateway represents the host and you want to allow host access anyway.
+**Note:** Firewalld rules filter traffic at the FORWARD chain level. All traffic from the container to the gateway IP is permitted to allow host-to-container communication.
 
 ### Accessing Container Services from Host
 
-When using OVN networks (required for network isolation modes), your containers run on an isolated subnet (e.g., `10.215.220.0/24`) that's separate from your host machine. This means if you run a web server, database, or API inside the container, you won't be able to access it from your host browser or tools without proper routing.
-
-**COI automatically handles this for you** by detecting OVN networks and configuring the necessary host route when you start a container. You'll see a message like:
-
-```
-✓ OVN host route configured: 10.215.220.0/24 via 10.47.62.100
-  Container services are accessible from your host machine
-```
-
-**If automatic routing fails** (requires sudo permissions), you'll see:
-
-```
-ℹ️  OVN Network Routing
-
-Your container is on an OVN network (10.215.220.0/24). To access services running
-in the container from your host machine (web servers, databases, etc.),
-you need to add a route. This is independent of the network mode.
-
-Run this command to enable host-to-container connectivity:
-  sudo ip route add 10.215.220.0/24 via 10.47.62.100 dev incusbr0
-```
-
-**Key Points:**
-- **Network mode vs. Host routing are independent** - Even in `--network=open` mode, you need host routing for OVN networks
-- **Bridge networks don't need this** - Standard bridge networks (like default `incusbr0`) are directly accessible without extra routing
-- **Route persists until reboot** - Once added, the route remains until you reboot your machine
-- **Auto-healing after reboot** - COI automatically checks and re-adds the route when starting containers (requires sudo)
-- **Idempotent** - COI checks if the route exists before trying to add it, so it won't create duplicates
-- **IP stability** - The OVN uplink IP is relatively stable (changes only if you delete/recreate the OVN network)
-
-**Common use cases that need this:**
-- Running Rails/Django/Node web servers in container, accessing from host browser
-- Running PostgreSQL/MySQL/Redis in container, connecting with TablePlus/DBeaver from host
-- API testing with Postman/Insomnia against services in container
-- Any scenario where you `curl` or connect to container IP from host
-
-#### Making Routes Persistent Across Reboots
-
-COI automatically checks and re-adds routes when starting containers, but this requires sudo permissions. For fully automatic setup after reboot, choose one of these options:
-
-**Option 1: Passwordless sudo for ip route (Recommended)**
-
-Allow COI to automatically manage routes without password prompts:
+With standard bridge networking, containers are directly accessible from your host. If you run a web server, database, or API inside the container, you can access it from your host browser or tools using the container's IP address.
 
 ```bash
-# Create sudoers file for ip route commands
-echo "$USER ALL=(ALL) NOPASSWD: /usr/sbin/ip route add *, /usr/sbin/ip route del *, /usr/sbin/ip route show *" | sudo tee /etc/sudoers.d/coi-routing
+# Find container IP
+coi list  # Shows IPv4 for running containers
 
-# Set correct permissions
-sudo chmod 440 /etc/sudoers.d/coi-routing
+# Access service from host
+curl http://<container-ip>:3000
 ```
-
-With this setup, COI silently configures routing whenever you start a container - no manual intervention needed after reboots.
-
-**Option 2: systemd service (System-wide persistence)**
-
-Create a systemd service that adds the route on boot:
-
-```bash
-# Get your actual OVN subnet and uplink IP from COI's message
-# Example values shown - replace with your actual values
-SUBNET="10.215.220.0/24"
-UPLINK_IP="10.47.62.100"
-BRIDGE="incusbr0"
-
-# Create systemd service
-sudo tee /etc/systemd/system/ovn-host-route.service > /dev/null <<EOF
-[Unit]
-Description=OVN Host Route for Container Access
-After=network-online.target incus.service
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/sbin/ip route add ${SUBNET} via ${UPLINK_IP} dev ${BRIDGE} || true
-RemainAfterExit=yes
-ExecStop=/usr/sbin/ip route del ${SUBNET} via ${UPLINK_IP} dev ${BRIDGE} || true
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable and start the service
-sudo systemctl daemon-reload
-sudo systemctl enable --now ovn-host-route.service
-
-# Verify
-systemctl status ovn-host-route.service
-ip route show | grep ${SUBNET}
-```
-
-**Option 3: netplan (Ubuntu/Debian with netplan)**
-
-Add the route to your netplan configuration:
-
-```bash
-# Get your values from COI's message
-SUBNET="10.215.220.0/24"
-UPLINK_IP="10.47.62.100"
-BRIDGE="incusbr0"
-
-# Find your netplan config (usually in /etc/netplan/)
-ls /etc/netplan/
-
-# Edit your netplan config (example shown)
-sudo nano /etc/netplan/01-netcfg.yaml
-```
-
-Add this to your network configuration:
-```yaml
-network:
-  version: 2
-  ethernets:
-    # Your existing interface config
-    eth0:
-      # ... existing config ...
-  bridges:
-    incusbr0:
-      # ... existing incusbr0 config if any ...
-      routes:
-        - to: 10.215.220.0/24
-          via: 10.47.62.100
-```
-
-Then apply:
-```bash
-sudo netplan apply
-```
-
-**Which option should I choose?**
-
-- **Option 1** (passwordless sudo) - Best for development machines, seamless experience
-- **Option 2** (systemd) - Best for servers or if you don't want to modify sudoers
-- **Option 3** (netplan) - Best if you already manage network config with netplan
-
-**IP Address Stability:**
-The OVN uplink IP (e.g., `10.47.62.100`) is assigned from your `ipv4.ovn.ranges` pool and stored in the OVN network's `volatile.network.ipv4.address`. It remains stable unless you delete and recreate the OVN network. If the IP does change, you'll need to update your persistent route configuration accordingly.
 
 **Troubleshooting:**
 If you see "Connection refused" when trying to access container services:
-1. Check if route exists: `ip route show | grep <container-subnet>`
-2. If missing, add manually with the command COI provided
-3. Verify container service is listening: `coi container exec <name> -- netstat -tlnp`
-4. Check container IP: `coi list` (shows IPv4 for running containers)
+1. Verify container service is listening: `coi container exec <name> -- netstat -tlnp`
+2. Check container IP: `coi list` (shows IPv4 for running containers)
+3. Ensure firewall allows traffic to the bridge network
 
-### OVN Network Setup
+### Firewalld Setup
 
-Network isolation (restricted/allowlist modes) requires OVN (Open Virtual Network). If you see the error "network ACLs not supported", you have two options:
+Network isolation (restricted/allowlist modes) requires firewalld. If you see the error "firewalld is not available", you have two options:
 
 **Option 1: Use open network mode (quick fix)**
 ```bash
@@ -916,70 +787,40 @@ coi shell --network=open
 ```
 This disables egress filtering but allows you to work immediately.
 
-**Option 2: Set up OVN networking (recommended for production)**
+**Option 2: Install and configure firewalld (recommended)**
 
-OVN provides proper network ACL support for egress filtering. Follow these steps to set up OVN:
+Firewalld provides the FORWARD chain filtering needed for network isolation. Follow these steps:
 
 ```bash
-# 1. Install OVN packages (Ubuntu/Debian)
-sudo apt install ovn-host ovn-central
+# 1. Install firewalld (Ubuntu/Debian)
+sudo apt install firewalld
 
-# 2. Configure OVN to listen on TCP (required for Incus integration)
-sudo ovn-nbctl set-connection ptcp:6641:127.0.0.1
-sudo ovn-sbctl set-connection ptcp:6642:127.0.0.1
+# 2. Enable and start firewalld
+sudo systemctl enable --now firewalld
 
-# 3. Configure Open vSwitch to connect to OVN (CRITICAL STEP)
-sudo ovs-vsctl set open_vswitch . \
-  external_ids:ovn-remote=unix:/var/run/ovn/ovnsb_db.sock \
-  external_ids:ovn-encap-type=geneve \
-  external_ids:ovn-encap-ip=127.0.0.1
+# 3. Enable masquerading for container NAT
+sudo firewall-cmd --permanent --add-masquerade
+sudo firewall-cmd --reload
 
-# Verify OVS configuration
-sudo ovs-vsctl get open_vswitch . external_ids
+# 4. Verify firewalld is running
+sudo firewall-cmd --state
 
-# 4. Stop all running containers temporarily
-incus list --format=csv -c n,s | grep RUNNING | cut -d, -f1 | xargs -I {} incus stop {}
-
-# 5. Delete existing lxdbr0 if it's not managed by Incus
-sudo ip link delete lxdbr0 2>/dev/null || true
-
-# 6. Create lxdbr0 as a managed Incus bridge with OVN ranges
-incus network create lxdbr0 \
-  --type=bridge \
-  ipv4.address=10.47.62.1/24 \
-  ipv4.nat=true \
-  ipv6.address=fd42:a147:d80:5ed8::1/64 \
-  ipv6.nat=true \
-  ipv4.dhcp.ranges=10.47.62.2-10.47.62.99 \
-  ipv4.ovn.ranges=10.47.62.100-10.47.62.254
-
-# 7. Configure project to allow lxdbr0 as an OVN uplink
-incus project set default restricted.networks.uplinks=lxdbr0
-
-# 8. Create the OVN network with predictable IP range
-incus network create ovn-net --type=ovn network=lxdbr0 \
-  ipv4.address=10.128.178.1/24 \
-  ipv6.address=fd42:edcc:dda5:34a3::1/64
-
-# 9. Update the default profile to use the OVN network
-incus profile device set default eth0 network=ovn-net
-
-# 10. Verify the setup
-incus network list
-
-# 11. Start your containers back up
-incus list --format=csv -c n,s | grep STOPPED | cut -d, -f1 | xargs -I {} incus start {}
+# 5. Allow COI to manage firewall rules (passwordless sudo)
+echo "$USER ALL=(ALL) NOPASSWD: /usr/bin/firewall-cmd" | sudo tee /etc/sudoers.d/coi-firewalld
+sudo chmod 440 /etc/sudoers.d/coi-firewalld
 ```
 
 **Key Points:**
-- The OVS configuration (step 3) is critical - it tells Open vSwitch where to find the OVN database
-- The `lxdbr0` network must be managed by Incus (not just a system bridge) to support OVN ranges
-- IP ranges are split: 10.47.62.2-99 for regular DHCP, 10.47.62.100-254 for OVN
-- After setup, `incus network list` should show both `lxdbr0` (bridge, managed) and `ovn-net` (ovn, managed)
+- Firewalld must be running for network isolation to work
+- COI adds direct rules to the FORWARD chain to filter container traffic
+- Rules are scoped by container IP address for precise filtering
+- Rules are removed when containers are stopped/deleted
 
-For more details, see the [Incus OVN documentation](https://linuxcontainers.org/incus/docs/main/howto/network_ovn_setup/).
-
-**Note:** After switching to OVN, existing containers will need to be recreated to use the new network
+**How it works:**
+- COI gets the container's IP address from Incus
+- Firewalld direct rules are added with priorities (lower = evaluated first)
+- Restricted mode: Allow gateway, block RFC1918, allow all else
+- Allowlist mode: Allow gateway, allow specific IPs, block RFC1918, block all else
 
 ## Security Best Practices
 

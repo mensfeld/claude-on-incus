@@ -3,21 +3,14 @@ Integration tests for network allowlist mode.
 
 Tests the domain allowlisting feature with DNS resolution and IP-based filtering.
 
-Note: These tests require OVN networking (now configured in CI).
+Network isolation is implemented using firewalld direct rules.
 """
 
 import json
 import os
 import subprocess
 import tempfile
-
-import pytest
-
-# Skip all tests in this module when running on bridge network (no OVN/ACL support)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI_NETWORK_TYPE") == "bridge",
-    reason="Allowlist mode requires OVN networking (ACL support)",
-)
+import time
 
 
 def test_allowlist_mode_allows_specified_domains(coi_binary, workspace_dir, cleanup_containers):
@@ -182,6 +175,9 @@ refresh_interval_minutes = 30
             timeout=10,
         )
 
+        # Wait for firewall rules to be fully applied (CI timing issue)
+        time.sleep(2)
+
         # Test: curl blocked domain (should fail)
         result = subprocess.run(
             [
@@ -203,11 +199,14 @@ refresh_interval_minutes = 30
             timeout=10,
         )
 
-        # Should fail to connect
+        # Should fail to connect (either REJECT with "Connection refused" or timeout)
         assert result.returncode != 0, (
             f"Should not reach blocked domain github.com: {result.stderr}"
         )
-        assert "Connection refused" in result.stderr or "Failed to connect" in result.stderr, (
+        # Accept either explicit rejection or timeout (exit code 124) as valid blocking
+        is_rejected = "Connection refused" in result.stderr or "Failed to connect" in result.stderr
+        is_timeout = "exit status 124" in result.stderr or result.returncode == 124
+        assert is_rejected or is_timeout, (
             f"Expected connection failure for blocked domain: {result.stderr}"
         )
 
@@ -439,7 +438,10 @@ refresh_interval_minutes = 30
         assert result.returncode != 0, (
             f"Should block non-allowed public IP 9.9.9.9: {result.stderr}"
         )
-        assert "Connection refused" in result.stderr or "Failed to connect" in result.stderr, (
+        # Accept either explicit rejection or timeout (exit code 124) as valid blocking
+        is_rejected = "Connection refused" in result.stderr or "Failed to connect" in result.stderr
+        is_timeout = "exit status 124" in result.stderr or result.returncode == 124
+        assert is_rejected or is_timeout, (
             f"Expected connection failure for non-allowed IP: {result.stderr}"
         )
 

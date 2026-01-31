@@ -8,13 +8,8 @@ Tests that:
 
 This test temporarily modifies the Incus network configuration to simulate
 the DNS misconfiguration that occurs on Ubuntu systems with systemd-resolved.
-
-Note: This test only runs in bridge network environment because OVN networks
-use different DNS mechanisms that can't be easily broken with raw.dnsmasq.
-The DNS auto-fix functionality is sufficiently tested in bridge environment.
 """
 
-import os
 import subprocess
 import time
 
@@ -80,12 +75,6 @@ def test_build_dns_autofix(coi_binary, tmp_path):
     6. Verify DNS auto-fix messages appear in output
     7. Restore DNS configuration
     """
-    # Skip in OVN environment - OVN networks use different DNS mechanisms
-    # that can't be easily broken with raw.dnsmasq. DNS auto-fix is
-    # sufficiently tested in bridge environment.
-    if os.getenv("CI_NETWORK_TYPE") == "ovn":
-        pytest.skip("Test only runs in bridge environment (OVN DNS config differs)")
-
     # Get network name
     network_name = get_incus_network()
     if not network_name:
@@ -194,32 +183,44 @@ def test_dns_works_in_container_from_fixed_image(coi_binary, tmp_path):
     image_name = "coi-test-dns-persistence"
     container_name = "coi-test-dns-container"
 
-    # Create build script that configures static DNS (simulates what coi.sh does)
+    # Create build script that ALWAYS configures static DNS for persistence
+    # This must be unconditional because the builder's tryFixDNS() may have
+    # already fixed DNS temporarily, but we need a permanent fix in the image
+    # Also disable cloud-init network to prevent DNS reconfiguration on boot
     build_script = tmp_path / "build.sh"
     build_script.write_text(
         """#!/bin/bash
 set -e
 echo "Configuring static DNS for persistence test..."
 
-# Check if DNS works, if not configure static DNS (like coi.sh does)
-if ! getent hosts archive.ubuntu.com > /dev/null 2>&1; then
-    echo "DNS broken, configuring static DNS..."
-    # Disable systemd-resolved if present
-    systemctl disable systemd-resolved 2>/dev/null || true
-    systemctl stop systemd-resolved 2>/dev/null || true
-    systemctl mask systemd-resolved 2>/dev/null || true
+# ALWAYS configure static DNS for image persistence
+# (Don't check if DNS works - the builder may have already fixed it temporarily)
 
-    # Configure static DNS
-    rm -f /etc/resolv.conf
-    cat > /etc/resolv.conf << 'DNSEOF'
+# Disable systemd-resolved if present
+systemctl disable systemd-resolved 2>/dev/null || true
+systemctl stop systemd-resolved 2>/dev/null || true
+systemctl mask systemd-resolved 2>/dev/null || true
+
+# Disable cloud-init network configuration (prevents DNS reconfiguration on boot)
+mkdir -p /etc/cloud/cloud.cfg.d
+echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+
+# Disable NetworkManager if present (common on some Ubuntu variants)
+systemctl disable NetworkManager 2>/dev/null || true
+systemctl mask NetworkManager 2>/dev/null || true
+
+# Configure static DNS
+rm -f /etc/resolv.conf
+cat > /etc/resolv.conf << 'DNSEOF'
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
 DNSEOF
-    echo "Static DNS configured."
-else
-    echo "DNS already works."
-fi
+
+# Make resolv.conf immutable to prevent any service from changing it
+chattr +i /etc/resolv.conf 2>/dev/null || true
+
+echo "Static DNS configured and protected."
 """
     )
 

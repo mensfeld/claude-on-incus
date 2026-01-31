@@ -6,20 +6,11 @@ Tests that:
 2. Development workflows (npm, pypi, GitHub) work normally
 3. Only local/internal networks are blocked
 
-Note: This test requires OVN networking (now configured in CI).
+Network isolation is implemented using firewalld direct rules.
 """
 
-import os
 import subprocess
 import time
-
-import pytest
-
-# Skip all tests in this module when running on bridge network (no OVN/ACL support)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI_NETWORK_TYPE") == "bridge",
-    reason="Restricted mode requires OVN networking (ACL support)",
-)
 
 
 def test_restricted_allows_internet(coi_binary, workspace_dir, cleanup_containers):

@@ -4,7 +4,7 @@ Integration tests for network host isolation.
 Tests that containers cannot access host services in RESTRICTED and ALLOWLIST modes,
 but that host can access container services (response traffic allowed).
 
-Note: These tests require OVN networking (now configured in CI).
+Network isolation is implemented using firewalld direct rules.
 """
 
 import json
@@ -12,14 +12,6 @@ import os
 import subprocess
 import tempfile
 import time
-
-import pytest
-
-# Skip all tests in this module when running on bridge network (no OVN/ACL support)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI_NETWORK_TYPE") == "bridge",
-    reason="Network mode tests require OVN networking (ACL support)",
-)
 
 
 def test_restricted_blocks_rfc1918_addresses(coi_binary, workspace_dir, cleanup_containers):
