@@ -21,6 +21,7 @@
 
 ### Enhancements
 
+- [Enhancement] **macOS/Colima documentation and UX improvements** - Updated README with clearer instructions for running COI on macOS via Colima/Lima VMs. Added explicit guidance that `--network=open` is required since Colima/Lima VMs don't include firewalld by default. Documented how to set open network mode as default in config file. Added more detailed setup steps including Colima VM resource allocation and complete installation flow inside the VM. Added warning message when running in open mode without firewalld available to inform users about lack of network isolation.
 - [Enhancement] **Update Claude CLI installation to native method** - Replaced deprecated npm installation (`npm install -g @anthropic-ai/claude-code`) with the official native installer (`curl -fsSL https://claude.ai/install.sh | bash`). Anthropic moved away from npm releases as of 2025, making the native installation method the recommended approach. The installer runs as the `code` user and installs to `~/.local/bin/claude` with a global symlink at `/usr/local/bin/claude`. Added verification to ensure the binary exists before creating symlink, preventing broken installations. Users must rebuild the base image with `coi build --force` to get the updated installation method. (#82)
 ### Technical Details
 
@@ -45,6 +46,7 @@ Colima/Lima detection:
 - **Fallback check**: Verifies if running as `lima` user (Lima VM default user)
 - **Logging**: Clearly indicates when auto-detection activates vs manual configuration
 - **Override**: Manual `disable_shift = true` config takes precedence over auto-detection
+- **Network mode**: Colima/Lima VMs don't include firewalld, so `--network=open` must be used. The open mode works without firewalld - it skips firewall rule setup entirely and allows unrestricted network access
 
 This prevents the error: `Error: Failed to start device "workspace": Required idmapping abilities not available` when running COI inside Colima/Lima VMs on macOS.
 
