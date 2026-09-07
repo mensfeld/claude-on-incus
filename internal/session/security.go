@@ -69,24 +69,25 @@ type securityDeviceStripper interface {
 	RemoveDevice(name string) error
 }
 
-// stripSecurityDevicePrefixes name the disk-device families whose host sources
+// Device-name prefixes for the security disk-device families whose host sources
 // are (re)established by the fresh-launch security setup: workspace-relative
 // protected paths (protect-), secret masks (mask-, sourced under ~/.coi/masks),
-// and the read-only git worktree common-dir overlays (gitc-). The read-WRITE base
-// mounts these overlay (workspace, git-worktree-common) are deliberately NOT here.
-// Device-name prefixes for the security disk-device families. Each generator
+// and the read-only git worktree common-dir overlays (gitc-). Each generator
 // (pathToDeviceName, maskDeviceName, commonDirDeviceName) builds its name from
-// the matching constant, and stripSecurityDevicePrefixes lists the same
-// constants — so the create side and the reuse-strip side share one source of
-// truth and cannot diverge (a new family added without stripping it would leak
-// across reuse, the #610 class). TestSecurityDeviceNamesAreStripped verifies the
-// coupling for every generator.
+// the matching constant here, and stripSecurityDevicePrefixes below lists the
+// same constants — so the create side and the reuse-strip side share one source
+// of truth and cannot diverge (a new family added without stripping it would
+// leak across reuse, the #610 class; TestSecurityDeviceNamesAreStripped verifies
+// the coupling for every generator). The read-WRITE base mounts these overlay
+// (workspace, git-worktree-common) are deliberately NOT here.
 const (
 	protectDevicePrefix = "protect-"
 	maskDevicePrefix    = "mask-"
 	gitcDevicePrefix    = "gitc-"
 )
 
+// stripSecurityDevicePrefixes is the reuse-strip list; it MUST list exactly the
+// prefixes above (each family created is a family stripped on reuse).
 var stripSecurityDevicePrefixes = []string{protectDevicePrefix, maskDevicePrefix, gitcDevicePrefix}
 
 // StripSecurityDevices removes the creation-time security device families (see

@@ -27,3 +27,16 @@ func TestStatusIsStopped(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusIsFrozen(t *testing.T) {
+	for _, s := range []string{"Frozen", "FROZEN", "frozen"} {
+		if !StatusIsFrozen(s) {
+			t.Errorf("StatusIsFrozen(%q) = false, want true", s)
+		}
+	}
+	for _, s := range []string{"Running", "Stopped", ""} {
+		if StatusIsFrozen(s) {
+			t.Errorf("StatusIsFrozen(%q) = true, want false", s)
+		}
+	}
+}

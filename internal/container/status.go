@@ -16,3 +16,7 @@ func StatusIsRunning(status string) bool { return strings.EqualFold(status, "run
 // StatusIsStopped reports whether an Incus status string means "stopped",
 // case-insensitively.
 func StatusIsStopped(status string) bool { return strings.EqualFold(status, "stopped") }
+
+// StatusIsFrozen reports whether an Incus status string means "frozen" (paused),
+// case-insensitively.
+func StatusIsFrozen(status string) bool { return strings.EqualFold(status, "frozen") }
