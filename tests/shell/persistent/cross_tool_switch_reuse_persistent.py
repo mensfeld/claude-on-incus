@@ -10,10 +10,16 @@ LAUNCH to it, while coi still seeds the configured tool's REAL config dir
 exercise coi's actual per-tool seeding across a reuse without installing real
 agents.
 
+The tool is selected via a per-phase trusted $COI_CONFIG (a temp file OUTSIDE the
+workspace) rather than a workspace .coi/config.toml — coi makes the workspace
+config immutable during the first session, so it can't be rewritten between
+phases.
+
 Flow:
   1. name=claude, persistent → create box; ~/.claude seeded, ~/.codex absent.
   2. stop the box.
-  3. rewrite config to name=codex; fresh `coi shell` (no --resume) reuses the box.
+  3. $COI_CONFIG now selects name=codex; fresh `coi shell` (no --resume) reuses
+     the SAME box.
   4. ~/.codex is now seeded (the reuse-seeding branch) AND ~/.claude is untouched.
 """
 
@@ -24,6 +30,7 @@ from support.helpers import (
     calculate_container_name,
     spawn_coi,
     wait_for_container_ready,
+    write_trusted_coi_config,
 )
 
 CLAUDE_CRED = '{"marker": "claude-cred-708"}'
@@ -52,9 +59,15 @@ def _dir_present(container, path):
     return _incus(f"exec {container} -- test -d {path}").returncode == 0
 
 
-def _write_tool(coi_dir, name):
-    with open(f"{coi_dir}/config.toml", "w") as f:
-        f.write(f'[tool]\nname = "{name}"\n[container]\npersistent = true\n')
+def _env_for(tool_name, fake_home):
+    # Trusted $COI_CONFIG (temp file outside the workspace) selects the tool +
+    # persistence; freely rewritable between phases.
+    env = write_trusted_coi_config(
+        f'[tool]\nname = "{tool_name}"\n[container]\npersistent = true\n'
+    )
+    env["HOME"] = str(fake_home)
+    env["COI_USE_DUMMY"] = "1"
+    return env
 
 
 def _close(child):
@@ -74,9 +87,6 @@ def _close(child):
 def test_switch_tool_on_reused_container(coi_binary, cleanup_containers, workspace_dir, tmp_path):
     container_name = calculate_container_name(workspace_dir, 1)
 
-    coi_dir = f"{workspace_dir}/.coi"
-    subprocess.run(["mkdir", "-p", coi_dir], check=True)
-
     # Fake host home holding BOTH tools' configs to seed from.
     fake_home = tmp_path / "fake_home"
     (fake_home / ".claude").mkdir(parents=True)
@@ -86,14 +96,13 @@ def test_switch_tool_on_reused_container(coi_binary, cleanup_containers, workspa
     (fake_home / ".codex" / "config.toml").write_text('model = "gpt-5-codex"\n')
     (fake_home / ".codex" / "AGENTS.md").write_text("# codex\n")
 
-    env = {"COI_USE_DUMMY": "1", "HOME": str(fake_home)}
-
     claude_seeded = codex_absent_phase1 = False
     codex_seeded_on_reuse = claude_still_present = False
     try:
         # === Phase 1: create the box with claude ===
-        _write_tool(coi_dir, "claude")
-        child = spawn_coi(coi_binary, ["shell"], cwd=workspace_dir, env=env, timeout=120)
+        child = spawn_coi(
+            coi_binary, ["shell"], cwd=workspace_dir, env=_env_for("claude", fake_home), timeout=120
+        )
         wait_for_container_ready(child, timeout=60)
         time.sleep(5)
         ok, content = _cat(container_name, CLAUDE_CRED_PATH)
@@ -106,8 +115,9 @@ def test_switch_tool_on_reused_container(coi_binary, cleanup_containers, workspa
         time.sleep(2)
 
         # === Phase 2: re-enter the SAME box with codex ===
-        _write_tool(coi_dir, "codex")
-        child2 = spawn_coi(coi_binary, ["shell"], cwd=workspace_dir, env=env, timeout=120)
+        child2 = spawn_coi(
+            coi_binary, ["shell"], cwd=workspace_dir, env=_env_for("codex", fake_home), timeout=120
+        )
         wait_for_container_ready(child2, timeout=60)
         time.sleep(5)
         ok_codex, codex_content = _cat(container_name, CODEX_AUTH_PATH)
