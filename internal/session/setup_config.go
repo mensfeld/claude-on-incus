@@ -152,20 +152,26 @@ func injectCredentials(mgr container.ContainerManager, hostCLIConfigPath, homeDi
 }
 
 // containerCommandRunner is the narrow slice of the container manager that
-// toolConfigDirPresent needs, so the probe can be unit-tested with a tiny fake.
+// toolConfigDirPopulated needs, so the probe can be unit-tested with a tiny fake.
 type containerCommandRunner interface {
 	ExecCommand(command string, opts container.ExecCommandOptions) (string, error)
 }
 
-// toolConfigDirPresent reports whether the tool's config dir (e.g. ~/.codex)
-// already exists inside the container. On persistent reuse this decides whether
-// a re-entering tool needs its config seeded: a profile that shares
-// [container] session_name but sets a different [tool] name lands in the
-// existing container, where the new tool's config dir won't exist yet (#708
-// follow-up). `test -d` exits non-zero (→ error) when the dir is absent.
-func toolConfigDirPresent(mgr containerCommandRunner, homeDir string, tcf tool.ToolWithConfigDirFiles) bool {
+// toolConfigDirPopulated reports whether the tool's config dir (e.g. ~/.codex)
+// already contains config inside the container. On persistent reuse this decides
+// whether a re-entering tool needs its config seeded: a profile that shares
+// [container] session_name but sets a different [tool] name lands in the existing
+// container, where the new tool hasn't been set up yet (#708 follow-up).
+//
+// It checks for CONTENT, not mere existence: the base image pre-creates the
+// config dirs empty (build.sh `mkdir -p ~/.claude ~/.codex`), so a plain
+// `test -d` would report every tool as already-configured and wrongly skip
+// seeding. `[ -n "$(ls -A <dir>)" ]` exits non-zero (→ error) when the dir is
+// missing or empty.
+func toolConfigDirPopulated(mgr containerCommandRunner, homeDir string, tcf tool.ToolWithConfigDirFiles) bool {
 	dir := filepath.Join(homeDir, tcf.ConfigDirName())
-	_, err := mgr.ExecCommand("test -d "+dir, container.ExecCommandOptions{Capture: true})
+	cmd := fmt.Sprintf("[ -n \"$(ls -A %s 2>/dev/null)\" ]", dir)
+	_, err := mgr.ExecCommand(cmd, container.ExecCommandOptions{Capture: true})
 	return err == nil
 }
 

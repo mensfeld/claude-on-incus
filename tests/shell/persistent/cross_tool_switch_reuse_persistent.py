@@ -38,7 +38,6 @@ CODEX_AUTH = '{"tokens": {"access_token": "codex-auth-708"}}'
 
 CLAUDE_CRED_PATH = "/home/code/.claude/.credentials.json"
 CODEX_AUTH_PATH = "/home/code/.codex/auth.json"
-CODEX_DIR = "/home/code/.codex"
 
 
 def _incus(argv, timeout=30):
@@ -55,8 +54,8 @@ def _cat(container, path):
     return r.returncode == 0, r.stdout
 
 
-def _dir_present(container, path):
-    return _incus(f"exec {container} -- test -d {path}").returncode == 0
+def _file_present(container, path):
+    return _incus(f"exec {container} -- test -f {path}").returncode == 0
 
 
 def _env_for(tool_name, fake_home):
@@ -107,7 +106,9 @@ def test_switch_tool_on_reused_container(coi_binary, cleanup_containers, workspa
         time.sleep(5)
         ok, content = _cat(container_name, CLAUDE_CRED_PATH)
         claude_seeded = ok and content == CLAUDE_CRED
-        codex_absent_phase1 = not _dir_present(container_name, CODEX_DIR)
+        # The base image pre-creates ~/.codex empty, so check the SEEDED marker
+        # file is absent (codex wasn't the active tool), not the dir.
+        codex_absent_phase1 = not _file_present(container_name, CODEX_AUTH_PATH)
 
         _close(child)
         time.sleep(2)
@@ -135,7 +136,7 @@ def test_switch_tool_on_reused_container(coi_binary, cleanup_containers, workspa
 
     assert claude_seeded, "phase 1: ~/.claude/.credentials.json should be seeded for name=claude"
     assert codex_absent_phase1, (
-        "phase 1: ~/.codex must NOT exist yet (codex wasn't the active tool)"
+        "phase 1: ~/.codex/auth.json must NOT be seeded yet (codex wasn't the active tool)"
     )
     assert codex_seeded_on_reuse, (
         "phase 2: switching to codex on the reused box must seed ~/.codex/auth.json (#708)"

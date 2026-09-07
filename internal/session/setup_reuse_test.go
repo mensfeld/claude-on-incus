@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/mensfeld/code-on-incus/internal/container"
@@ -9,23 +10,25 @@ import (
 )
 
 // fakeDirProbe is a minimal containerCommandRunner: it records the command and
-// returns success/failure to stand in for `test -d`'s exit status.
+// returns success/failure to stand in for the populated-check's exit status.
 type fakeDirProbe struct {
-	present bool
-	gotCmd  string
+	populated bool
+	gotCmd    string
 }
 
 func (f *fakeDirProbe) ExecCommand(cmd string, _ container.ExecCommandOptions) (string, error) {
 	f.gotCmd = cmd
-	if f.present {
+	if f.populated {
 		return "", nil
 	}
-	return "", fmt.Errorf("exit status 1") // `test -d` on a missing dir
+	return "", fmt.Errorf("exit status 1") // empty/missing dir
 }
 
-// toolConfigDirPresent probes the tool's config dir via `test -d` and maps the
-// exit status to presence (#708 follow-up: gates reuse-seeding of a new tool).
-func TestToolConfigDirPresent(t *testing.T) {
+// toolConfigDirPopulated must check for CONTENT (via `ls -A`), not mere dir
+// existence — the base image pre-creates the config dirs empty, so a `test -d`
+// would wrongly report every tool already-configured and skip reuse-seeding
+// (#708 follow-up).
+func TestToolConfigDirPopulated(t *testing.T) {
 	c, err := tool.Get("claude")
 	if err != nil {
 		t.Fatalf("tool.Get: %v", err)
@@ -35,20 +38,24 @@ func TestToolConfigDirPresent(t *testing.T) {
 		t.Fatal("claude should implement ToolWithConfigDirFiles")
 	}
 
-	t.Run("present", func(t *testing.T) {
-		fp := &fakeDirProbe{present: true}
-		if !toolConfigDirPresent(fp, "/home/code", tcf) {
-			t.Error("want present=true when test -d succeeds")
+	t.Run("populated", func(t *testing.T) {
+		fp := &fakeDirProbe{populated: true}
+		if !toolConfigDirPopulated(fp, "/home/code", tcf) {
+			t.Error("want populated=true when the dir has content")
 		}
-		if fp.gotCmd != "test -d /home/code/.claude" {
-			t.Errorf("probe command = %q, want `test -d /home/code/.claude`", fp.gotCmd)
+		// It must inspect contents (ls -A), not just `test -d`.
+		if !strings.Contains(fp.gotCmd, "ls -A /home/code/.claude") {
+			t.Errorf("probe must check dir contents, got %q", fp.gotCmd)
+		}
+		if strings.HasPrefix(fp.gotCmd, "test -d") {
+			t.Errorf("probe must not be a bare `test -d` (empty pre-created dirs would fool it): %q", fp.gotCmd)
 		}
 	})
 
-	t.Run("absent", func(t *testing.T) {
-		fa := &fakeDirProbe{present: false}
-		if toolConfigDirPresent(fa, "/home/code", tcf) {
-			t.Error("want present=false when test -d fails")
+	t.Run("empty or missing", func(t *testing.T) {
+		fa := &fakeDirProbe{populated: false}
+		if toolConfigDirPopulated(fa, "/home/code", tcf) {
+			t.Error("want populated=false when the dir is empty/missing")
 		}
 	})
 }
