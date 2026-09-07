@@ -728,7 +728,7 @@ func otherContainersRunning(jsonOutput, excludeName string) bool {
 		return true // conservative: can't confirm no other containers, keep rules
 	}
 	for _, c := range containers {
-		if c.Name != excludeName && c.State.Status == "Running" {
+		if c.Name != excludeName && container.StatusIsRunning(c.State.Status) {
 			return true
 		}
 	}

@@ -160,7 +160,7 @@ func cleanStoppedContainers() (int, bool, error) {
 
 	stoppedContainers := []string{}
 	for _, c := range containers {
-		if c.Status == "Stopped" || c.Status == "STOPPED" {
+		if container.StatusIsStopped(c.Status) {
 			stoppedContainers = append(stoppedContainers, c.Name)
 		}
 	}

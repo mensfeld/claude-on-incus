@@ -32,6 +32,8 @@
 
 ### Changed
 
+- **Consistent, case-insensitive container-status checks + a single source of truth for security device prefixes (robustness cleanup)** — Incus reports lifecycle state as `Running`/`Stopped` via the JSON API but upper-case in some `incus list` formats; call sites had drifted between exact `== "Running"` comparisons and `strings.EqualFold`, so a status read from the "wrong" surface could be silently misclassified. All checks now go through shared `container.StatusIsRunning`/`StatusIsStopped` helpers. Separately, the security disk-device prefixes (`protect-`/`mask-`/`gitc-`) were three independent string literals on the create side that had to stay in sync with the reuse-strip list by hand; they're now shared constants, with a test (`TestSecurityDeviceNamesAreStripped`) asserting every device-name generator produces a name the strip list removes — so a new family can't leak across persistent reuse (the #610 class). No behavior change.
+
 - **Trimmed the injected `SANDBOX_CONTEXT.md` ~30% to save per-session tokens (#718)** — the sandbox context prepended to the agent's instructions every session dropped from ~2,260 to ~1,570 tokens (SSH+GitHub case) by removing sections that only restated others: `What You Can Do` and `Best Practices` duplicated the autonomy, mise, and file-ownership guidance already present elsewhere. All distinct instructions are preserved (a second, deliberate autonomy reminder is kept), and the triplicated git-identity block is now a set of shared template blocks so the three auth variants no longer drift. No behavior or config changes.
 
 ### Fixed

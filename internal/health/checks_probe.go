@@ -610,7 +610,7 @@ func CheckProcessMonitoringCapability(imageName string) HealthCheck {
 
 	var testContainer string
 	for _, c := range containers {
-		if status, ok := c["status"].(string); ok && status == "Running" {
+		if status, ok := c["status"].(string); ok && container.StatusIsRunning(status) {
 			if name, ok := c["name"].(string); ok {
 				testContainer = name
 				break

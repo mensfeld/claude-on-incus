@@ -41,7 +41,7 @@ func CheckActiveContainers() HealthCheck {
 	// Count running containers
 	running := 0
 	for _, c := range containers {
-		if status, ok := c["status"].(string); ok && status == "Running" {
+		if status, ok := c["status"].(string); ok && container.StatusIsRunning(status) {
 			running++
 		}
 	}
@@ -221,7 +221,7 @@ func CheckOrphanedResources() HealthCheck {
 			}
 			if json.Unmarshal([]byte(output), &containers) == nil {
 				for _, c := range containers {
-					if c.State.Status == "Running" {
+					if container.StatusIsRunning(c.State.Status) {
 						containerNames[c.Name] = true
 						if eth0, ok := c.State.Network["eth0"]; ok {
 							for _, addr := range eth0.Addresses {

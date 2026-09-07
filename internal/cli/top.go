@@ -232,7 +232,7 @@ func sampleContainerRows(ctx context.Context, interval time.Duration) ([]contain
 	}
 	running := make([]incusTopEntry, 0, len(entries0))
 	for _, e := range entries0 {
-		if strings.EqualFold(e.Status, "Running") {
+		if container.StatusIsRunning(e.Status) {
 			running = append(running, e)
 		}
 	}
@@ -409,7 +409,7 @@ func resolveProcNames(only string) ([]string, error) {
 	}
 	var names []string
 	for _, e := range entries {
-		if strings.EqualFold(e.Status, "Running") {
+		if container.StatusIsRunning(e.Status) {
 			names = append(names, e.Name)
 		}
 	}

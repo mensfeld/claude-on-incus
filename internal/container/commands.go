@@ -953,7 +953,7 @@ func ContainerRunning(containerName string) (bool, error) {
 	}
 
 	for _, c := range containers {
-		if c.Name == containerName && c.Status == "Running" {
+		if c.Name == containerName && StatusIsRunning(c.Status) {
 			return true, nil
 		}
 	}
