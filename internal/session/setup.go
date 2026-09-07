@@ -569,15 +569,16 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 						if err := setupCLIConfig(result.Manager, opts.CLIConfigPath, result.HomeDir, tcf, opts.Logger); err != nil {
 							opts.Logger(fmt.Sprintf("Warning: Failed to setup %s config: %v", opts.Tool.Name(), err))
 						}
-					case !toolConfigDirPopulated(result.Manager, result.HomeDir, tcf):
-						// Persistent reuse with a tool this container hasn't been
-						// set up for yet — e.g. a profile that shares [container]
+					case !toolConfigSeeded(result.Manager, result.HomeDir, tcf):
+						// Persistent reuse with a tool coi hasn't seeded in this
+						// container yet — e.g. a profile that shares [container]
 						// session_name but sets a different [tool] name, so you
 						// re-enter the same container (code, packages, state) with
-						// another tool (#708 follow-up). The base image pre-creates
-						// the config dir empty, so we check it's POPULATED, not just
-						// present. Seed its config once so it authenticates, without
-						// touching the original tool's config or conversation history.
+						// another tool (#708 follow-up). Keyed on the tool's own
+						// essential config files (not dir existence/content, which
+						// the base image and agent installers pre-populate). Seed
+						// its config once so it authenticates, without touching the
+						// original tool's config or conversation history.
 						opts.Logger(fmt.Sprintf("Setting up %s config in reused container (first use of this tool here)...", opts.Tool.Name()))
 						if err := setupCLIConfig(result.Manager, opts.CLIConfigPath, result.HomeDir, tcf, opts.Logger); err != nil {
 							opts.Logger(fmt.Sprintf("Warning: Failed to setup %s config: %v", opts.Tool.Name(), err))

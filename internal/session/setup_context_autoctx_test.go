@@ -88,6 +88,24 @@ func (fakeAutoCtxTool) AutoContextFile() string { return ".claude/CLAUDE.md" }
 // Because "# COI Sandbox Environment" appears exactly once per rendered block, the
 // number of occurrences equals the number of copies. Driving injectAutoContextFile
 // across several sessions against one persistent home must leave exactly one copy.
+// A host CLAUDE.md/AGENTS.md edited on Windows carries CRLF, so the coi block's
+// markers end with \r. stripManagedAutoContext must still find and remove the
+// block — otherwise a fresh copy is appended every session (the #674 growth bug).
+// Pure-function test: the byte-exact fake-manager round-trip can't surface this.
+func TestStripManagedAutoContext_CRLFMarkers(t *testing.T) {
+	block := autoCtxBeginMarker + "\r\nsandbox body\r\n" + autoCtxEndMarker + "\r\n"
+	input := "user prefix\r\n" + block + "user suffix\r\n"
+
+	got := stripManagedAutoContext(input)
+
+	if strings.Contains(got, autoCtxBeginMarker) || strings.Contains(got, autoCtxEndMarker) {
+		t.Errorf("CRLF-delimited managed block should be stripped, got:\n%q", got)
+	}
+	if !strings.Contains(got, "user prefix") || !strings.Contains(got, "user suffix") {
+		t.Errorf("user content must be preserved, got:\n%q", got)
+	}
+}
+
 func TestInjectAutoContextFile_DoesNotAccumulateAcrossSessions(t *testing.T) {
 	mgr := newFakeAutoCtxManager()
 	acf := fakeAutoCtxTool{}

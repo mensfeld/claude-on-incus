@@ -10,25 +10,26 @@ import (
 )
 
 // fakeDirProbe is a minimal containerCommandRunner: it records the command and
-// returns success/failure to stand in for the populated-check's exit status.
+// returns success/failure to stand in for the marker-check's exit status.
 type fakeDirProbe struct {
-	populated bool
-	gotCmd    string
+	seeded bool
+	gotCmd string
 }
 
 func (f *fakeDirProbe) ExecCommand(cmd string, _ container.ExecCommandOptions) (string, error) {
 	f.gotCmd = cmd
-	if f.populated {
+	if f.seeded {
 		return "", nil
 	}
-	return "", fmt.Errorf("exit status 1") // empty/missing dir
+	return "", fmt.Errorf("exit status 1") // marker absent
 }
 
-// toolConfigDirPopulated must check for CONTENT (via `ls -A`), not mere dir
-// existence — the base image pre-creates the config dirs empty, so a `test -d`
-// would wrongly report every tool already-configured and skip reuse-seeding
+// toolConfigSeeded must key off the tool's ESSENTIAL config files, not the
+// dir's existence or content — the base image pre-creates the config dirs and
+// agent installers can leave unrelated files in them, so an existence/content
+// check would wrongly report a tool already-configured and skip reuse-seeding
 // (#708 follow-up).
-func TestToolConfigDirPopulated(t *testing.T) {
+func TestToolConfigSeeded(t *testing.T) {
 	c, err := tool.Get("claude")
 	if err != nil {
 		t.Fatalf("tool.Get: %v", err)
@@ -38,24 +39,27 @@ func TestToolConfigDirPopulated(t *testing.T) {
 		t.Fatal("claude should implement ToolWithConfigDirFiles")
 	}
 
-	t.Run("populated", func(t *testing.T) {
-		fp := &fakeDirProbe{populated: true}
-		if !toolConfigDirPopulated(fp, "/home/code", tcf) {
-			t.Error("want populated=true when the dir has content")
+	t.Run("seeded when an essential file exists", func(t *testing.T) {
+		fp := &fakeDirProbe{seeded: true}
+		if !toolConfigSeeded(fp, "/home/code", tcf) {
+			t.Error("want seeded=true when an essential config file exists")
 		}
-		// It must inspect contents (ls -A), not just `test -d`.
-		if !strings.Contains(fp.gotCmd, "ls -A /home/code/.claude") {
-			t.Errorf("probe must check dir contents, got %q", fp.gotCmd)
+		// It must test the tool's essential files (not `test -d`/`ls -A`, which
+		// the pre-created dirs / installer files would fool).
+		for _, f := range tcf.EssentialConfigFiles() {
+			if !strings.Contains(fp.gotCmd, "test -f /home/code/.claude/"+f) {
+				t.Errorf("probe must test essential file %q, got %q", f, fp.gotCmd)
+			}
 		}
-		if strings.HasPrefix(fp.gotCmd, "test -d") {
-			t.Errorf("probe must not be a bare `test -d` (empty pre-created dirs would fool it): %q", fp.gotCmd)
+		if strings.Contains(fp.gotCmd, "test -d") || strings.Contains(fp.gotCmd, "ls -A") {
+			t.Errorf("probe must not be a dir existence/content check: %q", fp.gotCmd)
 		}
 	})
 
-	t.Run("empty or missing", func(t *testing.T) {
-		fa := &fakeDirProbe{populated: false}
-		if toolConfigDirPopulated(fa, "/home/code", tcf) {
-			t.Error("want populated=false when the dir is empty/missing")
+	t.Run("not seeded when no essential file exists", func(t *testing.T) {
+		fa := &fakeDirProbe{seeded: false}
+		if toolConfigSeeded(fa, "/home/code", tcf) {
+			t.Error("want seeded=false when no essential config file is present")
 		}
 	})
 }

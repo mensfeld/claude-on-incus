@@ -143,7 +143,11 @@ const (
 // that equals target, or -1. Used for line-anchored marker matching.
 func lineIndex(lines []string, from int, target string) int {
 	for i := from; i < len(lines); i++ {
-		if lines[i] == target {
+		// Tolerate a trailing CR: a host CLAUDE.md/AGENTS.md edited and saved on
+		// Windows converts the coi block's markers to CRLF, and an exact match
+		// would then miss the old block and re-append a new one every session
+		// (the #674 growth bug). Match on the content, keep the bytes.
+		if strings.TrimRight(lines[i], "\r") == target {
 			return i
 		}
 	}
@@ -197,7 +201,7 @@ func stripLegacyAutoContext(s string) string {
 	var segments [][]string
 	cur := []string{}
 	for _, ln := range strings.Split(s, "\n") {
-		if ln == legacyAutoCtxSeparator {
+		if strings.TrimRight(ln, "\r") == legacyAutoCtxSeparator {
 			segments = append(segments, cur)
 			cur = nil
 			continue
