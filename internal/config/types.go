@@ -466,15 +466,19 @@ type ProfileConfig struct {
 	Environment map[string]string      `toml:"environment"`
 	EnvCommands map[string]string      `toml:"env_commands"`
 	Prompts     map[string]PromptEntry `toml:"prompts"` // Named prompt registry (#701); file= resolved relative to profile dir
-	Limits      *LimitsConfig          `toml:"limits"`
-	Tool        *ToolConfig            `toml:"tool"`
-	Mounts      []MountEntry           `toml:"mounts"`
-	Sockets     []SocketEntry          `toml:"sockets"`
-	Ports       *PortsConfig           `toml:"ports"`
-	Credentials []CredentialEntry      `toml:"credentials"`
-	Network     *NetworkConfig         `toml:"network"`
-	ForwardEnv  []string               `toml:"forward_env"`
-	Source      string                 `toml:"-"` // Where this profile was loaded from (not serialized)
+	// EnvCommandTimeout mirrors [defaults] env_command_timeout so the timeout
+	// governing this profile's env_commands can be set per profile (parity fix).
+	// Trusted-scope only, like EnvCommands itself.
+	EnvCommandTimeout string            `toml:"env_command_timeout"`
+	Limits            *LimitsConfig     `toml:"limits"`
+	Tool              *ToolConfig       `toml:"tool"`
+	Mounts            MountList         `toml:"mounts"`
+	Sockets           []SocketEntry     `toml:"sockets"`
+	Ports             *PortsConfig      `toml:"ports"`
+	Credentials       []CredentialEntry `toml:"credentials"`
+	Network           *NetworkConfig    `toml:"network"`
+	ForwardEnv        []string          `toml:"forward_env"`
+	Source            string            `toml:"-"` // Where this profile was loaded from (not serialized)
 	// Trusted records whether the profile was loaded from a trusted scan root
 	// (~/.coi or the COI_CONFIG dir), stamped by loadProfileDirectories at
 	// load time — the authoritative signal for post-inheritance trust checks,
@@ -536,6 +540,119 @@ type MountEntry struct {
 // MountsConfig contains mount-related configuration
 type MountsConfig struct {
 	Default []MountEntry `toml:"default"` // Default mounts for all sessions
+}
+
+// UnmarshalTOML lets top-level [mounts] accept EITHER the nested
+// `default = [...]` / `[[mounts.default]]` form OR the flat `[[mounts]]` array
+// form (the shape profiles historically used), so a mount block reads the same
+// in a profile and in top-level config (#profile-config-symmetry).
+func (mc *MountsConfig) UnmarshalTOML(v interface{}) error {
+	entries, err := decodeMountEntries(v)
+	if err != nil {
+		return err
+	}
+	mc.Default = entries
+	return nil
+}
+
+// MountList is the profile-scope `mounts` value. Its underlying type is
+// []MountEntry (so every existing slice consumer keeps working unchanged), but
+// its UnmarshalTOML accepts BOTH the flat `[[mounts]]` form and the nested
+// `[[mounts.default]]` form — the same two shapes top-level [mounts] accepts —
+// so mount blocks are symmetric across config scopes.
+type MountList []MountEntry
+
+// UnmarshalTOML accepts the flat or nested mount shape; see MountList.
+func (m *MountList) UnmarshalTOML(v interface{}) error {
+	entries, err := decodeMountEntries(v)
+	if err != nil {
+		return err
+	}
+	*m = entries
+	return nil
+}
+
+// decodeMountEntries decodes the raw TOML value of a `mounts` key into
+// []MountEntry, accepting both shapes BurntSushi produces:
+//   - flat `[[mounts]]`          -> []map[string]interface{}
+//   - nested `[[mounts.default]]`-> map[string]interface{}{"default": [...]}
+//
+// Unknown keys inside an entry are ignored, matching the non-strict struct
+// decode this replaces (the loader ignores decoder metadata).
+func decodeMountEntries(v interface{}) ([]MountEntry, error) {
+	if t, ok := v.(map[string]interface{}); ok { // nested { default = [...] }
+		if len(t) == 0 {
+			return nil, nil // bare [mounts] with no entries
+		}
+		raw, ok := t["default"]
+		if !ok {
+			return nil, fmt.Errorf("[mounts] table must use `default = [...]` (or the flat [[mounts]] form)")
+		}
+		maps, err := mountMapSlice(raw)
+		if err != nil {
+			return nil, fmt.Errorf("[mounts] default: %w", err)
+		}
+		return mountEntriesFromMaps(maps)
+	}
+	// flat array form ([[mounts]])
+	maps, err := mountMapSlice(v)
+	if err != nil {
+		return nil, err
+	}
+	return mountEntriesFromMaps(maps)
+}
+
+// mountMapSlice normalizes an array value into []map[string]interface{},
+// tolerating the []interface{} shape an empty or mixed array can decode to.
+func mountMapSlice(v interface{}) ([]map[string]interface{}, error) {
+	switch t := v.(type) {
+	case []map[string]interface{}:
+		return t, nil
+	case []interface{}:
+		out := make([]map[string]interface{}, 0, len(t))
+		for _, e := range t {
+			m, ok := e.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("mount entry must be a { host, container } table")
+			}
+			out = append(out, m)
+		}
+		return out, nil
+	default:
+		return nil, fmt.Errorf("mounts must be an array of { host, container } tables ([[mounts]]) or a { default = [...] } table")
+	}
+}
+
+// mountEntriesFromMaps builds MountEntry values from decoded TOML tables,
+// validating the type of each recognized key.
+func mountEntriesFromMaps(maps []map[string]interface{}) ([]MountEntry, error) {
+	entries := make([]MountEntry, 0, len(maps))
+	for _, m := range maps {
+		var e MountEntry
+		if raw, ok := m["host"]; ok {
+			s, ok := raw.(string)
+			if !ok {
+				return nil, fmt.Errorf("mount `host` must be a string")
+			}
+			e.Host = s
+		}
+		if raw, ok := m["container"]; ok {
+			s, ok := raw.(string)
+			if !ok {
+				return nil, fmt.Errorf("mount `container` must be a string")
+			}
+			e.Container = s
+		}
+		if raw, ok := m["readonly"]; ok {
+			b, ok := raw.(bool)
+			if !ok {
+				return nil, fmt.Errorf("mount `readonly` must be a boolean")
+			}
+			e.Readonly = b
+		}
+		entries = append(entries, e)
+	}
+	return entries, nil
 }
 
 // SocketEntry forwards a host unix socket into the container via an Incus proxy

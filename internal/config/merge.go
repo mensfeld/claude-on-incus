@@ -239,6 +239,9 @@ func (c *Config) ApplyProfile(name string) error {
 			c.Defaults.EnvCommands[k] = v
 		}
 	}
+	if profile.EnvCommandTimeout != "" {
+		c.Defaults.EnvCommandTimeout = profile.EnvCommandTimeout
+	}
 	if len(profile.ForwardEnv) > 0 {
 		c.Defaults.ForwardEnv = MergeStringSliceUnique(c.Defaults.ForwardEnv, profile.ForwardEnv)
 	}
@@ -442,6 +445,11 @@ func mergeProfiles(parent, child ProfileConfig) ProfileConfig {
 			}
 		}
 		result.EnvCommands = merged
+	}
+
+	// EnvCommandTimeout: scalar inherit — child value wins, else take parent's.
+	if result.EnvCommandTimeout == "" {
+		result.EnvCommandTimeout = parent.EnvCommandTimeout
 	}
 
 	// Prompts: deep merge — parent keys preserved, child keys override (#701).

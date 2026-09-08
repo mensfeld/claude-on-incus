@@ -669,6 +669,7 @@ func loadProfileDirectories(cfg *Config, configDir string, trusted bool) error {
 						"host command is host code execution. Move it to a profile under "+
 						"~/.coi/profiles to apply it.\n", profileConfigPath)
 				profileCfg.EnvCommands = nil
+				profileCfg.EnvCommandTimeout = "" // the timeout governs stripped commands
 			}
 		}
 
