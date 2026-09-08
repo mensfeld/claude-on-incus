@@ -42,23 +42,21 @@
     "limits":    { "$ref": "#/$defs/LimitsConfig" },
     "tool":      { "$ref": "#/$defs/ToolConfig" },
     "mounts": {
-      "description": "Additional host directories to mount into the container. Accepts either the flat array form ([[mounts]]) or the nested { default = [...] } form ([[mounts.default]]) — the same two shapes top-level [mounts] accepts — so mount blocks are symmetric across config scopes.",
-      "oneOf": [
-        {
-          "type": "array",
-          "items": { "$ref": "#/$defs/MountEntry" }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "default": {
-              "type": "array",
-              "items": { "$ref": "#/$defs/MountEntry" }
-            }
+      "description": "Additional host directories to mount into the container. Accepts either the flat array form ([[mounts]]) or the nested { default = [...] } form ([[mounts.default]]) — the same two shapes top-level [mounts] accepts — so mount blocks are symmetric across config scopes. Uses if/then/else (not oneOf) so an invalid entry in the array form still reports a precise mounts[i] error path.",
+      "if": { "type": "array" },
+      "then": {
+        "items": { "$ref": "#/$defs/MountEntry" }
+      },
+      "else": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/MountEntry" }
           }
         }
-      ]
+      }
     },
     "sockets": {
       "type": "array",

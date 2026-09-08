@@ -566,6 +566,9 @@ func printProfileTopLevel(p *config.ProfileConfig) {
 	if len(p.ForwardEnv) > 0 {
 		fmt.Printf("forward_env = [%s]\n", formatStringSlice(p.ForwardEnv))
 	}
+	if p.EnvCommandTimeout != "" {
+		fmt.Printf("env_command_timeout = %q\n", p.EnvCommandTimeout)
+	}
 }
 
 // printProfileContainer prints its section of a profile's config, if present.
