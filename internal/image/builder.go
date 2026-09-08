@@ -646,9 +646,19 @@ func (b *Builder) updateAlias(versionAlias, mainAlias string) error {
 	return nil
 }
 
+// imageFingerprintListArgs builds the `incus image list` argv that
+// getImageFingerprint runs. Kept as a separate function so the project wiring is
+// unit-testable without a running Incus: the lookup MUST target the configured
+// project (container.IncusProject), not a hardcoded "default" — otherwise `coi
+// build` fails right after a successful publish on any non-default `[incus]
+// project` (#777). TestImageFingerprintListArgs_UsesConfiguredProject guards it.
+func imageFingerprintListArgs(alias string) []string {
+	return []string{"image", "list", alias, "--project", container.IncusProject, "--format=json"}
+}
+
 // getImageFingerprint gets the fingerprint of an image by alias
 func getImageFingerprint(alias string) (string, error) {
-	output, err := container.IncusOutput("image", "list", alias, "--project", "default", "--format=json")
+	output, err := container.IncusOutput(imageFingerprintListArgs(alias)...)
 	if err != nil {
 		return "", err
 	}
