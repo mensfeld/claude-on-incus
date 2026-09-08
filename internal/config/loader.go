@@ -359,7 +359,14 @@ func sanitizeUntrustedGit(g *GitConfig, path string) {
 // `coi trust` — it is never honored from a project config or project-scoped
 // profile; it must live in trusted-scope config (~/.coi/config.toml / $COI_CONFIG).
 func sanitizeUntrustedEnvCommands(d *DefaultsConfig, path string) {
-	if d == nil || len(d.EnvCommands) == 0 {
+	if d == nil {
+		return
+	}
+	// Strip the timeout unconditionally: even without env_commands here, a lone
+	// env_command_timeout from an untrusted source would override the timeout
+	// applied to trusted-scope env_commands.
+	d.EnvCommandTimeout = ""
+	if len(d.EnvCommands) == 0 {
 		return
 	}
 	fmt.Fprintf(os.Stderr,
@@ -367,7 +374,6 @@ func sanitizeUntrustedEnvCommands(d *DefaultsConfig, path string) {
 			"command is host code execution. Move it to ~/.coi/config.toml or set "+
 			"COI_CONFIG to apply it.\n", path)
 	d.EnvCommands = nil
-	d.EnvCommandTimeout = ""
 }
 
 // sanitizeUntrustedDefaultProfile strips `[defaults] profile` from an untrusted
@@ -669,8 +675,13 @@ func loadProfileDirectories(cfg *Config, configDir string, trusted bool) error {
 						"host command is host code execution. Move it to a profile under "+
 						"~/.coi/profiles to apply it.\n", profileConfigPath)
 				profileCfg.EnvCommands = nil
-				profileCfg.EnvCommandTimeout = "" // the timeout governs stripped commands
 			}
+			// Strip the timeout unconditionally, even with no env_commands here: a
+			// lone env_command_timeout would otherwise survive and override the
+			// timeout applied to trusted-scope env_commands when this profile is
+			// selected — a project-scoped file must not influence how long a
+			// trusted host command may run.
+			profileCfg.EnvCommandTimeout = ""
 		}
 
 		// Resolve [prompts] file= paths AFTER the untrusted strip above, so only

@@ -42,10 +42,13 @@ def test_profile_env_command_timeout_applied(coi_binary, cleanup_containers, tmp
     fake_home.mkdir()
     prof_dir = fake_home / ".coi" / "profiles" / "slow"
     prof_dir.mkdir(parents=True)
+    # env_command_timeout is a profile-ROOT key: it must appear before any
+    # [table] header, or TOML scopes it into that table (e.g. container.*) and
+    # the profile fails schema validation instead of setting the timeout.
     (prof_dir / "config.toml").write_text(
+        'env_command_timeout = "1s"\n\n'
         "[container]\n"
         'image = "coi-default"\n\n'
-        'env_command_timeout = "1s"\n\n'
         "[env_commands]\n"
         'SLOW = "sleep 60"\n'
     )

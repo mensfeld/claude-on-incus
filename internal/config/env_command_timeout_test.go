@@ -69,6 +69,30 @@ func TestLoadProfileDirectories_UntrustedStripsEnvCommandTimeout(t *testing.T) {
 	}
 }
 
+// A LONE env_command_timeout (no env_commands) in an untrusted profile must
+// still be stripped: otherwise it would survive and override the timeout applied
+// to trusted-scope env_commands when this profile is selected.
+func TestLoadProfileDirectories_UntrustedStripsLoneEnvCommandTimeout(t *testing.T) {
+	body := "env_command_timeout = \"99s\"\n"
+	root, _ := writeProfile(t, body)
+	cfg := GetDefaultConfig()
+	if err := loadProfileDirectories(cfg, root, false); err != nil {
+		t.Fatalf("loadProfileDirectories: %v", err)
+	}
+	if to := cfg.Profiles["dev"].EnvCommandTimeout; to != "" {
+		t.Errorf("a lone env_command_timeout from an untrusted profile must be stripped, got %q", to)
+	}
+}
+
+// The same lone-timeout strip at top-level (untrusted project config) scope.
+func TestSanitizeUntrustedEnvCommands_StripsLoneTimeout(t *testing.T) {
+	d := &DefaultsConfig{EnvCommandTimeout: "99s"}
+	sanitizeUntrustedEnvCommands(d, "/ws/.coi/config.toml")
+	if d.EnvCommandTimeout != "" {
+		t.Errorf("a lone env_command_timeout from untrusted config must be stripped, got %q", d.EnvCommandTimeout)
+	}
+}
+
 // A trusted profile keeps both env_commands and their timeout.
 func TestLoadProfileDirectories_TrustedKeepsEnvCommandTimeout(t *testing.T) {
 	body := "env_command_timeout = \"99s\"\n[env_commands]\nTOKEN = \"echo secret\"\n"
