@@ -12,6 +12,11 @@ storage_pool = ""
 # keys the session identity — container, slots, ports, saved sessions —
 # instead of the workspace path, so the same persistent session continues
 # from any workspace location. Trusted scope only.
+# docker defaults to true so Docker-in-container works out of the box. Set
+# false to drop nesting + syscall interception when Docker isn't needed —
+# less shared-kernel attack surface. See also [security] reduce_kernel_surface
+# and the "Threat model" wiki page.
+# docker = true
 
 [defaults]
 
@@ -79,6 +84,13 @@ host_immutable = true
 # that a later session would auto-execute.
 # Set to true in trusted-scope config (~/.coi/config.toml) to let the tool write them.
 # writable_agent_config = false
+# reduce_kernel_surface: opt-in kernel attack-surface hardening. Disables
+# Docker/nesting support (wins over [container] docker) and denies the syscall
+# families behind most recent kernel escape chains (io_uring, bpf, userfaultfd,
+# keyring). Node/libuv falls back off io_uring automatically. The container
+# still shares the host kernel — this narrows the boundary, it does not remove
+# it. Enabled by the built-in "hardened" profile. Trusted scope only.
+# reduce_kernel_surface = false
 
 [limits.cpu]
 count = ""

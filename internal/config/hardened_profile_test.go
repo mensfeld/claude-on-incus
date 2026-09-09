@@ -42,6 +42,15 @@ func TestHardenedProfile_HardensResolvedConfig(t *testing.T) {
 	if !BoolVal(cfg.Monitoring.Enabled) || !BoolVal(cfg.Monitoring.NFT.Enabled) {
 		t.Error("monitoring + nft monitoring should be enabled")
 	}
+	if cfg.Container.IsDockerEnabled() {
+		t.Error("docker support should be forced off")
+	}
+	if !cfg.Security.IsReduceKernelSurfaceEnabled() {
+		t.Error("reduce_kernel_surface should be true")
+	}
+	if cfg.EffectiveDockerEnabled() {
+		t.Error("effective docker should resolve to off")
+	}
 
 	// secret_paths must be a UNION: the user's own entry kept, plus the preset's.
 	have := make(map[string]bool)

@@ -64,6 +64,8 @@ type SetupOptions struct {
 	HostImmutable         bool                   // Apply chattr +i on host-side protected paths (set by CLI from config)
 	Alias                 string                 // Human-friendly alias for this container (set user.coi.alias)
 	ReadyTimeout          int                    // Seconds to wait for the container to become ready (<=0 = default 30)
+	DockerSupport         bool                   // [container] docker (as resolved by config.EffectiveDockerEnabled): nesting + syscall interception + low-port sysctl
+	ReduceKernelSurface   bool                   // [security] reduce_kernel_surface: deny high-risk kernel-escape syscalls; wins over DockerSupport
 	Logger                func(string)
 	ContainerName         string // Use existing container (for testing) - skips container creation
 }
@@ -253,6 +255,10 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 					}
 				}
 				opts.Logger("Container already running, reusing...")
+				// A RUNNING container's kernel-surface settings cannot be
+				// changed (nesting is rejected, the deny list is racy), so
+				// only surface a config mismatch instead of applying it.
+				warnHardeningMismatch(result.ContainerName, hardeningPolicyFrom(&opts), opts.Logger)
 				// Strip the previous session's port devices NOW, before the
 				// port preflight below bind-probes: their live forkproxy
 				// listeners would otherwise make the session collide with its
@@ -381,8 +387,10 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 	// 6.1. Configure Docker bridge CIDR to prevent IP conflicts with the host
 	// network or other containers. Only applied to newly launched containers.
 	if !skipLaunch {
-		if err := ConfigureDockerDaemon(result.Manager, opts.Logger); err != nil {
-			opts.Logger(fmt.Sprintf("Warning: Failed to configure Docker daemon: %v", err))
+		if hardeningPolicyFrom(&opts).Docker {
+			if err := ConfigureDockerDaemon(result.Manager, opts.Logger); err != nil {
+				opts.Logger(fmt.Sprintf("Warning: Failed to configure Docker daemon: %v", err))
+			}
 		}
 
 		// Size /tmp to prevent space exhaustion in big builds. Applied POST-start:
@@ -866,6 +874,14 @@ func restartStoppedContainer(result *SetupResult, opts *SetupOptions, containerN
 	}
 	reuseWritableHooks := !containsGitHooksPath(opts.ProtectedPaths)
 	StripSecurityDevices(result.Manager, opts.Logger)
+	// Reconcile the kernel-surface policy while the container is stopped —
+	// the only window where security.nesting and security.syscalls.deny can
+	// change — so a persistent container converges to the CURRENT
+	// [container] docker / [security] reduce_kernel_surface config instead
+	// of keeping whatever it was created with.
+	if err := container.ApplyKernelSurfacePolicy(result.ContainerName, hardeningPolicyFrom(opts)); err != nil {
+		opts.Logger(fmt.Sprintf("Warning: could not reconcile docker/kernel-hardening settings: %v", err))
+	}
 	// Decide the shift flag the same way a fresh launch does (issue
 	// #685). The old `!opts.DisableShift` ignored both cases that turn
 	// shift off at first launch — a host/code UID mismatch and a
@@ -1075,10 +1091,17 @@ func createAndStartContainer(result *SetupResult, opts *SetupOptions, image, con
 		}
 	}
 
-	// Enable Docker/nested container support (must be set before first boot)
-	opts.Logger("Enabling Docker support...")
-	if err := container.EnableDockerSupport(result.ContainerName); err != nil {
-		return fmt.Errorf("failed to enable Docker support: %w", err)
+	// Apply the kernel-surface policy: Docker/nesting support and/or syscall
+	// denies per [container] docker and [security] reduce_kernel_surface
+	// (must be set before first boot).
+	policy := hardeningPolicyFrom(opts)
+	if policy.Docker {
+		opts.Logger("Enabling Docker support...")
+	} else {
+		opts.Logger("Docker support disabled; applying kernel-surface hardening...")
+	}
+	if err := container.ApplyKernelSurfacePolicy(result.ContainerName, policy); err != nil {
+		return fmt.Errorf("failed to apply kernel-surface policy: %w", err)
 	}
 
 	// Isolate UID/GID namespace so each container gets a unique host-side UID

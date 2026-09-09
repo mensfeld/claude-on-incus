@@ -169,6 +169,33 @@ type ContainerConfig struct {
 	// restored credentials) a launch attaches to, so a cloned repo must not
 	// be able to attach itself to another project's session.
 	SessionName string `toml:"session_name"`
+
+	// Docker controls whether the container is configured for Docker/nested
+	// containers (security.nesting, mknod/setxattr syscall interception, and
+	// the unprivileged low-port sysctl). Defaults to true so Docker works out
+	// of the box. Set false to shrink the shared-kernel attack surface when
+	// Docker-in-container is not needed. Re-enabling from an untrusted repo
+	// config is stripped (a cloned repo must not widen the kernel surface a
+	// trusted profile narrowed); an untrusted `docker = false` is honored
+	// because it only tightens.
+	Docker *bool `toml:"docker"`
+}
+
+// IsDockerEnabled reports whether Docker/nested-container support should be
+// configured. Defaults to true when unset, matching pre-flag behavior.
+func (c *ContainerConfig) IsDockerEnabled() bool {
+	if c == nil || c.Docker == nil {
+		return true
+	}
+	return *c.Docker
+}
+
+// EffectiveDockerEnabled resolves the docker/hardening conflict: when
+// [security] reduce_kernel_surface is on it wins over [container] docker
+// (nesting is part of the surface being reduced). Callers that want to warn
+// about an explicit docker=true being overridden check the fields directly.
+func (c *Config) EffectiveDockerEnabled() bool {
+	return c.Container.IsDockerEnabled() && !c.Security.IsReduceKernelSurfaceEnabled()
 }
 
 // HasContainerConfig reports whether any field is set.
@@ -181,6 +208,7 @@ func (c *ContainerConfig) HasContainerConfig() bool {
 		c.Alias != "" ||
 		c.StaleBaseCheck != "" ||
 		c.SessionName != "" ||
+		c.Docker != nil ||
 		c.Build.HasBuildConfig()
 }
 
@@ -294,6 +322,21 @@ type SecurityConfig struct {
 	// additive, so it is honored from any scope and merges as a union: an
 	// untrusted project config can only ADD denies, never remove them.
 	SecretPaths []string `toml:"secret_paths"`
+	// ReduceKernelSurface opts into kernel attack-surface hardening: it
+	// disables Docker/nested-container support (overriding [container] docker)
+	// and denies the syscall families behind most recent kernel escape chains
+	// (io_uring, bpf, userfaultfd, keyring) via security.syscalls.deny. The
+	// container still shares the host kernel — this narrows the boundary, it
+	// does not make it safe against a kernel 0-day. Default: false. Trusted
+	// scope only: stripped from untrusted repo configs in either direction (an
+	// untrusted `true` would silently break the user's Docker workflow).
+	ReduceKernelSurface *bool `toml:"reduce_kernel_surface"`
+}
+
+// IsReduceKernelSurfaceEnabled reports whether kernel attack-surface hardening
+// is enabled. Default false (nil receiver or field).
+func (s *SecurityConfig) IsReduceKernelSurfaceEnabled() bool {
+	return s != nil && s.ReduceKernelSurface != nil && *s.ReduceKernelSurface
 }
 
 // GetEffectiveProtectedPaths returns the combined list of protected paths

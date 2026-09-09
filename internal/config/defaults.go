@@ -124,9 +124,8 @@ func synthesizeDefaultProfile(cfg *Config) ProfileConfig {
 
 // synthesizeHardenedProfile returns the built-in "hardened" profile: a hardened
 // preset for opening untrusted / freshly-cloned repositories. It bundles COI's
-// strongest EXISTING controls (no new enforcement, no in-shell policing) so
-// `coi shell --profile hardened` is a one-flag, maximally-safe way to inspect code
-// you don't trust.
+// strongest controls (no in-shell policing) so `coi shell --profile hardened`
+// is a one-flag, maximally-safe way to inspect code you don't trust.
 //
 // Unlike the "default" profile this is a FIXED baseline, not a clone of the
 // user's resolved config: it sets only the hardened overrides and lets every
@@ -140,8 +139,9 @@ func synthesizeHardenedProfile() ProfileConfig {
 	t, f := true, false
 	return ProfileConfig{
 		Source: "(built-in)",
-		// Ephemeral: nothing from a risky session persists.
-		Container: ContainerConfig{Persistent: &f},
+		// Ephemeral: nothing from a risky session persists. Docker support off:
+		// no nesting/syscall-intercept surface for an untrusted repo's code.
+		Container: ContainerConfig{Persistent: &f, Docker: &f},
 		// No exfil path: internet-only, block LAN + cloud metadata endpoints.
 		Network: &NetworkConfig{
 			Mode:                    NetworkModeRestricted,
@@ -158,6 +158,9 @@ func synthesizeHardenedProfile() ProfileConfig {
 		Security: &SecurityConfig{
 			HostImmutable: &t,
 			SecretPaths:   cloneSlice(HardenedProfileSecretPaths),
+			// Shrink the shared-kernel attack surface: no nesting, and the
+			// syscall families behind most recent kernel escape chains denied.
+			ReduceKernelSurface: &t,
 		},
 		// Catch in-container exfil / reverse-shell attempts and auto-respond.
 		Monitoring: &MonitoringConfig{

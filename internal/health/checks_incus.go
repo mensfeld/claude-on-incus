@@ -82,6 +82,19 @@ func evaluateIncusVersion(versionOutput string) HealthCheck {
 		}
 	}
 
+	if !container.MeetsRecommendedVersion(v) {
+		return HealthCheck{
+			Name:   "incus",
+			Status: StatusWarning,
+			Message: fmt.Sprintf("Running (version %s) — older than recommended %d.%d; distribution lag means missing container-isolation fixes, consider updating (https://github.com/zabbly/incus)",
+				versionStr, container.RecommendedIncusVersionMajor, container.RecommendedIncusVersionMinor),
+			Details: map[string]interface{}{
+				"version":     versionStr,
+				"recommended": fmt.Sprintf("%d.%d", container.RecommendedIncusVersionMajor, container.RecommendedIncusVersionMinor),
+			},
+		}
+	}
+
 	return HealthCheck{
 		Name:    "incus",
 		Status:  StatusOK,

@@ -188,6 +188,7 @@ func sanitizeUntrustedConfig(fileCfg *Config, path string) {
 	sanitizeUntrustedEnvCommands(&fileCfg.Defaults, path)
 	sanitizeUntrustedDefaultProfile(&fileCfg.Defaults, path)
 	sanitizeUntrustedSessionName(&fileCfg.Container, path)
+	sanitizeUntrustedDocker(&fileCfg.Container, path)
 	sanitizeUntrustedSecurity(&fileCfg.Security, path)
 	sanitizeUntrustedGit(&fileCfg.Git, path)
 	sanitizeUntrustedTool(&fileCfg.Tool, path)
@@ -311,6 +312,13 @@ func sanitizeUntrustedSecurity(s *SecurityConfig, path string) {
 		warnUntrustedDowngrade(path, "security.host_immutable")
 	}
 	s.HostImmutable = nil
+	if s.ReduceKernelSurface != nil && !*s.ReduceKernelSurface {
+		// Only false is a downgrade; a strengthening true is dropped too — an
+		// untrusted repo silently disabling the user's Docker workflow is its
+		// own kind of surprise (trusted config controls kernel hardening).
+		warnUntrustedDowngrade(path, "security.reduce_kernel_surface")
+	}
+	s.ReduceKernelSurface = nil
 }
 
 // sanitizeUntrustedGit drops git settings that weaken protection or would let an
@@ -438,6 +446,18 @@ func sanitizeUntrustedSessionName(c *ContainerConfig, path string) {
 			"session name selects which persistent session a launch attaches to. "+
 			"Move it to ~/.coi/config.toml or a profile under ~/.coi/profiles to apply it.\n", path)
 	c.SessionName = ""
+}
+
+// sanitizeUntrustedDocker strips an untrusted `[container] docker = true`: a
+// cloned/agent-planted repo must not re-enable nesting and the wider kernel
+// surface that a trusted profile disabled. `docker = false` only tightens, so
+// it is honored from any scope. nil is a no-op.
+func sanitizeUntrustedDocker(c *ContainerConfig, path string) {
+	if c == nil || c.Docker == nil || !*c.Docker {
+		return
+	}
+	warnUntrustedDowngrade(path, "container.docker")
+	c.Docker = nil
 }
 
 // sanitizeUntrustedNetwork drops security-downgrading network settings from an
@@ -662,6 +682,7 @@ func loadProfileDirectories(cfg *Config, configDir string, trusted bool) error {
 		if !trusted {
 			sanitizeUntrustedNetwork(profileCfg.Network, profileConfigPath)
 			sanitizeUntrustedSessionName(&profileCfg.Container, profileConfigPath)
+			sanitizeUntrustedDocker(&profileCfg.Container, profileConfigPath)
 			sanitizeUntrustedSecurity(profileCfg.Security, profileConfigPath)
 			sanitizeUntrustedGit(profileCfg.Git, profileConfigPath)
 			sanitizeUntrustedPrompts(profileCfg.Prompts, profileConfigPath)

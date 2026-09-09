@@ -212,8 +212,18 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			// s.useShift is set by whichever hook runs (preStart or preRestart)
 			// before anything reads it.
 			logFn := stderrLogFn
+			hardening := a.hardeningPolicy()
+			warnDockerHardeningConflict(a.cfg)
 			preStart := func() error {
 				defer timing.Start(timing.CatStep, "pre-start-hook")()
+				// Apply a non-default kernel-surface policy ([container] docker /
+				// [security] reduce_kernel_surface) between init and first start —
+				// the launch path applied the default (docker on) at init.
+				if hardening != container.DefaultHardeningPolicy() {
+					if err := container.ApplyKernelSurfacePolicy(s.containerName, hardening); err != nil {
+						return fmt.Errorf("failed to apply kernel-surface policy: %w", err)
+					}
+				}
 				// Detect a git worktree checkout (.git is a file → external git dirs)
 				// BEFORE the UID-mapping decision: the common dir is mounted as its
 				// own shift-carrying disk device, so its filesystem votes on that
@@ -264,6 +274,13 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			// workspace mount, re-resolve the worktree layout, strip those devices,
 			// and re-run the SAME security setup fresh launch uses (applySecurityMounts).
 			preRestart := func() error {
+				// Reconcile the kernel-surface policy while the container is
+				// stopped — the only window where security.nesting and the
+				// syscall deny list can change — so a persistent container
+				// converges to the current config (mirrors the shell reuse path).
+				if err := container.ApplyKernelSurfacePolicy(s.containerName, hardening); err != nil {
+					logFn(fmt.Sprintf("Warning: could not reconcile docker/kernel-hardening settings: %v", err))
+				}
 				s.containerWorkspace = mgr.GetWorkspacePath()
 				layout, wtErr := session.ResolveGitWorktree(s.absWorkspace)
 				if wtErr != nil {
@@ -412,8 +429,10 @@ func (a *App) configureContainerRunPhase(s *runState) session.Phase {
 			}
 
 			if !s.wasRestarted {
-				if err := session.ConfigureDockerDaemon(s.mgr, logFn); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to configure Docker daemon: %v\n", err)
+				if a.hardeningPolicy().Docker {
+					if err := session.ConfigureDockerDaemon(s.mgr, logFn); err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: failed to configure Docker daemon: %v\n", err)
+					}
 				}
 				// Apply an explicit [limits.disk] tmpfs_size the same way the
 				// shell path does, so a profile's /tmp sizing applies to

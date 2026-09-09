@@ -43,6 +43,31 @@ func (a *App) sessionName() string {
 	return a.cfg.Container.SessionName
 }
 
+// hardeningPolicy resolves [container] docker and [security]
+// reduce_kernel_surface into the container-level kernel-surface policy.
+func (a *App) hardeningPolicy() container.HardeningPolicy {
+	if a.cfg == nil {
+		return container.DefaultHardeningPolicy()
+	}
+	return container.HardeningPolicy{
+		Docker:              a.cfg.EffectiveDockerEnabled(),
+		ReduceKernelSurface: a.cfg.Security.IsReduceKernelSurfaceEnabled(),
+	}
+}
+
+// warnDockerHardeningConflict surfaces an explicit `[container] docker = true`
+// being overridden by `[security] reduce_kernel_surface = true` (security wins;
+// nesting is part of the surface being reduced).
+func warnDockerHardeningConflict(cfg *config.Config) {
+	if cfg == nil || !cfg.Security.IsReduceKernelSurfaceEnabled() {
+		return
+	}
+	if cfg.Container.Docker != nil && *cfg.Container.Docker {
+		fmt.Fprintf(os.Stderr,
+			"Warning: [security] reduce_kernel_surface = true disables Docker support; ignoring [container] docker = true\n")
+	}
+}
+
 // applyDefaultProfileForOps applies the [defaults] profile fallback for
 // OPERATIONAL commands (attach, monitor, snapshot) so a profile-carried
 // session_name — the documented placement — resolves the same container
