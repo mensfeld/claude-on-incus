@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -93,17 +94,26 @@ func ApplyKernelSurfacePolicy(containerName string, p HardeningPolicy) error {
 	return IncusExec(args...)
 }
 
-// ReadKernelSurfaceConfig returns the EXPANDED (profile-inherited plus
-// instance-local) values of the keys ApplyKernelSurfacePolicy owns. Expanded
-// config is what actually takes effect, so a mismatch check against it never
-// spuriously fires for a value a container inherits from an attached Incus
-// profile. A key absent from the config maps to "" in the result. Uses `incus
-// config get --expanded`, which — unlike `incus query` — accepts the --project
-// flag COI injects into every invocation.
+// ReadKernelSurfaceConfig returns the INSTANCE-LOCAL values of the keys
+// ApplyKernelSurfacePolicy owns — the layer COI actually writes, so the
+// convergence check compares like with like and reaches a stable state in one
+// write even when an attached Incus profile also supplies these keys (profile
+// values are invisible here on purpose; whether they DEFEAT the policy is the
+// separate, expanded-config question VerifyKernelSurfacePolicy answers). A key
+// absent from the config maps to "" in the result.
 func ReadKernelSurfaceConfig(containerName string) (map[string]string, error) {
+	return readKernelSurfaceConfig(containerName, false)
+}
+
+func readKernelSurfaceConfig(containerName string, expanded bool) (map[string]string, error) {
 	result := make(map[string]string, len(kernelSurfaceKeys))
 	for _, key := range kernelSurfaceKeys {
-		v, err := IncusOutput("config", "get", "--expanded", containerName, key)
+		args := []string{"config", "get"}
+		if expanded {
+			args = append(args, "--expanded")
+		}
+		args = append(args, containerName, key)
+		v, err := IncusOutput(args...)
 		if err != nil {
 			return nil, fmt.Errorf("read %s from %s: %w", key, containerName, err)
 		}
@@ -113,27 +123,117 @@ func ReadKernelSurfaceConfig(containerName string) (map[string]string, error) {
 }
 
 // ReconcileKernelSurfacePolicy converges an existing STOPPED container to the
-// policy, but only when its current (expanded) config does not already match —
-// so a reuse that changes nothing performs no writes and, crucially, cannot
+// policy, but only when its instance-local config does not already match — so
+// a reuse that changes nothing performs no writes and, crucially, cannot
 // clobber a deny list or nesting value the container already carries. Returns
-// whether a change was made. Fail-closed: a read or write failure is returned
-// so the caller can abort rather than start a container whose kernel-surface
-// config is unknown or half-applied.
+// whether a change was made. Fail-closed twice over: a read or write failure
+// is returned so the caller can abort rather than start a container whose
+// kernel-surface config is unknown or half-applied, and after converging it
+// verifies the EFFECTIVE (profile-inherited) surface actually honors the
+// policy — an instance-local unset cannot override a profile-supplied
+// security.nesting=true, and booting anyway would silently defeat the
+// hardening the user asked for.
 func ReconcileKernelSurfacePolicy(containerName string, p HardeningPolicy) (changed bool, err error) {
 	current, err := ReadKernelSurfaceConfig(containerName)
 	if err != nil {
 		return false, err
 	}
-	if KernelSurfaceMatches(current, p) {
-		return false, nil
+	if !KernelSurfaceMatches(current, p) {
+		if err := ApplyKernelSurfacePolicy(containerName, p); err != nil {
+			return false, err
+		}
+		changed = true
 	}
-	return true, ApplyKernelSurfacePolicy(containerName, p)
+	return changed, VerifyKernelSurfacePolicy(containerName, p)
+}
+
+// VerifyKernelSurfacePolicy checks the EXPANDED (profile-inherited) config
+// against the policy and errors when the effective kernel surface is WIDER
+// than the policy allows — the one case instance-local writes cannot fix,
+// because a profile-supplied value survives an instance-local unset. Free for
+// the default policy (docker on wants every surface key set, and instance-local
+// values always override profiles, so there is nothing a profile could widen —
+// no reads are performed). Values the profile only NARROWS (e.g. an extra
+// syscall deny under the default policy) are tolerated: they are the user's
+// own tightening, not a policy violation.
+func VerifyKernelSurfacePolicy(containerName string, p HardeningPolicy) error {
+	if p.DockerEnabled() {
+		return nil
+	}
+	expanded, err := readKernelSurfaceConfig(containerName, true)
+	if err != nil {
+		return err
+	}
+	if v := kernelSurfaceViolations(expanded, p); len(v) > 0 {
+		return fmt.Errorf(
+			"kernel-surface policy cannot be enforced: %s remain(s) in effect via an attached Incus profile, and an instance-local unset cannot override profile config; remove the key(s) from the container's Incus profile(s), or relax [container] docker / [security] reduce_kernel_surface",
+			strings.Join(v, ", "))
+	}
+	return nil
+}
+
+// kernelSurfaceViolations is the pure core of VerifyKernelSurfacePolicy: given
+// EXPANDED config, it lists the keys whose effective values widen the surface
+// beyond the policy. Boolean keys use Incus's truthy spellings (true/1/yes/on);
+// the low-port sysctl only widens below the kernel default of 1024 (an
+// unparseable value fails closed as a violation).
+func kernelSurfaceViolations(expanded map[string]string, p HardeningPolicy) []string {
+	if p.DockerEnabled() {
+		return nil
+	}
+	var violations []string
+	for _, key := range []string{
+		"security.nesting",
+		"security.syscalls.intercept.mknod",
+		"security.syscalls.intercept.setxattr",
+	} {
+		if incusTruthy(expanded[key]) {
+			violations = append(violations, key+"="+strings.TrimSpace(expanded[key]))
+		}
+	}
+	if s := strings.TrimSpace(expanded["linux.sysctl.net.ipv4.ip_unprivileged_port_start"]); s != "" {
+		if n, err := strconv.Atoi(s); err != nil || n < 1024 {
+			violations = append(violations, "linux.sysctl.net.ipv4.ip_unprivileged_port_start="+s)
+		}
+	}
+	if p.ReduceKernelSurface {
+		// Instance-local deny (which we write) overrides any profile deny, so
+		// this cannot realistically fire — kept as a cheap invariant so a
+		// future write-path regression surfaces here instead of shipping a
+		// hardened container without its deny list.
+		have := make(map[string]bool)
+		for _, tok := range strings.Fields(expanded["security.syscalls.deny"]) {
+			have[tok] = true
+		}
+		var missing []string
+		for _, tok := range strings.Fields(KernelSurfaceDenySyscalls) {
+			if !have[tok] {
+				missing = append(missing, tok)
+			}
+		}
+		if len(missing) > 0 {
+			violations = append(violations, "security.syscalls.deny missing "+strings.Join(missing, " "))
+		}
+	}
+	return violations
+}
+
+// incusTruthy reports whether an Incus boolean config value is effectively
+// true, accepting the spellings Incus itself accepts (true/1/yes/on,
+// case-insensitive).
+func incusTruthy(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "true", "1", "yes", "on":
+		return true
+	}
+	return false
 }
 
 // KernelSurfaceMatches reports whether current (as returned by
-// ReadKernelSurfaceConfig) already realizes the policy, so a reconcile can
-// skip the write — avoiding both wasted `config set` calls and clobbering a
-// container whose config already matches. A missing key reads as "".
+// ReadKernelSurfaceConfig, instance-local) already realizes the policy, so a
+// reconcile can skip the write — avoiding both wasted `config set` calls and
+// clobbering a container whose config already matches. A missing key reads
+// as "".
 func KernelSurfaceMatches(current map[string]string, p HardeningPolicy) bool {
 	for _, kv := range hardeningConfigArgs(p) {
 		key, want, _ := strings.Cut(kv, "=")

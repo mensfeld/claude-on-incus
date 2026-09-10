@@ -134,6 +134,79 @@ func TestKernelSurfaceMatches(t *testing.T) {
 	}
 }
 
+// kernelSurfaceViolations must flag EXPANDED (profile-inherited) values that
+// widen the surface beyond the policy — the case an instance-local unset
+// cannot fix — while tolerating values that only narrow it.
+func TestKernelSurfaceViolations(t *testing.T) {
+	hardened := HardeningPolicy{Docker: false, ReduceKernelSurface: true}
+	dockerOff := HardeningPolicy{Docker: false}
+
+	// Clean hardened container: no violations.
+	clean := map[string]string{"security.syscalls.deny": KernelSurfaceDenySyscalls}
+	if v := kernelSurfaceViolations(clean, hardened); len(v) != 0 {
+		t.Errorf("clean hardened config should have no violations, got %v", v)
+	}
+
+	// Profile-pinned nesting defeats hardening — every truthy spelling counts.
+	for _, spelling := range []string{"true", "1", "yes", "on", "True", " true "} {
+		cfg := map[string]string{
+			"security.nesting":       spelling,
+			"security.syscalls.deny": KernelSurfaceDenySyscalls,
+		}
+		if v := kernelSurfaceViolations(cfg, hardened); len(v) != 1 {
+			t.Errorf("nesting=%q should be one violation, got %v", spelling, v)
+		}
+	}
+	// Falsy spellings are fine.
+	for _, spelling := range []string{"", "false", "0", "off"} {
+		cfg := map[string]string{
+			"security.nesting":       spelling,
+			"security.syscalls.deny": KernelSurfaceDenySyscalls,
+		}
+		if v := kernelSurfaceViolations(cfg, hardened); len(v) != 0 {
+			t.Errorf("nesting=%q should not violate, got %v", spelling, v)
+		}
+	}
+
+	// Low-port sysctl: only values below the kernel default 1024 widen;
+	// unparseable fails closed.
+	for val, want := range map[string]int{"0": 1, "80": 1, "1024": 0, "4096": 0, "junk": 1} {
+		cfg := map[string]string{
+			"linux.sysctl.net.ipv4.ip_unprivileged_port_start": val,
+			"security.syscalls.deny":                           KernelSurfaceDenySyscalls,
+		}
+		if v := kernelSurfaceViolations(cfg, hardened); len(v) != want {
+			t.Errorf("low-port=%q: want %d violations, got %v", val, want, v)
+		}
+	}
+
+	// A missing deny token under reduce_kernel_surface is a violation
+	// (write-path regression backstop).
+	partial := map[string]string{"security.syscalls.deny": "io_uring_setup bpf"}
+	if v := kernelSurfaceViolations(partial, hardened); len(v) != 1 {
+		t.Errorf("partial deny list should be one violation, got %v", v)
+	}
+
+	// docker=false without reduce: nesting pinned by profile still violates,
+	// but a profile-supplied deny list is a NARROWING and is tolerated.
+	if v := kernelSurfaceViolations(map[string]string{"security.nesting": "true"}, dockerOff); len(v) != 1 {
+		t.Errorf("docker-off with pinned nesting should violate, got %v", v)
+	}
+	if v := kernelSurfaceViolations(map[string]string{"security.syscalls.deny": "bpf"}, dockerOff); len(v) != 0 {
+		t.Errorf("profile deny under docker-off is a narrowing, not a violation, got %v", v)
+	}
+
+	// Default (docker-on) policy: nothing to verify — instance-local writes
+	// override profiles for every wanted-set key, and extra denies narrow.
+	junk := map[string]string{
+		"security.nesting":       "true",
+		"security.syscalls.deny": "bpf",
+	}
+	if v := kernelSurfaceViolations(junk, DefaultHardeningPolicy()); v != nil {
+		t.Errorf("default policy must never report violations, got %v", v)
+	}
+}
+
 // The deny list itself: each syscall exactly once, no accidental edits.
 func TestKernelSurfaceDenySyscalls(t *testing.T) {
 	want := []string{

@@ -695,6 +695,14 @@ func initAndConfigureContainer(imageAlias, containerName, pool string, ephemeral
 	if err := ApplyKernelSurfacePolicy(containerName, policy); err != nil {
 		return err
 	}
+	// Fail closed BEFORE first boot when an attached Incus profile pins a key
+	// the policy needs unset (e.g. security.nesting=true from a Docker-in-Incus
+	// default profile): the instance-local unset above cannot override it, and
+	// booting anyway would silently defeat the requested hardening. Free for
+	// the default (docker-on) policy — no reads are performed.
+	if err := VerifyKernelSurfacePolicy(containerName, policy); err != nil {
+		return err
+	}
 	if err := DisableGuestAPI(containerName); err != nil {
 		return err
 	}
