@@ -395,8 +395,12 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 	// docker=false and later flipped to docker=true has no daemon.json yet, so
 	// gating this on !skipLaunch would leave dockerd on its default 172.17/16
 	// bridge (the VPN/subnet-conflict this file exists to prevent). The write
-	// is idempotent, so re-running it on every reuse is safe.
-	if hardeningPolicyFrom(&opts).DockerEnabled() {
+	// is idempotent, so re-running it on every COI-managed reuse is safe.
+	// Skipped for an explicit --container attach ("use it as it is", same as
+	// the hardening reconcile above): overwriting a user-managed container's
+	// /etc/docker/daemon.json would clobber their own registry-mirror/
+	// storage-driver settings.
+	if opts.ContainerName == "" && hardeningPolicyFrom(&opts).DockerEnabled() {
 		if err := ConfigureDockerDaemon(result.Manager, opts.Logger); err != nil {
 			opts.Logger(fmt.Sprintf("Warning: Failed to configure Docker daemon: %v", err))
 		}
@@ -893,8 +897,14 @@ func restartStoppedContainer(result *SetupResult, opts *SetupOptions, containerN
 	// instance config is never clobbered. Fail-closed: abort rather than boot a
 	// container whose hardening could not be brought to the desired state.
 	if opts.ContainerName == "" {
-		if _, err := container.ReconcileKernelSurfacePolicy(result.ContainerName, hardeningPolicyFrom(opts)); err != nil {
+		changed, err := container.ReconcileKernelSurfacePolicy(result.ContainerName, hardeningPolicyFrom(opts))
+		if err != nil {
 			return fmt.Errorf("could not reconcile docker/kernel-hardening settings: %w", err)
+		}
+		if changed {
+			// Never silent: this rewrite also resets any manual `incus config
+			// set` hardening (e.g. a hand-added syscall deny) back to policy.
+			opts.Logger("Reconciled docker/kernel-hardening settings to the current config (any manual security.nesting/syscalls overrides were reset)")
 		}
 	}
 	// Decide the shift flag the same way a fresh launch does (issue

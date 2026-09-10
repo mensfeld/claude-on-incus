@@ -276,8 +276,14 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 				// Fail-closed: abort the restart rather than boot a container
 				// whose hardening config could not be brought to the desired
 				// state. Skips the write when the config already matches.
-				if _, err := container.ReconcileKernelSurfacePolicy(s.containerName, hardening); err != nil {
-					return fmt.Errorf("could not reconcile docker/kernel-hardening settings: %w", err)
+				changed, reconcileErr := container.ReconcileKernelSurfacePolicy(s.containerName, hardening)
+				if reconcileErr != nil {
+					return fmt.Errorf("could not reconcile docker/kernel-hardening settings: %w", reconcileErr)
+				}
+				if changed {
+					// Never silent: this rewrite also resets any manual `incus
+					// config set` hardening back to policy (mirrors setup.go).
+					logFn("Reconciled docker/kernel-hardening settings to the current config (any manual security.nesting/syscalls overrides were reset)")
 				}
 				s.containerWorkspace = mgr.GetWorkspacePath()
 				layout, wtErr := session.ResolveGitWorktree(s.absWorkspace)
@@ -684,6 +690,13 @@ func (a *App) runPromptPhase(s *runState) session.Phase {
 				Persistent:          a.persistent,
 				ForwardedEnvVars:    resolveForwardedEnvVarNames(a.cfg.Defaults.ForwardEnv),
 				Logger:              stderrLogFn,
+				// The kernel-surface flags feed injectSandboxContext's Docker
+				// availability line; omitting them here (zero value = docker
+				// off) would make every headless run's context claim Docker is
+				// unavailable while the container actually has it (the launch
+				// phase applies the real policy). Mirrors phases_shell.go.
+				DockerSupport:       a.cfg.Container.IsDockerEnabled(),
+				ReduceKernelSurface: a.cfg.Security.IsReduceKernelSurfaceEnabled(),
 			}
 			if err := session.SeedToolConfigForRun(ctx, seedResult, seedOpts); err != nil {
 				return nil, err
