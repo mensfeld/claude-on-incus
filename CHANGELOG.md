@@ -4,7 +4,7 @@
 
 ### New Features
 
-- **Forensics survive an auto-kill: `[monitoring] forensics_on_kill`** — when the threat responder auto-kills a container on a critical threat, it now preserves the container itself instead of deleting the evidence with the threat: the ephemeral flag is cleared and the stopped container is renamed to `<container>-forensics-<ts>` (zero-copy, instant; capped at 3 per container, oldest pruned) — "snapshot state for investigation before deactivating" (Trail of Bits). The container is still gone under its original name; a failure falls back to the plain stop-and-delete kill. On by default; `forensics_on_kill = false` opts out.
+- **Forensics survive an auto-kill: `[monitoring] forensics_on_kill`** — when the threat responder auto-kills a container on a critical threat, it now first preserves a forensic copy of the still-running container (`incus copy` → `<container>-forensics-<ts>`, capped at 3 per container, oldest pruned) that survives the kill, instead of deleting the evidence with the threat — "snapshot state for investigation before deactivating" (Trail of Bits). The original still auto-deletes under its own name as usual; a failed copy never blocks or delays the kill. On the recommended btrfs/zfs pool the copy is a near-instant COW reflink. On by default; `forensics_on_kill = false` opts out.
 
 - **Health probes honor the kernel-surface policy** — the four runtime-isolation probes (`connectivity`, `network restriction`, `secret masking`, `host-credential isolation`) launched by `coi health` now boot with the user's `[container] docker` / `[security] reduce_kernel_surface` policy instead of always getting the full docker/nesting surface.
 

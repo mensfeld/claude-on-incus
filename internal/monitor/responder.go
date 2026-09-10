@@ -17,7 +17,7 @@ type Responder struct {
 	containerName      string
 	autoPauseOnHigh    bool
 	autoKillOnCritical bool
-	forensicsOnKill    bool // preserve (rename) the container for forensics instead of deleting it (default true)
+	forensicsOnKill    bool // preserve a forensic copy of the container before the kill deletes it (default true)
 	auditLog           *AuditLog
 	onThreat           func(ThreatEvent)
 	onAction           func(action, message string) // Called when container is paused/killed
@@ -47,8 +47,8 @@ func NewResponder(containerName string, autoPauseOnHigh, autoKillOnCritical bool
 	}
 }
 
-// SetForensicsOnKill controls whether killContainer preserves the container
-// for forensics (renamed) instead of deleting it ([monitoring] forensics_on_kill,
+// SetForensicsOnKill controls whether killContainer preserves a forensic copy
+// of the container before deleting it ([monitoring] forensics_on_kill,
 // default true).
 func (r *Responder) SetForensicsOnKill(enabled bool) {
 	r.forensicsOnKill = enabled
@@ -217,13 +217,22 @@ func (r *Responder) pauseContainer(ctx context.Context) error {
 	return nil
 }
 
-// killContainer stops and removes the container from service, preserving it
-// for forensics (unless disabled): the auto-kill fires exactly when the
-// container's state is most worth investigating — deleting it with the threat
-// would destroy the evidence of HOW the attempt worked, leaving only the
-// audit log ("snapshot state for investigation before deactivating", Trail of
-// Bits). Either way the container is GONE under its original name.
-func (r *Responder) killContainer(callerCtx context.Context) error {
+// killContainer stops and deletes the container, first (unless disabled)
+// preserving a forensic COPY: the auto-kill fires exactly when the container's
+// state is most worth investigating — deleting it with the threat would
+// destroy the evidence of HOW the attempt worked, leaving only the audit log
+// ("snapshot state for investigation before deactivating", Trail of Bits).
+//
+// The copy is made WHILE THE CONTAINER IS STILL RUNNING and the original is
+// left EPHEMERAL, so the stop below still auto-deletes the original exactly as
+// before — the kill's "container gone under its name" contract is unchanged
+// and, crucially, is guaranteed by Incus's ephemeral auto-delete even if the
+// coi process hosting this daemon is torn down by the very stop (which ends
+// the attached session). The copy is a separate, non-ephemeral container that
+// survives independently. On the CI/recommended btrfs (or zfs) pool a copy is
+// a near-instant COW reflink; it is done before the stop so it never delays
+// the security response either way.
+func (r *Responder) killContainer(ctx context.Context) error {
 	r.mu.Lock()
 	if r.killed {
 		r.mu.Unlock()
@@ -231,40 +240,21 @@ func (r *Responder) killContainer(callerCtx context.Context) error {
 	}
 	r.mu.Unlock()
 
-	// DETACHED context for the destructive steps. The caller's context is the
-	// monitoring daemon's — and stopping the container ENDS the attached
-	// session, which tears the daemon down and cancels that context. Using it
-	// here SIGKILLs the very `incus stop`/`rename`/`delete` mid-run (surfacing
-	// as "exit status -1"), the kill's own action pulling the rug from under
-	// it. A fresh timeout-bounded context is immune to that self-cancellation;
-	// the timeout still bounds a genuinely stuck Incus. (If the caller already
-	// cancelled — real shutdown — honor that before we start.)
-	if callerCtx.Err() != nil {
-		return callerCtx.Err()
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), killOperationTimeout)
-	defer cancel()
-
-	// Forensic preservation is ZERO-COPY: clear the ephemeral flag while the
-	// container is still running (so the stop below cannot auto-delete it),
-	// then RENAME the stopped container to the forensics name instead of
-	// deleting it. An `incus copy` would transfer the whole rootfs — tens of
-	// seconds on CI-class pools, delaying the security response — while the
-	// property flip + rename are instant and preserve the actual instance,
-	// not a copy. Best-effort: any failure falls back to the plain
-	// stop-and-delete kill.
+	// Forensic copy BEFORE the stop, while the container is still running.
+	// Best-effort: a failed prune/copy must never block or delay the kill.
 	forensicName := ""
 	if r.forensicsOnKill {
 		r.pruneForensicCopies(ctx)
-		if _, err := container.IncusOutputContext(ctx, "config", "set", r.containerName, "ephemeral=false", "--property"); err != nil {
-			r.reportError(fmt.Errorf("failed to clear ephemeral flag for forensics (continuing with plain kill): %w", err))
+		name := forensicCopyName(r.containerName, time.Now())
+		if _, err := container.IncusOutputContext(ctx, "copy", r.containerName, name); err != nil {
+			r.reportError(fmt.Errorf("failed to create forensic copy (continuing with kill): %w", err))
 		} else {
-			forensicName = forensicCopyName(r.containerName, time.Now())
+			forensicName = name
 		}
 	}
 	forensicNote := ""
 	if forensicName != "" {
-		forensicNote = fmt.Sprintf(" — container preserved for forensics as %q (inspect with `incus file pull`/`incus start`, dispose with `incus delete`)", forensicName)
+		forensicNote = fmt.Sprintf(" — forensic copy preserved as %q (inspect with `incus file pull`/`incus start`, dispose with `incus delete`)", forensicName)
 	}
 
 	// Notify about the kill action BEFORE killing
@@ -275,32 +265,15 @@ func (r *Responder) killContainer(callerCtx context.Context) error {
 	// Get container IP BEFORE stopping (needed for cleanup)
 	containerIP, _ := network.GetContainerIPFast(r.containerName)
 
-	// Stop the container. Best-effort: a nonzero stop does NOT abort the
-	// response — the container may already be stopping (the session teardown
-	// races us) or the forkstart soft-fail returns nonzero though the stop
-	// took effect. We proceed to preserve/delete regardless; the terminal
-	// state, not this exit code, is what matters.
-	if _, err := container.StopContainerQuiet(ctx, r.containerName, true); err != nil {
-		r.reportError(fmt.Errorf("stop during kill returned an error (continuing): %w", err))
+	// First stop the container (captured output — this runs from the monitoring
+	// daemon goroutine while the session may be attached, issue #372). The
+	// container is ephemeral, so this also auto-deletes it.
+	_, err := container.StopContainerQuiet(ctx, r.containerName, true)
+	if err != nil {
+		return fmt.Errorf("failed to stop container: %w", err)
 	}
 
-	// Preserve (rename) IMMEDIATELY after the stop, before the firewall
-	// cleanups below: stopping the container also ends the attached session,
-	// whose own teardown then races to delete the (now stopped, no longer
-	// ephemeral) container — every millisecond between stop and rename widens
-	// that window. Once renamed, the teardown's delete of the ORIGINAL name is
-	// a harmless "not found". The rename of a stopped container is instant; a
-	// failed rename falls back to force-delete so the kill's contract (the
-	// container is GONE under its name) always holds.
-	if forensicName != "" {
-		if _, renameErr := container.IncusOutputContext(ctx, "rename", r.containerName, forensicName); renameErr != nil {
-			r.reportError(fmt.Errorf("failed to preserve forensic container (deleting instead): %w", renameErr))
-			forensicName = ""
-		}
-	}
-
-	// Clean up firewall and NFT monitoring rules (keyed on the captured IP,
-	// not the container name, so the rename above does not affect them).
+	// Clean up firewall and NFT monitoring rules BEFORE deleting container
 	if containerIP != "" {
 		if err := r.cleanupNftRules(containerIP); err != nil {
 			// Log warning but don't fail the kill operation
@@ -312,16 +285,11 @@ func (r *Responder) killContainer(callerCtx context.Context) error {
 		}
 	}
 
-	if forensicName == "" {
-		// --force so a still-running container (a failed stop above) is still
-		// removed; tolerate "not found" — for an ephemeral container the
-		// session teardown may have deleted it already, and the kill's goal
-		// state (gone under its name) is reached either way.
-		if out, delErr := container.IncusOutputWithStderrContext(ctx, "delete", "--force", r.containerName); delErr != nil {
-			if !container.IsNotFoundErr(delErr) && !strings.Contains(strings.ToLower(out), "not found") {
-				return fmt.Errorf("failed to delete container: %w", delErr)
-			}
-		}
+	// Then delete it. Tolerate not-found: an ephemeral container is
+	// auto-deleted on stop, so the explicit delete is belt-and-suspenders and
+	// routinely races that auto-delete (see IsNotFoundErr).
+	if _, err := container.IncusOutputContext(ctx, "delete", r.containerName); err != nil && !container.IsNotFoundErr(err) {
+		return fmt.Errorf("failed to delete container: %w", err)
 	}
 
 	r.mu.Lock()
@@ -329,10 +297,6 @@ func (r *Responder) killContainer(callerCtx context.Context) error {
 	r.mu.Unlock()
 	return nil
 }
-
-// killOperationTimeout bounds the detached kill sequence so a genuinely stuck
-// Incus daemon cannot hang the responder goroutine forever.
-const killOperationTimeout = 90 * time.Second
 
 // maxForensicCopies caps how many forensic copies may exist per container
 // name (oldest pruned first), so repeated incidents on the same slot cannot
