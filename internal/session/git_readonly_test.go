@@ -27,7 +27,7 @@ func TestRenderReadonlyGitConfig(t *testing.T) {
 	got := renderReadonlyGitConfig(GitIdentity{
 		Name:  "coipond-coder[bot]",
 		Email: "4624853+coipond-coder[bot]@users.noreply.github.com",
-	})
+	}, "")
 	for _, want := range []string{
 		`name = "coipond-coder[bot]"`,
 		`email = "4624853+coipond-coder[bot]@users.noreply.github.com"`,
@@ -40,9 +40,29 @@ func TestRenderReadonlyGitConfig(t *testing.T) {
 	}
 }
 
+func TestRenderReadonlyGitConfig_HooksPath(t *testing.T) {
+	id := GitIdentity{Name: "Bot", Email: "bot@x"}
+	with := renderReadonlyGitConfig(id, "/etc/coi/git-hooks")
+	if !strings.Contains(with, "[core]") || !strings.Contains(with, `hooksPath = "/etc/coi/git-hooks"`) {
+		t.Errorf("hooksPath must be baked into the readonly config:\n%s", with)
+	}
+	if without := renderReadonlyGitConfig(id, ""); strings.Contains(without, "hooksPath") {
+		t.Errorf("empty hooksPath must not add a core section:\n%s", without)
+	}
+}
+
+func TestReadonlyGitConfigHostPath_DistinctPerHooksPath(t *testing.T) {
+	id := GitIdentity{Name: "A", Email: "a@x"}
+	// Two parallel slots differing only in strip_attribution must not race on
+	// one host file with different contents.
+	if readonlyGitConfigHostPath("/home/u", id, "") == readonlyGitConfigHostPath("/home/u", id, "/etc/coi/git-hooks") {
+		t.Error("distinct hooksPath values must map to distinct host paths")
+	}
+}
+
 func TestReadonlyGitConfigHostPath_DistinctPerIdentity(t *testing.T) {
-	a := readonlyGitConfigHostPath("/home/u", GitIdentity{Name: "A", Email: "a@x"})
-	b := readonlyGitConfigHostPath("/home/u", GitIdentity{Name: "B", Email: "b@x"})
+	a := readonlyGitConfigHostPath("/home/u", GitIdentity{Name: "A", Email: "a@x"}, "")
+	b := readonlyGitConfigHostPath("/home/u", GitIdentity{Name: "B", Email: "b@x"}, "")
 	if a == b {
 		t.Error("distinct identities must map to distinct host paths")
 	}
@@ -83,7 +103,7 @@ func TestSetupGitIdentityReadonly(t *testing.T) {
 
 	t.Run("removes stale device then mounts read-only at the resolved home", func(t *testing.T) {
 		m := &stubMounter{}
-		if err := SetupGitIdentityReadonly(m, "/root", id); err != nil {
+		if err := SetupGitIdentityReadonly(m, "/root", id, ""); err != nil {
 			t.Fatalf("SetupGitIdentityReadonly: %v", err)
 		}
 		if len(m.removed) != 1 || m.removed[0] != gitReadonlyDeviceName {
@@ -115,7 +135,7 @@ func TestSetupGitIdentityReadonly(t *testing.T) {
 
 	t.Run("fails closed when the mount fails", func(t *testing.T) {
 		m := &stubMounter{mountErr: errors.New("incus boom")}
-		if err := SetupGitIdentityReadonly(m, "/home/code", id); err == nil {
+		if err := SetupGitIdentityReadonly(m, "/home/code", id, ""); err == nil {
 			t.Fatal("a mount failure must return an error (fail closed), not nil")
 		}
 	})

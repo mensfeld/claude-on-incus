@@ -22,14 +22,16 @@ type ConfigureOptions struct {
 	WorkspacePath string // Host workspace path (for security protection context)
 
 	// Features to apply (all optional)
-	NetworkConfig  *config.NetworkConfig // Network isolation mode and rules
-	LimitsConfig   *config.LimitsConfig  // Runtime limits (max_duration, max_processes)
-	ForwardSSH     bool                  // Forward host SSH agent into container
-	Timezone       string                // IANA timezone name (e.g., "Europe/Warsaw"), empty = UTC
-	ToolName       string                // "claude" triggers managed settings injection
-	PermissionMode string                // Tool permission mode: "bypass" (default) or "interactive"; "interactive" skips Claude auto-mode suppression (#764)
-	GitGuard       bool                  // Set git user.useConfigOnly=true
-	GitIdentity    GitIdentity           // Optional pre-resolved identity to configure when GitGuard is true
+	NetworkConfig               *config.NetworkConfig // Network isolation mode and rules
+	LimitsConfig                *config.LimitsConfig  // Runtime limits (max_duration, max_processes)
+	ForwardSSH                  bool                  // Forward host SSH agent into container
+	Timezone                    string                // IANA timezone name (e.g., "Europe/Warsaw"), empty = UTC
+	ToolName                    string                // "claude" triggers managed settings injection
+	PermissionMode              string                // Tool permission mode: "bypass" (default) or "interactive"; "interactive" skips Claude auto-mode suppression (#764)
+	GitGuard                    bool                  // Set git user.useConfigOnly=true
+	GitIdentity                 GitIdentity           // Optional pre-resolved identity to configure when GitGuard is true
+	GitStripAttribution         bool                  // Install the AI-attribution strip hook (#788)
+	GitStripAttributionPatterns []string              // Override default strip patterns (grep -E, per line)
 
 	Logger func(string)
 }
@@ -101,10 +103,19 @@ func ConfigureContainer(ctx context.Context, opts ConfigureOptions) (*ConfigureR
 		SetupGitIdentity(mgr, homeDir, opts.GitIdentity, opts.Logger)
 	}
 
-	// 3. Claude managed settings (skipped under interactive mode, see
-	// shouldSuppressClaudeAutoMode — #764).
-	if shouldSuppressClaudeAutoMode(opts.ToolName, opts.PermissionMode) {
-		SetupClaudeManagedSettings(mgr, opts.Logger)
+	// 2.1. AI-attribution strip hook (#788): global commit-msg hook removing
+	// co-author/tool-footer lines from every commit message.
+	if opts.GitStripAttribution {
+		SetupGitAttributionHook(mgr, homeDir, opts.GitStripAttributionPatterns, true, opts.Logger)
+	}
+
+	// 3. Claude managed settings: auto-mode suppression (skipped under
+	// interactive mode — #764) + includeCoAuthoredBy=false when attribution
+	// stripping is on (#788). No-op for other tools / nothing enabled.
+	if opts.ToolName == "claude" {
+		SetupClaudeManagedSettings(mgr,
+			shouldSuppressClaudeAutoMode(opts.ToolName, opts.PermissionMode),
+			opts.GitStripAttribution, opts.Logger)
 	}
 
 	// 4. Timezone

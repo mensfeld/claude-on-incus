@@ -263,6 +263,26 @@ type GitConfig struct {
 	// session fails closed rather than falling back to writable. Trusted-scope only,
 	// like name/email. Default false (writable, as before).
 	Readonly *bool `toml:"readonly"`
+	// StripAttribution installs a global commit-msg hook (core.hooksPath →
+	// /etc/coi/git-hooks, root-owned) that strips auto-injected AI attribution
+	// from every commit message — `Co-Authored-By: <tool bot>` trailers and
+	// "Generated with …" footers — so commits carry only the configured author
+	// identity (#788). Strip-don't-reject: it never blocks a commit. For Claude
+	// it additionally enforces includeCoAuthoredBy=false via managed settings.
+	// Default TRUE (clean history out of the box); set false to keep tool
+	// attribution. Trusted-scope only, like name/email — a cloned repo must not
+	// control how commits made in it are attributed.
+	//
+	// Known limitation: a repo whose LOCAL git config sets core.hooksPath (e.g.
+	// husky writes `core.hooksPath = .husky` into .git/config) overrides the
+	// global hook, so the strip does not run there; and `git commit --no-verify`
+	// skips commit-msg hooks entirely. The Claude managed-settings layer still
+	// covers both cases for Claude Code.
+	StripAttribution *bool `toml:"strip_attribution"`
+	// StripAttributionPatterns replaces the default strip patterns (grep -E
+	// extended regexes, matched per message line) when non-empty. Trusted-scope
+	// only, together with StripAttribution.
+	StripAttributionPatterns []string `toml:"strip_attribution_patterns"`
 }
 
 // IsSeedHostIdentityEnabled reports whether host-global git identity seeding is
@@ -279,6 +299,16 @@ func (g *GitConfig) IsSeedHostIdentityEnabled() bool {
 // read-only in the container. Default false (nil receiver or field).
 func (g *GitConfig) IsReadonlyEnabled() bool {
 	return g != nil && g.Readonly != nil && *g.Readonly
+}
+
+// IsStripAttributionEnabled reports whether the AI-attribution strip hook is
+// enabled. Defaults to TRUE when unset (nil receiver or field): clean commit
+// history is the out-of-the-box behavior, per #788.
+func (g *GitConfig) IsStripAttributionEnabled() bool {
+	if g == nil || g.StripAttribution == nil {
+		return true
+	}
+	return *g.StripAttribution
 }
 
 // SecurityConfig contains security-related settings for workspace protection
