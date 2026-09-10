@@ -301,39 +301,50 @@ func (r *Responder) stopAndDelete(callerCtx context.Context, detached bool) erro
 		defer cancel()
 	}
 
-	// Get container IP BEFORE stopping (needed for cleanup)
+	// Get container IP BEFORE removing it (needed for cleanup)
 	containerIP, _ := network.GetContainerIPFast(r.containerName)
 
-	// Stop the container (captured output — runs from the monitoring daemon
-	// goroutine while the session may be attached, issue #372). The container
-	// is ephemeral, so this also auto-deletes it.
+	if detached {
+		// FORENSICS path: one ATOMIC `incus delete --force`, which stops AND
+		// deletes in a single incusd operation. This is robust to the coi
+		// process (hosting this daemon) being torn down the instant the
+		// container stops: a two-step stop-then-delete can lose the delete in
+		// that window (the container is left "Stopped"), and — observed on the
+		// btrfs pool CI uses — the forensic copy also suppresses the ephemeral
+		// auto-delete that would otherwise be the backstop. Doing it in one
+		// incusd call sidesteps both. Tolerate not-found (a race already
+		// removed it). Cleanup first so the rules go even if the delete's
+		// caller dies right after.
+		r.cleanupContainerRules(containerIP)
+		if _, err := container.IncusOutputContext(ctx, "delete", "--force", r.containerName); err != nil && !container.IsNotFoundErr(err) {
+			return fmt.Errorf("failed to delete container: %w", err)
+		}
+		return nil
+	}
+
+	// DEFAULT path: master's exact stop-then-delete on the caller context.
 	if _, err := container.StopContainerQuiet(ctx, r.containerName, true); err != nil {
-		if !detached {
-			return fmt.Errorf("failed to stop container: %w", err)
-		}
-		// Forensics path: don't abort — the container may already be stopping
-		// or the stop soft-failed; the ephemeral auto-delete and the explicit
-		// force-delete below still bring it to the gone state.
-		r.reportError(fmt.Errorf("stop during kill returned an error (continuing): %w", err))
+		return fmt.Errorf("failed to stop container: %w", err)
 	}
-
-	// Clean up firewall and NFT monitoring rules BEFORE deleting container
-	if containerIP != "" {
-		if err := r.cleanupNftRules(containerIP); err != nil {
-			r.reportError(fmt.Errorf("failed to cleanup nft rules: %w", err))
-		}
-		if err := r.cleanupNFTRules(containerIP); err != nil {
-			r.reportError(fmt.Errorf("failed to cleanup NFT monitoring rules: %w", err))
-		}
-	}
-
-	// Delete explicitly. Tolerate not-found: an ephemeral container is
-	// auto-deleted on stop, so this is belt-and-suspenders and routinely races
-	// that auto-delete (see IsNotFoundErr). --force covers a soft-failed stop.
-	if _, err := container.IncusOutputContext(ctx, "delete", "--force", r.containerName); err != nil && !container.IsNotFoundErr(err) {
+	r.cleanupContainerRules(containerIP)
+	if _, err := container.IncusOutputContext(ctx, "delete", r.containerName); err != nil && !container.IsNotFoundErr(err) {
 		return fmt.Errorf("failed to delete container: %w", err)
 	}
 	return nil
+}
+
+// cleanupContainerRules removes the container's firewall and NFT monitoring
+// rules (keyed on the captured IP). Best-effort — warnings only.
+func (r *Responder) cleanupContainerRules(containerIP string) {
+	if containerIP == "" {
+		return
+	}
+	if err := r.cleanupNftRules(containerIP); err != nil {
+		r.reportError(fmt.Errorf("failed to cleanup nft rules: %w", err))
+	}
+	if err := r.cleanupNFTRules(containerIP); err != nil {
+		r.reportError(fmt.Errorf("failed to cleanup NFT monitoring rules: %w", err))
+	}
 }
 
 // maxForensicCopies caps how many forensic copies may exist per container
