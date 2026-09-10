@@ -27,6 +27,13 @@ func waitProbeReady(containerName string) bool {
 }
 
 // CheckContainerConnectivity tests internet connectivity from inside a container
+// probeLaunch is the launcher the isolation probes use, indirected through a
+// package var so a unit test can assert the resolved kernel-surface policy is
+// actually threaded to the launch (a live-container E2E can only observe this
+// when the environment can boot the seconds-lived probes at all). Production
+// value: the real policy-honoring launcher.
+var probeLaunch = container.LaunchContainerWithPreStartPolicy
+
 func CheckContainerConnectivity(imageName string, policy container.HardeningPolicy) HealthCheck {
 	// Skip if no image available
 	if imageName == "" {
@@ -47,7 +54,7 @@ func CheckContainerConnectivity(imageName string, policy container.HardeningPoli
 
 	// Launch ephemeral container on the Incus default pool — this probe is
 	// one-shot and pool routing isn't relevant to what we're checking.
-	if err := container.LaunchContainerWithPreStartPolicy(imageName, containerName, "", true, nil, policy); err != nil {
+	if err := probeLaunch(imageName, containerName, "", true, nil, policy); err != nil {
 		return HealthCheck{
 			Name:    "container_connectivity",
 			Status:  StatusFailed,
@@ -236,7 +243,7 @@ func CheckNetworkRestriction(imageName string, policy container.HardeningPolicy)
 
 	// Launch ephemeral container on the Incus default pool — this probe is
 	// one-shot and pool routing isn't relevant to what we're checking.
-	if err := container.LaunchContainerWithPreStartPolicy(imageName, containerName, "", true, nil, policy); err != nil {
+	if err := probeLaunch(imageName, containerName, "", true, nil, policy); err != nil {
 		return HealthCheck{
 			Name:    "network_restriction",
 			Status:  StatusFailed,
@@ -426,7 +433,7 @@ func CheckSecretMasking(imageName string, policy container.HardeningPolicy) Heal
 	}
 
 	containerName := fmt.Sprintf("coi-secret-check-%d", time.Now().UnixNano())
-	if err := container.LaunchContainerWithPreStartPolicy(imageName, containerName, "", true, nil, policy); err != nil {
+	if err := probeLaunch(imageName, containerName, "", true, nil, policy); err != nil {
 		return HealthCheck{Name: name, Status: StatusFailed, Message: fmt.Sprintf("Failed to launch test container: %v", err)}
 	}
 	defer func() {
@@ -535,7 +542,7 @@ func CheckHostCredentialIsolation(imageName string, policy container.HardeningPo
 	defer os.RemoveAll(workspace)
 
 	containerName := fmt.Sprintf("coi-hostcred-check-%d", time.Now().UnixNano())
-	if err := container.LaunchContainerWithPreStartPolicy(imageName, containerName, "", true, nil, policy); err != nil {
+	if err := probeLaunch(imageName, containerName, "", true, nil, policy); err != nil {
 		return HealthCheck{Name: name, Status: StatusFailed, Message: fmt.Sprintf("Failed to launch test container: %v", err)}
 	}
 	defer func() {
