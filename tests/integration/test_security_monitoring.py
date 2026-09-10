@@ -980,7 +980,7 @@ class TestAutomatedResponse:
         )
         time.sleep(5)
         killed = False
-        for _ in range(25):
+        for _ in range(35):
             time.sleep(1)
             if container_absent(container_name):
                 killed = True
