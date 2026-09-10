@@ -661,6 +661,7 @@ func startMonitoringDaemon(ctx context.Context, containerName, workspacePath str
 		ProcessSpawnRateThreshold: config.IntVal(cfg.Monitoring.ProcessSpawnRateThreshold),
 		AutoPauseOnHigh:           config.BoolVal(cfg.Monitoring.AutoPauseOnHigh),
 		AutoKillOnCritical:        config.BoolVal(cfg.Monitoring.AutoKillOnCritical),
+		ForensicsOnKill:           cfg.Monitoring.IsForensicsOnKillEnabled(),
 		OnThreat: func(threat monitor.ThreatEvent) {
 			log.Printf("[monitor] threat detected: %s severity=%s", threat.Title, threat.Level)
 		},
@@ -735,6 +736,7 @@ func startNFTMonitoringDaemon(ctx context.Context, containerName string, cfg *co
 		DNSQueryThreshold:  cfg.Monitoring.NFT.DNSQueryThreshold,
 		LogDNSQueries:      config.BoolVal(cfg.Monitoring.NFT.LogDNSQueries),
 		LimaHost:           cfg.Monitoring.NFT.LimaHost,
+		ForensicsOnKill:    cfg.Monitoring.IsForensicsOnKillEnabled(),
 		OnThreat: func(threat nftmonitor.ThreatEvent) {
 			log.Printf("[nft] threat detected: %s severity=%s", threat.Title, threat.Level)
 		},

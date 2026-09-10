@@ -47,6 +47,10 @@
     },
     "nft": {
       "$ref": "#/$defs/NFTMonitoringConfig"
+    },
+    "forensics_on_kill": {
+      "type": "boolean",
+      "description": "Preserve a stopped forensic copy of the container (incus copy, capped at 3 per container, oldest pruned) before an auto-kill on a critical threat deletes it — the kill fires exactly when the container's state is most worth investigating. Best-effort: a failed copy never blocks the security response. Default: true. Set false to skip (e.g. slow dir-driver pools)."
     }
   }
 }
