@@ -17,7 +17,7 @@ type Responder struct {
 	containerName      string
 	autoPauseOnHigh    bool
 	autoKillOnCritical bool
-	forensicsOnKill    bool // preserve a forensic copy of the container before the kill deletes it (default true)
+	forensicsOnKill    bool // preserve a forensic copy of the container before the kill deletes it (opt-in, default false)
 	auditLog           *AuditLog
 	onThreat           func(ThreatEvent)
 	onAction           func(action, message string) // Called when container is paused/killed
@@ -39,7 +39,7 @@ func NewResponder(containerName string, autoPauseOnHigh, autoKillOnCritical bool
 		containerName:      containerName,
 		autoPauseOnHigh:    autoPauseOnHigh,
 		autoKillOnCritical: autoKillOnCritical,
-		forensicsOnKill:    true, // default on; see SetForensicsOnKill
+		forensicsOnKill:    false, // opt-in; production sets it via SetForensicsOnKill([monitoring] forensics_on_kill)
 		auditLog:           auditLog,
 		onThreat:           onThreat,
 		recentThreats:      make(map[string]time.Time),
@@ -49,7 +49,7 @@ func NewResponder(containerName string, autoPauseOnHigh, autoKillOnCritical bool
 
 // SetForensicsOnKill controls whether killContainer preserves a forensic copy
 // of the container before deleting it ([monitoring] forensics_on_kill,
-// default true).
+// opt-in, default false).
 func (r *Responder) SetForensicsOnKill(enabled bool) {
 	r.forensicsOnKill = enabled
 }

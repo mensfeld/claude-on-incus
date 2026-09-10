@@ -84,3 +84,23 @@ func TestSanitizeUntrusted_GitStripAttribution(t *testing.T) {
 		t.Error("untrusted strip_attribution=true must be stripped too (trusted scope only)")
 	}
 }
+
+// forensics_on_kill is OPT-IN: default false, so an auto-kill deletes the
+// container as before unless the operator asks to keep the evidence.
+func TestForensicsOnKill_DefaultOffAndMerge(t *testing.T) {
+	if GetDefaultConfig().Monitoring.IsForensicsOnKillEnabled() {
+		t.Error("forensics_on_kill should default to disabled (opt-in)")
+	}
+	var nilCfg *MonitoringConfig
+	if nilCfg.IsForensicsOnKillEnabled() {
+		t.Error("nil monitoring config should report forensics disabled")
+	}
+	yes := true
+	base := GetDefaultConfig()
+	overlay := &Config{}
+	overlay.Monitoring.ForensicsOnKill = &yes
+	base.Merge(overlay)
+	if !base.Monitoring.IsForensicsOnKillEnabled() {
+		t.Error("overlay forensics_on_kill=true should win")
+	}
+}

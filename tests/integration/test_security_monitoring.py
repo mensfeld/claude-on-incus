@@ -838,9 +838,9 @@ class TestEnvironmentScanningPatterns:
 
 
 @pytest.fixture
-def enable_monitoring_no_forensics():
-    """Monitoring with auto-kill but forensics_on_kill disabled — the kill
-    must NOT leave a forensic copy behind."""
+def enable_monitoring_forensics():
+    """Monitoring with auto-kill AND forensics_on_kill enabled (opt-in) — the
+    kill must leave a forensic copy behind."""
     config_path = Path.home() / ".coi" / "config.toml"
     backup = config_path.read_text() if config_path.exists() else None
 
@@ -854,7 +854,7 @@ mode = "open"
 enabled = true
 auto_pause_on_high = true
 auto_kill_on_critical = true
-forensics_on_kill = false
+forensics_on_kill = true
 poll_interval_sec = 1
 file_read_threshold_mb = 500
 file_read_rate_mb_per_sec = 1000
@@ -987,7 +987,9 @@ class TestAutomatedResponse:
                 break
         return proc, container_name, killed
 
-    def test_kill_preserves_forensic_copy(self, test_workspace, enable_monitoring, coi_binary):
+    def test_kill_preserves_forensic_copy(
+        self, test_workspace, enable_monitoring_forensics, coi_binary
+    ):
         """An auto-kill fires exactly when the container state is most worth
         investigating — the responder must preserve a stopped forensic copy
         BEFORE the (ephemeral) container is stopped and deleted, so the
@@ -1029,10 +1031,8 @@ class TestAutomatedResponse:
                 )
             cleanup_container(container_name, coi_binary)
 
-    def test_kill_without_forensics_when_disabled(
-        self, test_workspace, enable_monitoring_no_forensics, coi_binary
-    ):
-        """Opt-out: forensics_on_kill = false kills without leaving a copy."""
+    def test_kill_without_forensics_by_default(self, test_workspace, enable_monitoring, coi_binary):
+        """Default (forensics_on_kill unset = off): the kill leaves no copy."""
         proc, container_name, killed = self._trigger_critical_and_wait_kill(
             coi_binary, test_workspace, slot=5
         )
