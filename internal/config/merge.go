@@ -136,6 +136,9 @@ func mergeMonitoring(base *MonitoringConfig, other *MonitoringConfig) {
 	if other.AutoKillOnCritical != nil {
 		base.AutoKillOnCritical = other.AutoKillOnCritical
 	}
+	if other.ForensicsOnKill != nil {
+		base.ForensicsOnKill = other.ForensicsOnKill
+	}
 
 	// Merge thresholds
 	if other.PollIntervalSec != 0 {

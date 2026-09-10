@@ -895,7 +895,19 @@ type MonitoringConfig struct {
 	ProcessCountThreshold     int                 `toml:"process_count_threshold"`      // Max processes before fork-bomb alert (0 = disabled)
 	ProcessSpawnRateThreshold *int                `toml:"process_spawn_rate_threshold"` // Max processes spawned per poll interval (0 = disabled, nil = inherit default)
 	AuditLogRetentionDays     int                 `toml:"audit_log_retention_days"`     // How long to keep audit logs
+	ForensicsOnKill           *bool               `toml:"forensics_on_kill"`            // Copy the container for forensics before an auto-kill deletes it (opt-in; default: false)
 	NFT                       NFTMonitoringConfig `toml:"nft"`                          // nftables network monitoring
+}
+
+// IsForensicsOnKillEnabled reports whether the responder should preserve a
+// forensic copy of the container before an auto-kill deletes it. Defaults to
+// FALSE (opt-in): an auto-kill fires exactly when the container's state is
+// most worth investigating, but preserving a copy leaves a stopped container
+// behind on every kill, so it is opt-in rather than a surprising default. Set
+// [monitoring] forensics_on_kill = true to keep the evidence for
+// investigation instead of just the audit log.
+func (m *MonitoringConfig) IsForensicsOnKillEnabled() bool {
+	return m != nil && m.ForensicsOnKill != nil && *m.ForensicsOnKill
 }
 
 // SudoAllowed reports whether COI may invoke `sudo` for network operations.

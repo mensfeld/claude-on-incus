@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mensfeld/code-on-incus/internal/config"
+	"github.com/mensfeld/code-on-incus/internal/container"
 )
 
 // CheckStatus represents the status of a health check
@@ -95,17 +96,25 @@ func RunAllChecks(cfg *config.Config, verbose bool) *HealthResult {
 	checks["orphaned_resources"] = CheckOrphanedResources()
 	checks["firewalld_veth_bloat"] = CheckFirewalldVethBloat()
 
-	// Container networking checks (critical for detecting real networking issues)
-	checks["container_connectivity"] = CheckContainerConnectivity(cfg.Container.Image)
-	checks["network_restriction"] = CheckNetworkRestriction(cfg.Container.Image)
+	// Container networking checks (critical for detecting real networking issues).
+	// Probe containers honor the user's kernel-surface policy: under
+	// [security] reduce_kernel_surface / [container] docker = false a probe
+	// must not silently boot with the full docker/nesting surface — the exact
+	// class of widening the policy exists to prevent.
+	probePolicy := container.HardeningPolicy{
+		Docker:              cfg.Container.IsDockerEnabled(),
+		ReduceKernelSurface: cfg.Security.IsReduceKernelSurfaceEnabled(),
+	}
+	checks["container_connectivity"] = CheckContainerConnectivity(cfg.Container.Image, probePolicy)
+	checks["network_restriction"] = CheckNetworkRestriction(cfg.Container.Image, probePolicy)
 
 	// Runtime isolation proof: verify secret_paths masking actually hides a
 	// planted decoy secret from inside a container (not just that config parses).
-	checks["secret_masking"] = CheckSecretMasking(cfg.Container.Image)
+	checks["secret_masking"] = CheckSecretMasking(cfg.Container.Image, probePolicy)
 
 	// Runtime isolation proof: verify host home/credentials are not reachable
 	// inside the container (COI's "credentials never exposed" guarantee).
-	checks["host_credential_isolation"] = CheckHostCredentialIsolation(cfg.Container.Image)
+	checks["host_credential_isolation"] = CheckHostCredentialIsolation(cfg.Container.Image, probePolicy)
 
 	// NFT monitoring checks (only if enabled in config)
 	if config.BoolVal(cfg.Monitoring.NFT.Enabled) {
