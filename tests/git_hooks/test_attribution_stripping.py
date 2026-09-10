@@ -57,9 +57,11 @@ def _start_background_shell(coi_binary, workspace_dir, env):
 
 def _exec(coi_binary, name, script):
     """Run a shell snippet with the code user's HOME so global git config is
-    the one COI configured. Returns (exit code, combined output)."""
+    the one COI configured. `export` (not a `HOME=x cmd` prefix) so the value
+    survives across the script's `&&` chains — a prefix assignment only applies
+    to the first command. Returns (exit code, combined output)."""
     result = subprocess.run(
-        [coi_binary, "container", "exec", name, "--", "sh", "-c", f"HOME={HOME} {script}"],
+        [coi_binary, "container", "exec", name, "--", "sh", "-c", f"export HOME={HOME}; {script}"],
         capture_output=True,
         text=True,
         timeout=30,
