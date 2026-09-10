@@ -328,8 +328,10 @@ type SecurityConfig struct {
 	// (io_uring, bpf, userfaultfd, keyring) via security.syscalls.deny. The
 	// container still shares the host kernel — this narrows the boundary, it
 	// does not make it safe against a kernel 0-day. Default: false. Trusted
-	// scope only: stripped from untrusted repo configs in either direction (an
-	// untrusted `true` would silently break the user's Docker workflow).
+	// scope only: stripped from untrusted repo configs in either direction,
+	// because its syscall deny list can break legitimate non-Docker workloads
+	// in the container — a broader blast radius than [container] docker = false
+	// (which only turns off nesting and IS honored from untrusted scope).
 	ReduceKernelSurface *bool `toml:"reduce_kernel_surface"`
 }
 

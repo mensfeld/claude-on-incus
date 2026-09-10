@@ -313,9 +313,15 @@ func sanitizeUntrustedSecurity(s *SecurityConfig, path string) {
 	}
 	s.HostImmutable = nil
 	if s.ReduceKernelSurface != nil && !*s.ReduceKernelSurface {
-		// Only false is a downgrade; a strengthening true is dropped too — an
-		// untrusted repo silently disabling the user's Docker workflow is its
-		// own kind of surprise (trusted config controls kernel hardening).
+		// Only false is a downgrade to warn about. Unlike [container] docker =
+		// false — a narrow tightening (nesting off) that IS honored from
+		// untrusted scope — reduce_kernel_surface is trusted-only in BOTH
+		// directions because its effect is broad: on top of disabling Docker it
+		// installs a security.syscalls.deny list (io_uring, bpf, userfaultfd,
+		// keyring) that can break legitimate NON-Docker workloads in the
+		// container. That blast radius, not merely "it turns Docker off", is
+		// why a cloned repo must not be able to impose it (or lift it). The
+		// strengthening true is therefore dropped silently.
 		warnUntrustedDowngrade(path, "security.reduce_kernel_surface")
 	}
 	s.ReduceKernelSurface = nil
@@ -450,8 +456,13 @@ func sanitizeUntrustedSessionName(c *ContainerConfig, path string) {
 
 // sanitizeUntrustedDocker strips an untrusted `[container] docker = true`: a
 // cloned/agent-planted repo must not re-enable nesting and the wider kernel
-// surface that a trusted profile disabled. `docker = false` only tightens, so
-// it is honored from any scope. nil is a no-op.
+// surface that a trusted profile disabled. `docker = false` is a NARROW
+// tightening — it only turns off nesting/syscall-interception, with no effect
+// on ordinary in-container workloads — so it is honored from any scope, the
+// same as an add-only network restriction. (Contrast security.reduce_kernel_-
+// surface, which is trusted-only in both directions because its syscall deny
+// list has a far broader blast radius; see sanitizeUntrustedSecurity.) nil is
+// a no-op.
 func sanitizeUntrustedDocker(c *ContainerConfig, path string) {
 	if c == nil || c.Docker == nil || !*c.Docker {
 		return
