@@ -17,7 +17,7 @@ type Responder struct {
 	containerName      string
 	autoPauseOnHigh    bool
 	autoKillOnCritical bool
-	forensicsOnKill    bool // preserve a copy of the container before the kill deletes it (default true)
+	forensicsOnKill    bool // preserve (rename) the container for forensics instead of deleting it (default true)
 	auditLog           *AuditLog
 	onThreat           func(ThreatEvent)
 	onAction           func(action, message string) // Called when container is paused/killed
@@ -47,8 +47,8 @@ func NewResponder(containerName string, autoPauseOnHigh, autoKillOnCritical bool
 	}
 }
 
-// SetForensicsOnKill controls whether killContainer preserves a forensic copy
-// of the container before deleting it ([monitoring] forensics_on_kill,
+// SetForensicsOnKill controls whether killContainer preserves the container
+// for forensics (renamed) instead of deleting it ([monitoring] forensics_on_kill,
 // default true).
 func (r *Responder) SetForensicsOnKill(enabled bool) {
 	r.forensicsOnKill = enabled
@@ -217,11 +217,12 @@ func (r *Responder) pauseContainer(ctx context.Context) error {
 	return nil
 }
 
-// killContainer stops and deletes the container, preserving a forensic copy
-// first (unless disabled): the auto-kill fires exactly when the container's
-// state is most worth investigating — deleting it with the threat would
-// destroy the evidence of HOW the attempt worked, leaving only the audit log
-// ("snapshot state for investigation before deactivating", Trail of Bits).
+// killContainer stops and removes the container from service, preserving it
+// for forensics (unless disabled): the auto-kill fires exactly when the
+// container's state is most worth investigating — deleting it with the threat
+// would destroy the evidence of HOW the attempt worked, leaving only the
+// audit log ("snapshot state for investigation before deactivating", Trail of
+// Bits). Either way the container is GONE under its original name.
 func (r *Responder) killContainer(ctx context.Context) error {
 	r.mu.Lock()
 	if r.killed {
@@ -230,16 +231,26 @@ func (r *Responder) killContainer(ctx context.Context) error {
 	}
 	r.mu.Unlock()
 
-	// Forensic copy BEFORE the stop: an ephemeral container is auto-deleted
-	// the moment it stops, so this is the only window. Best-effort — a failed
-	// copy must never block the security response.
-	forensicNote := ""
+	// Forensic preservation is ZERO-COPY: clear the ephemeral flag while the
+	// container is still running (so the stop below cannot auto-delete it),
+	// then RENAME the stopped container to the forensics name instead of
+	// deleting it. An `incus copy` would transfer the whole rootfs — tens of
+	// seconds on CI-class pools, delaying the security response — while the
+	// property flip + rename are instant and preserve the actual instance,
+	// not a copy. Best-effort: any failure falls back to the plain
+	// stop-and-delete kill.
+	forensicName := ""
 	if r.forensicsOnKill {
-		if name, err := r.createForensicCopy(ctx); err != nil {
-			r.reportError(fmt.Errorf("failed to create forensic copy (continuing with kill): %w", err))
+		r.pruneForensicCopies(ctx)
+		if _, err := container.IncusOutputContext(ctx, "config", "set", r.containerName, "ephemeral=false", "--property"); err != nil {
+			r.reportError(fmt.Errorf("failed to clear ephemeral flag for forensics (continuing with plain kill): %w", err))
 		} else {
-			forensicNote = fmt.Sprintf(" — forensic copy preserved as %q (inspect with `incus file pull`/`incus start`, dispose with `incus delete`)", name)
+			forensicName = forensicCopyName(r.containerName, time.Now())
 		}
+	}
+	forensicNote := ""
+	if forensicName != "" {
+		forensicNote = fmt.Sprintf(" — container preserved for forensics as %q (inspect with `incus file pull`/`incus start`, dispose with `incus delete`)", forensicName)
 	}
 
 	// Notify about the kill action BEFORE killing
@@ -269,10 +280,20 @@ func (r *Responder) killContainer(ctx context.Context) error {
 		}
 	}
 
-	// Then delete it
-	_, err = container.IncusOutputContext(ctx, "delete", r.containerName)
-	if err != nil {
-		return fmt.Errorf("failed to delete container: %w", err)
+	// Preserve (rename) or delete. The rename only runs on a stopped
+	// container, so it is instant; a failed rename falls back to delete so
+	// the kill's contract (the container is GONE under its name) always holds.
+	if forensicName != "" {
+		if _, renameErr := container.IncusOutputContext(ctx, "rename", r.containerName, forensicName); renameErr != nil {
+			r.reportError(fmt.Errorf("failed to preserve forensic container (deleting instead): %w", renameErr))
+			forensicName = ""
+		}
+	}
+	if forensicName == "" {
+		_, err = container.IncusOutputContext(ctx, "delete", r.containerName)
+		if err != nil {
+			return fmt.Errorf("failed to delete container: %w", err)
+		}
 	}
 
 	r.mu.Lock()
@@ -286,7 +307,7 @@ func (r *Responder) killContainer(ctx context.Context) error {
 // fill the storage pool.
 const maxForensicCopies = 3
 
-// forensicCopyName derives the copy's container name. The unix-seconds suffix
+// forensicCopyName derives the preserved container's name. The unix-seconds suffix
 // is fixed-width for the next few centuries, so lexicographic order equals
 // chronological order — pruning can sort names directly.
 func forensicCopyName(containerName string, now time.Time) string {
@@ -313,28 +334,20 @@ func forensicCopiesToPrune(names []string, containerName string) []string {
 	return nil
 }
 
-// createForensicCopy copies the (still running) container to a stopped,
-// non-ephemeral sibling that survives the kill's delete, pruning older copies
-// beyond the cap first. Returns the copy's name.
-func (r *Responder) createForensicCopy(ctx context.Context) (string, error) {
-	// Prune first so the pool has room for the new copy. Best-effort: a
-	// failed list/delete must not stop the evidence capture.
-	if out, err := container.IncusOutputContext(ctx, "list", "--format", "csv", "-c", "n", r.containerName+"-forensics-"); err == nil {
-		names := strings.Fields(strings.TrimSpace(out))
-		for _, stale := range forensicCopiesToPrune(names, r.containerName) {
-			if _, err := container.IncusOutputContext(ctx, "delete", "--force", stale); err != nil {
-				r.reportError(fmt.Errorf("failed to prune old forensic copy %s: %w", stale, err))
-			}
+// pruneForensicCopies deletes the oldest preserved containers beyond the cap
+// so the one about to be created fits under it. Best-effort: a failed
+// list/delete must not stop the evidence preservation or the kill.
+func (r *Responder) pruneForensicCopies(ctx context.Context) {
+	out, err := container.IncusOutputContext(ctx, "list", "--format", "csv", "-c", "n", r.containerName+"-forensics-")
+	if err != nil {
+		return
+	}
+	names := strings.Fields(strings.TrimSpace(out))
+	for _, stale := range forensicCopiesToPrune(names, r.containerName) {
+		if _, err := container.IncusOutputContext(ctx, "delete", "--force", stale); err != nil {
+			r.reportError(fmt.Errorf("failed to prune old forensic container %s: %w", stale, err))
 		}
 	}
-	name := forensicCopyName(r.containerName, time.Now())
-	// `incus copy` of a running container snapshots its disk into a STOPPED,
-	// non-ephemeral copy — exactly what forensics needs: it survives both the
-	// stop (which auto-deletes an ephemeral source) and the explicit delete.
-	if _, err := container.IncusOutputContext(ctx, "copy", r.containerName, name); err != nil {
-		return "", err
-	}
-	return name, nil
 }
 
 // cleanupNftRules removes nft rules for a container IP

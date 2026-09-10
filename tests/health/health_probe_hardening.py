@@ -33,18 +33,26 @@ def _write_hardened_config():
     return {**os.environ, "COI_CONFIG": path}
 
 
-def _list_probe_containers():
+def _list_running_probe_containers():
+    """Probe containers currently RUNNING. The kernel-surface policy is applied
+    at init, strictly BEFORE the first start — so reading the config of a
+    not-yet-started probe races the setup and can observe the pre-policy
+    state. A RUNNING probe's config is authoritative."""
     result = subprocess.run(
-        ["incus", "list", "--format", "csv", "-c", "n", "coi-"],
+        ["incus", "list", "--format", "csv", "-c", "ns", "coi-"],
         capture_output=True,
         text=True,
         timeout=10,
     )
     names = []
     for row in result.stdout.strip().splitlines():
-        name = row.strip()
-        if name.startswith(PROBE_PREFIXES):
-            names.append(name)
+        parts = row.strip().split(",")
+        if (
+            len(parts) >= 2
+            and parts[0].startswith(PROBE_PREFIXES)
+            and parts[1].upper() == "RUNNING"
+        ):
+            names.append(parts[0])
     return names
 
 
@@ -75,13 +83,13 @@ def test_health_probes_honor_reduce_kernel_surface(coi_binary, cleanup_container
     try:
         # Poll fast while the health run is alive; each probe lives seconds.
         while proc.poll() is None:
-            for name in _list_probe_containers():
+            for name in _list_running_probe_containers():
                 if name in observed:
                     continue
                 rc_n, nesting = _expanded_get(name, "security.nesting")
                 rc_d, deny = _expanded_get(name, "security.syscalls.deny")
                 # The container may vanish between list and get; only record
-                # complete reads.
+                # complete reads of a container that was RUNNING at list time.
                 if rc_n == 0 and rc_d == 0:
                     observed[name] = (nesting, deny)
             time.sleep(0.1)

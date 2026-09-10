@@ -895,15 +895,15 @@ type MonitoringConfig struct {
 	ProcessCountThreshold     int                 `toml:"process_count_threshold"`      // Max processes before fork-bomb alert (0 = disabled)
 	ProcessSpawnRateThreshold *int                `toml:"process_spawn_rate_threshold"` // Max processes spawned per poll interval (0 = disabled, nil = inherit default)
 	AuditLogRetentionDays     int                 `toml:"audit_log_retention_days"`     // How long to keep audit logs
-	ForensicsOnKill           *bool               `toml:"forensics_on_kill"`            // Copy the container for forensics before an auto-kill destroys it (default: true)
+	ForensicsOnKill           *bool               `toml:"forensics_on_kill"`            // Preserve (rename) the container for forensics instead of deleting it on auto-kill (default: true)
 	NFT                       NFTMonitoringConfig `toml:"nft"`                          // nftables network monitoring
 }
 
 // IsForensicsOnKillEnabled reports whether the responder should preserve a
-// forensic copy of the container before an auto-kill deletes it. Defaults to
+// forensic container (renamed, zero-copy) when an auto-kill fires. Defaults to
 // TRUE: an auto-kill fires exactly when the container's state is most worth
 // investigating, and destroying the evidence with the threat would leave only
-// the audit log. Set false to skip the copy (e.g. on slow dir-driver pools).
+// the audit log. Set false to keep the plain stop-and-delete kill.
 func (m *MonitoringConfig) IsForensicsOnKillEnabled() bool {
 	if m == nil || m.ForensicsOnKill == nil {
 		return true
