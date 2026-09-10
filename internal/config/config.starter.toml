@@ -146,6 +146,13 @@
                                  # config — any `git config --global` fails; needs an identity).
                                  # (name/email/seed_host_identity/readonly are trusted-scope only —
                                  #  ignored in a project .coi/config.toml)
+# strip_attribution = true       # default: a global commit-msg hook strips auto-injected AI
+                                 # attribution (Co-Authored-By trailers / "Generated with" footers)
+                                 # from every commit, so commits carry only the configured author.
+                                 # Limitations: a repo-local core.hooksPath (husky) bypasses it,
+                                 # and `git commit --no-verify` skips commit-msg hooks.
+# strip_attribution_patterns = ["^Co-[Aa]uthored-[Bb]y:"]  # replace the default strip patterns
+                                 # (grep -E, per message line; trusted-scope only, like the flag)
 
 [ssh]
 # forward_agent = false          # forward the host SSH agent into the container

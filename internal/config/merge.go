@@ -622,6 +622,12 @@ func mergeGitInto(dst *GitConfig, src *GitConfig) {
 	mergeScalar(&dst.Email, src.Email)
 	mergePtr(&dst.SeedHostIdentity, src.SeedHostIdentity)
 	mergePtr(&dst.Readonly, src.Readonly)
+	mergePtr(&dst.StripAttribution, src.StripAttribution)
+	// Replacement, not union: a later scope's pattern list fully defines what is
+	// stripped (the built-in defaults apply only when no scope sets any).
+	if len(src.StripAttributionPatterns) > 0 {
+		dst.StripAttributionPatterns = src.StripAttributionPatterns
+	}
 }
 
 func mergeSSHInto(dst *SSHConfig, src *SSHConfig) {

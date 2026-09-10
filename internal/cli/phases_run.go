@@ -463,14 +463,39 @@ func (a *App) configureContainerRunPhase(s *runState) session.Phase {
 			// was created, instead of silently keeping stale values.
 			homeDir := "/home/" + container.CodeUser
 			gitID := resolveGitIdentity(&a.cfg.Git)
-			if a.cfg.Git.IsReadonlyEnabled() && gitID.Complete() {
+			stripAttribution := a.cfg.Git.IsStripAttributionEnabled()
+			hooksPath := ""
+			if stripAttribution {
+				hooksPath = session.GitHooksDir
+			}
+			readonlyLock := a.cfg.Git.IsReadonlyEnabled() && gitID.Complete()
+			if readonlyLock {
 				// Fail closed: the user asked to lock the identity read-only.
-				if err := session.SetupGitIdentityReadonly(s.mgr, homeDir, gitID); err != nil {
+				// core.hooksPath for the attribution strip hook rides inside the
+				// mounted gitconfig (a live `git config --global` would fail
+				// against the read-only mount).
+				if err := session.SetupGitIdentityReadonly(s.mgr, homeDir, gitID, hooksPath); err != nil {
 					return nil, fmt.Errorf("git.readonly: could not lock the commit identity read-only: %w", err)
 				}
 			} else {
 				session.SetupGitIdentityGuard(s.mgr, homeDir, logFn)
 				session.SetupGitIdentity(s.mgr, homeDir, gitID, logFn)
+			}
+			// AI-attribution strip hook (#788), mirroring the shell path: the
+			// hook dir is needed on both identity paths; core.hooksPath is
+			// written live only when the gitconfig is writable.
+			if stripAttribution {
+				session.SetupGitAttributionHook(s.mgr, homeDir, a.cfg.Git.StripAttributionPatterns, !readonlyLock, logFn)
+			} else if !readonlyLock {
+				session.RemoveGitAttributionHookConfig(s.mgr, homeDir)
+			}
+			// Claude source-level layer for the same policy
+			// (includeCoAuthoredBy=false via managed settings) — it also covers
+			// the hook's two blind spots (local core.hooksPath repos, commits
+			// with --no-verify). Auto-mode suppression stays off here: the run
+			// pipeline never needed it (#764 concerns interactive sessions).
+			if a.cfg.Tool.Name == "claude" {
+				session.SetupClaudeManagedSettings(s.mgr, false, stripAttribution, logFn)
 			}
 			if err := session.SetupCredentials(s.mgr, homeDir, s.credentialConfig, logFn); err != nil {
 				return nil, fmt.Errorf("failed to set up credentials: %w", err)

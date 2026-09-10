@@ -56,7 +56,7 @@ func (r *managedSettingsRecorder) CreateFileWithOwner(path, content string, uid,
 func TestSetupClaudeManagedSettingsCreatesRootOwnedWorldReadableFile(t *testing.T) {
 	rec := &managedSettingsRecorder{}
 
-	SetupClaudeManagedSettings(rec, func(msg string) { t.Log(msg) })
+	SetupClaudeManagedSettings(rec, true, true, func(msg string) { t.Log(msg) })
 
 	if len(rec.creates) != 1 {
 		t.Fatalf("expected exactly one CreateFileWithOwner call, got %v", rec.creates)
@@ -106,7 +106,7 @@ func TestSetupClaudeManagedSettingsWarnsWhenWriteFails(t *testing.T) {
 	rec := &managedSettingsRecorder{createErr: errors.New("push failed")}
 	var logs []string
 
-	SetupClaudeManagedSettings(rec, func(msg string) { logs = append(logs, msg) })
+	SetupClaudeManagedSettings(rec, true, false, func(msg string) { logs = append(logs, msg) })
 
 	if len(logs) == 0 {
 		t.Fatal("expected a warning log when writing managed settings fails")
@@ -122,7 +122,7 @@ func TestSetupClaudeManagedSettingsSkipsWriteWhenMkdirFails(t *testing.T) {
 	}}
 	var logs []string
 
-	SetupClaudeManagedSettings(rec, func(msg string) { logs = append(logs, msg) })
+	SetupClaudeManagedSettings(rec, true, false, func(msg string) { logs = append(logs, msg) })
 
 	if len(rec.creates) != 0 {
 		t.Fatalf("no file should be written after mkdir failure, got %v", rec.creates)

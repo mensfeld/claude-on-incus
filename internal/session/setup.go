@@ -28,46 +28,48 @@ const (
 
 // SetupOptions contains options for setting up a session
 type SetupOptions struct {
-	WorkspacePath         string
-	SessionName           string // [container] session_name: keys the session identity instead of the workspace path when set
-	Image                 string
-	StoragePool           string // [container] storage_pool: Incus storage pool for the container (empty = Incus default pool)
-	Persistent            bool   // Keep container between sessions (don't delete on cleanup)
-	ResumeFromID          string
-	Slot                  int
-	MountConfig           *MountConfig      // Multi-mount support
-	SocketConfig          *SocketConfig     // Forwarded host unix sockets
-	CredentialConfig      *CredentialConfig // Configured [[credentials]] entries (catalog + ad-hoc)
-	PortConfig            *PortConfig       // Configured [[ports]] entries to publish on the host (#558)
-	SessionsDir           string            // e.g., ~/.coi/sessions-claude
-	CLIConfigPath         string            // e.g., ~/.claude (host CLI config to copy credentials from)
-	Tool                  tool.Tool         // AI coding tool being used
-	PermissionMode        string            // Tool permission mode: "bypass" (default) or "interactive"; gates Claude auto-mode suppression (#764)
-	NetworkConfig         *config.NetworkConfig
-	DisableShift          bool                   // Disable UID shifting (for Colima/Lima environments)
-	LimitsConfig          *config.LimitsConfig   // Resource and time limits
-	IncusProject          string                 // Incus project name
-	ProtectedPaths        []string               // Paths to mount read-only for security (e.g., .git/hooks, .vscode)
-	Security              *config.SecurityConfig // Security config, so worktree-config expansion honors disable_protection/writable_paths (nil = expand unconditionally)
-	SecretPaths           []string               // Workspace-relative globs to MASK (empty read-only mount hides contents) — issue #494
-	PreserveWorkspacePath bool                   // Mount workspace at same path as host instead of /workspace
-	ForwardSSHAgent       bool                   // Forward host SSH agent to container
-	ForwardedEnvVars      []string               // Names of host env vars being forwarded (for context file)
-	GitIdentity           GitIdentity            // Resolved host git identity to configure inside the container
-	GitReadonly           bool                   // Identity is provided by a read-only ~/.gitconfig mount; skip the in-container git config writes
-	ContextFilePath       string                 // Path to custom context .md file on host (overrides tool default)
-	ProfileContextFile    string                 // Path to profile context .md file (appended to sandbox context)
-	Timezone              string                 // Resolved IANA timezone name (e.g., "America/New_York"), empty for UTC
-	AutoContext           *bool                  // Auto-inject sandbox context into tool's native system (default: true)
-	ContextJSON           *bool                  // Write ~/SANDBOX_CONTEXT.json for programmatic consumers (default: true)
-	ContextJSONFilePath   string                 // Path to custom context .json file on host (overrides the generated JSON)
-	HostImmutable         bool                   // Apply chattr +i on host-side protected paths (set by CLI from config)
-	Alias                 string                 // Human-friendly alias for this container (set user.coi.alias)
-	ReadyTimeout          int                    // Seconds to wait for the container to become ready (<=0 = default 30)
-	DockerSupport         bool                   // [container] docker (raw flag; precedence vs ReduceKernelSurface is resolved by container.HardeningPolicy.DockerEnabled): nesting + syscall interception + low-port sysctl
-	ReduceKernelSurface   bool                   // [security] reduce_kernel_surface: deny high-risk kernel-escape syscalls; wins over DockerSupport
-	Logger                func(string)
-	ContainerName         string // Use existing container (for testing) - skips container creation
+	WorkspacePath               string
+	SessionName                 string // [container] session_name: keys the session identity instead of the workspace path when set
+	Image                       string
+	StoragePool                 string // [container] storage_pool: Incus storage pool for the container (empty = Incus default pool)
+	Persistent                  bool   // Keep container between sessions (don't delete on cleanup)
+	ResumeFromID                string
+	Slot                        int
+	MountConfig                 *MountConfig      // Multi-mount support
+	SocketConfig                *SocketConfig     // Forwarded host unix sockets
+	CredentialConfig            *CredentialConfig // Configured [[credentials]] entries (catalog + ad-hoc)
+	PortConfig                  *PortConfig       // Configured [[ports]] entries to publish on the host (#558)
+	SessionsDir                 string            // e.g., ~/.coi/sessions-claude
+	CLIConfigPath               string            // e.g., ~/.claude (host CLI config to copy credentials from)
+	Tool                        tool.Tool         // AI coding tool being used
+	PermissionMode              string            // Tool permission mode: "bypass" (default) or "interactive"; gates Claude auto-mode suppression (#764)
+	NetworkConfig               *config.NetworkConfig
+	DisableShift                bool                   // Disable UID shifting (for Colima/Lima environments)
+	LimitsConfig                *config.LimitsConfig   // Resource and time limits
+	IncusProject                string                 // Incus project name
+	ProtectedPaths              []string               // Paths to mount read-only for security (e.g., .git/hooks, .vscode)
+	Security                    *config.SecurityConfig // Security config, so worktree-config expansion honors disable_protection/writable_paths (nil = expand unconditionally)
+	SecretPaths                 []string               // Workspace-relative globs to MASK (empty read-only mount hides contents) — issue #494
+	PreserveWorkspacePath       bool                   // Mount workspace at same path as host instead of /workspace
+	ForwardSSHAgent             bool                   // Forward host SSH agent to container
+	ForwardedEnvVars            []string               // Names of host env vars being forwarded (for context file)
+	GitIdentity                 GitIdentity            // Resolved host git identity to configure inside the container
+	GitReadonly                 bool                   // Identity is provided by a read-only ~/.gitconfig mount; skip the in-container git config writes
+	GitStripAttribution         bool                   // [git] strip_attribution: install the global commit-msg hook stripping AI co-author/footer lines (#788)
+	GitStripAttributionPatterns []string               // [git] strip_attribution_patterns: override the default strip patterns (grep -E, per line)
+	ContextFilePath             string                 // Path to custom context .md file on host (overrides tool default)
+	ProfileContextFile          string                 // Path to profile context .md file (appended to sandbox context)
+	Timezone                    string                 // Resolved IANA timezone name (e.g., "America/New_York"), empty for UTC
+	AutoContext                 *bool                  // Auto-inject sandbox context into tool's native system (default: true)
+	ContextJSON                 *bool                  // Write ~/SANDBOX_CONTEXT.json for programmatic consumers (default: true)
+	ContextJSONFilePath         string                 // Path to custom context .json file on host (overrides the generated JSON)
+	HostImmutable               bool                   // Apply chattr +i on host-side protected paths (set by CLI from config)
+	Alias                       string                 // Human-friendly alias for this container (set user.coi.alias)
+	ReadyTimeout                int                    // Seconds to wait for the container to become ready (<=0 = default 30)
+	DockerSupport               bool                   // [container] docker (raw flag; precedence vs ReduceKernelSurface is resolved by container.HardeningPolicy.DockerEnabled): nesting + syscall interception + low-port sysctl
+	ReduceKernelSurface         bool                   // [security] reduce_kernel_surface: deny high-risk kernel-escape syscalls; wins over DockerSupport
+	Logger                      func(string)
+	ContainerName               string // Use existing container (for testing) - skips container creation
 }
 
 // SetupResult contains the result of setup
@@ -472,11 +474,15 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 		return nil, err
 	}
 
-	// 6.6.2. Suppress the Claude Code auto-mode prompt via managed settings.
-	// Claude-specific and skipped under interactive mode — see
-	// shouldSuppressClaudeAutoMode for the rationale (#764).
-	if opts.Tool != nil && shouldSuppressClaudeAutoMode(opts.Tool.Name(), opts.PermissionMode) {
-		SetupClaudeManagedSettings(result.Manager, opts.Logger)
+	// 6.6.2. Claude managed settings: auto-mode prompt suppression (skipped
+	// under interactive mode — see shouldSuppressClaudeAutoMode, #764) and
+	// includeCoAuthoredBy=false when attribution stripping is on (#788; applies
+	// in interactive mode too — attribution policy is not a permission choice).
+	// No-op for other tools or when neither part is enabled.
+	if opts.Tool != nil && opts.Tool.Name() == "claude" {
+		SetupClaudeManagedSettings(result.Manager,
+			shouldSuppressClaudeAutoMode(opts.Tool.Name(), opts.PermissionMode),
+			opts.GitStripAttribution, opts.Logger)
 	}
 
 	// 6.7. Configure timezone inside container
@@ -1344,10 +1350,18 @@ func remapContainerUser(result *SetupResult, opts SetupOptions) error {
 // configureGitIdentity locks the commit identity read-only when git.readonly
 // is set with a complete identity (fail-closed), otherwise installs the
 // useConfigOnly guard and writes the identity. Extracted verbatim from Setup
-// (§6.6.1).
+// (§6.6.1). Also installs the [git] strip_attribution hook (#788): on the
+// readonly path core.hooksPath rides inside the mounted gitconfig (a live
+// `git config --global` would fail read-only), on the writable path the hook
+// setup writes it itself.
 func configureGitIdentity(result *SetupResult, opts SetupOptions) error {
-	if opts.GitReadonly && opts.GitIdentity.Complete() {
-		if err := SetupGitIdentityReadonly(result.Manager, result.HomeDir, opts.GitIdentity); err != nil {
+	readonlyLock := opts.GitReadonly && opts.GitIdentity.Complete()
+	hooksPath := ""
+	if opts.GitStripAttribution {
+		hooksPath = GitHooksDir
+	}
+	if readonlyLock {
+		if err := SetupGitIdentityReadonly(result.Manager, result.HomeDir, opts.GitIdentity, hooksPath); err != nil {
 			return fmt.Errorf("git.readonly: could not lock the commit identity read-only: %w", err)
 		}
 		opts.Logger("Git identity locked read-only (git.readonly): " + result.HomeDir + "/.gitconfig cannot be changed in-container")
@@ -1357,6 +1371,15 @@ func configureGitIdentity(result *SetupResult, opts SetupOptions) error {
 		}
 		SetupGitIdentityGuard(result.Manager, result.HomeDir, opts.Logger)
 		SetupGitIdentity(result.Manager, result.HomeDir, opts.GitIdentity, opts.Logger)
+	}
+	if opts.GitStripAttribution {
+		// The hook dir is needed on both paths; core.hooksPath is written live
+		// only on the writable path (the readonly mount already carries it).
+		SetupGitAttributionHook(result.Manager, result.HomeDir, opts.GitStripAttributionPatterns, !readonlyLock, opts.Logger)
+	} else if !readonlyLock {
+		// Converge a reused persistent container after strip_attribution was
+		// turned off: drop the stale core.hooksPath (best-effort).
+		RemoveGitAttributionHookConfig(result.Manager, result.HomeDir)
 	}
 	return nil
 }

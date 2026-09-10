@@ -48,33 +48,42 @@ func gitConfigQuote(s string) string {
 // renderReadonlyGitConfig produces the full ~/.gitconfig content for a locked
 // identity: the author fields plus user.useConfigOnly=true (the same fail-closed
 // guard COI would otherwise set live), so nothing else needs writing in-container.
-func renderReadonlyGitConfig(id GitIdentity) string {
-	return fmt.Sprintf(
+// A non-empty hooksPath additionally bakes in core.hooksPath — the readonly mount
+// blocks `git config --global`, so the attribution strip hook's config has to
+// ride in the mounted file itself.
+func renderReadonlyGitConfig(id GitIdentity, hooksPath string) string {
+	cfg := fmt.Sprintf(
 		"# Managed by coi (git.readonly): mounted read-only, do not edit.\n"+
 			"[user]\n\tname = %s\n\temail = %s\n\tuseConfigOnly = true\n",
 		gitConfigQuote(strings.TrimSpace(id.Name)),
 		gitConfigQuote(strings.TrimSpace(id.Email)),
 	)
+	if hooksPath != "" {
+		cfg += fmt.Sprintf("[core]\n\thooksPath = %s\n", gitConfigQuote(hooksPath))
+	}
+	return cfg
 }
 
 // readonlyGitConfigHostPath returns the host path COI writes the generated config
-// to, keyed on the identity so distinct identities never collide and the file is
-// stable across sessions. Lives under ~/.coi so it persists for the container's
-// life (an Incus disk device references it) and is not swept from /tmp.
-func readonlyGitConfigHostPath(hostHome string, id GitIdentity) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(id.Name) + "\x00" + strings.TrimSpace(id.Email)))
+// to, keyed on the identity AND the hooksPath so distinct configurations never
+// collide (two parallel slots differing only in strip_attribution must not race
+// on one file with different contents) and the file is stable across sessions.
+// Lives under ~/.coi so it persists for the container's life (an Incus disk
+// device references it) and is not swept from /tmp.
+func readonlyGitConfigHostPath(hostHome string, id GitIdentity, hooksPath string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(id.Name) + "\x00" + strings.TrimSpace(id.Email) + "\x00" + hooksPath))
 	name := hex.EncodeToString(sum[:])[:16] + ".gitconfig"
 	return filepath.Join(hostHome, ".coi", "git-identity", name)
 }
 
 // writeReadonlyGitConfigHostFile writes the generated config to the host and
 // returns its path.
-func writeReadonlyGitConfigHostFile(id GitIdentity) (string, error) {
+func writeReadonlyGitConfigHostFile(id GitIdentity, hooksPath string) (string, error) {
 	hostHome, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot resolve host home: %w", err)
 	}
-	hostPath := readonlyGitConfigHostPath(hostHome, id)
+	hostPath := readonlyGitConfigHostPath(hostHome, id, hooksPath)
 	dir := filepath.Dir(hostPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create git.readonly dir: %w", err)
@@ -89,7 +98,7 @@ func writeReadonlyGitConfigHostFile(id GitIdentity) (string, error) {
 	}
 	tmpName := tmp.Name()
 	defer os.Remove(tmpName) // no-op once the rename succeeds
-	if _, err := tmp.WriteString(renderReadonlyGitConfig(id)); err != nil {
+	if _, err := tmp.WriteString(renderReadonlyGitConfig(id, hooksPath)); err != nil {
 		tmp.Close()
 		return "", fmt.Errorf("failed to write git.readonly config: %w", err)
 	}
@@ -111,11 +120,13 @@ func writeReadonlyGitConfigHostFile(id GitIdentity) (string, error) {
 
 // SetupGitIdentityReadonly locks the identity by mounting a generated gitconfig
 // read-only at homeDir/.gitconfig. homeDir MUST be the container's resolved home
-// (/home/<code> or /root). The caller treats a returned error as fatal (fail
-// closed): if the user asked to lock the identity and we cannot, the session must
-// not proceed with a writable one.
-func SetupGitIdentityReadonly(mgr gitReadonlyMounter, homeDir string, id GitIdentity) error {
-	hostPath, err := writeReadonlyGitConfigHostFile(id)
+// (/home/<code> or /root). hooksPath, when non-empty, bakes core.hooksPath into
+// the mounted config (the attribution strip hook — a live `git config --global`
+// would fail against the read-only mount). The caller treats a returned error as
+// fatal (fail closed): if the user asked to lock the identity and we cannot, the
+// session must not proceed with a writable one.
+func SetupGitIdentityReadonly(mgr gitReadonlyMounter, homeDir string, id GitIdentity, hooksPath string) error {
+	hostPath, err := writeReadonlyGitConfigHostFile(id, hooksPath)
 	if err != nil {
 		return err
 	}

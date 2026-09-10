@@ -484,20 +484,43 @@ func shouldSuppressClaudeAutoMode(toolName, permissionMode string) bool {
 	return toolName == "claude" && permissionMode != "interactive"
 }
 
+// renderClaudeManagedSettings composes the managed-settings policy from the
+// enabled parts: disableAutoMode (auto-mode prompt suppression, #764) and
+// includeCoAuthoredBy=false (AI-attribution stripping at the source for
+// Claude, [git] strip_attribution — this also covers the two cases the
+// commit-msg hook cannot: repos with a local core.hooksPath and
+// `git commit --no-verify`). Returns "" when neither applies.
+func renderClaudeManagedSettings(suppressAutoMode, stripAttribution bool) string {
+	parts := []string{}
+	if suppressAutoMode {
+		parts = append(parts, `"disableAutoMode": "disable"`)
+	}
+	if stripAttribution {
+		parts = append(parts, `"includeCoAuthoredBy": false`)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "{" + strings.Join(parts, ", ") + "}\n"
+}
+
 // SetupClaudeManagedSettings writes /etc/claude-code/managed-settings.json
-// inside the container to disable the "Enable auto mode?" prompt that newer
-// Claude Code versions show at startup. The managed-settings path is the only
-// way to set disableAutoMode — it cannot be set via user settings.
-// Non-fatal: logs a warning on failure.
+// inside the container — Claude Code's highest-precedence settings tier, which
+// no user/project setting can override. Used for disableAutoMode (the only
+// place it can be set) and includeCoAuthoredBy. A no-op when no policy part is
+// enabled. Non-fatal: logs a warning on failure.
 // Accepts ContainerManager (not a sub-interface) because it uses both
 // ExecCommand (ContainerExecution) and CreateFileWithOwner (ContainerFiles).
-func SetupClaudeManagedSettings(mgr container.ContainerManager, logger func(string)) {
+func SetupClaudeManagedSettings(mgr container.ContainerManager, suppressAutoMode, stripAttribution bool, logger func(string)) {
+	content := renderClaudeManagedSettings(suppressAutoMode, stripAttribution)
+	if content == "" {
+		return
+	}
 	mkdirCmd := "mkdir -p /etc/claude-code"
 	if _, err := mgr.ExecCommand(mkdirCmd, container.ExecCommandOptions{Capture: true}); err != nil {
 		logger(fmt.Sprintf("Warning: Failed to create Claude managed settings directory: %v", err))
 		return
 	}
-	content := `{"disableAutoMode": "disable"}` + "\n"
 	// Root-owned and world-readable, applied atomically by the push: a plain
 	// CreateFile inherits the host temp file's 0600 mode and UID, which the
 	// container code user cannot read when the host UID differs (macOS 501,

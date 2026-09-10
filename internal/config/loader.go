@@ -365,6 +365,16 @@ func sanitizeUntrustedGit(g *GitConfig, path string) {
 	// only ever tightens — but identity behavior is trusted-scope by design).
 	g.SeedHostIdentity = nil
 	g.Readonly = nil
+	// Attribution stripping is trusted-scope in both directions, like the
+	// identity fields it protects: a cloned repo must control neither whether
+	// commits made in it keep AI attribution (false would re-enable trailers
+	// the operator chose to strip) nor which patterns get removed from
+	// messages (arbitrary line-deletion from every commit).
+	if g.StripAttribution != nil && !*g.StripAttribution {
+		warnUntrustedDowngrade(path, "git.strip_attribution")
+	}
+	g.StripAttribution = nil
+	g.StripAttributionPatterns = nil
 }
 
 // sanitizeUntrustedEnvCommands strips env_commands (and their timeout) from an
