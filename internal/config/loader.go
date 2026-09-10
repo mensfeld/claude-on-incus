@@ -188,6 +188,7 @@ func sanitizeUntrustedConfig(fileCfg *Config, path string) {
 	sanitizeUntrustedEnvCommands(&fileCfg.Defaults, path)
 	sanitizeUntrustedDefaultProfile(&fileCfg.Defaults, path)
 	sanitizeUntrustedSessionName(&fileCfg.Container, path)
+	sanitizeUntrustedDocker(&fileCfg.Container, path)
 	sanitizeUntrustedSecurity(&fileCfg.Security, path)
 	sanitizeUntrustedGit(&fileCfg.Git, path)
 	sanitizeUntrustedTool(&fileCfg.Tool, path)
@@ -311,6 +312,19 @@ func sanitizeUntrustedSecurity(s *SecurityConfig, path string) {
 		warnUntrustedDowngrade(path, "security.host_immutable")
 	}
 	s.HostImmutable = nil
+	if s.ReduceKernelSurface != nil && !*s.ReduceKernelSurface {
+		// Only false is a downgrade to warn about. Unlike [container] docker =
+		// false — a narrow tightening (nesting off) that IS honored from
+		// untrusted scope — reduce_kernel_surface is trusted-only in BOTH
+		// directions because its effect is broad: on top of disabling Docker it
+		// installs a security.syscalls.deny list (io_uring, bpf, userfaultfd,
+		// keyring) that can break legitimate NON-Docker workloads in the
+		// container. That blast radius, not merely "it turns Docker off", is
+		// why a cloned repo must not be able to impose it (or lift it). The
+		// strengthening true is therefore dropped silently.
+		warnUntrustedDowngrade(path, "security.reduce_kernel_surface")
+	}
+	s.ReduceKernelSurface = nil
 }
 
 // sanitizeUntrustedGit drops git settings that weaken protection or would let an
@@ -438,6 +452,23 @@ func sanitizeUntrustedSessionName(c *ContainerConfig, path string) {
 			"session name selects which persistent session a launch attaches to. "+
 			"Move it to ~/.coi/config.toml or a profile under ~/.coi/profiles to apply it.\n", path)
 	c.SessionName = ""
+}
+
+// sanitizeUntrustedDocker strips an untrusted `[container] docker = true`: a
+// cloned/agent-planted repo must not re-enable nesting and the wider kernel
+// surface that a trusted profile disabled. `docker = false` is a NARROW
+// tightening — it only turns off nesting/syscall-interception, with no effect
+// on ordinary in-container workloads — so it is honored from any scope, the
+// same as an add-only network restriction. (Contrast security.reduce_kernel_-
+// surface, which is trusted-only in both directions because its syscall deny
+// list has a far broader blast radius; see sanitizeUntrustedSecurity.) nil is
+// a no-op.
+func sanitizeUntrustedDocker(c *ContainerConfig, path string) {
+	if c == nil || c.Docker == nil || !*c.Docker {
+		return
+	}
+	warnUntrustedDowngrade(path, "container.docker")
+	c.Docker = nil
 }
 
 // sanitizeUntrustedNetwork drops security-downgrading network settings from an
@@ -662,6 +693,7 @@ func loadProfileDirectories(cfg *Config, configDir string, trusted bool) error {
 		if !trusted {
 			sanitizeUntrustedNetwork(profileCfg.Network, profileConfigPath)
 			sanitizeUntrustedSessionName(&profileCfg.Container, profileConfigPath)
+			sanitizeUntrustedDocker(&profileCfg.Container, profileConfigPath)
 			sanitizeUntrustedSecurity(profileCfg.Security, profileConfigPath)
 			sanitizeUntrustedGit(profileCfg.Git, profileConfigPath)
 			sanitizeUntrustedPrompts(profileCfg.Prompts, profileConfigPath)

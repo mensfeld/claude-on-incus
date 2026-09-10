@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## Unreleased
+
+### New Features
+
+- **Kernel attack-surface hardening: `[container] docker` and `[security] reduce_kernel_surface`** — Docker-in-container support (nesting + syscall interception) is now a flag instead of always-on: set `docker = false` when you don't need Docker, or go further with `reduce_kernel_surface = true` to also deny the syscall families behind most recent kernel escape chains (io_uring, bpf, userfaultfd, keyring) via `security.syscalls.deny`. Both default to today's behavior — Docker works out of the box. The built-in `hardened` profile enables the hardening and now also bounds sessions at 4 hours (`max_duration`) — the report's escape chains took 12+ hours of autonomous persistence; persistent containers converge to a changed setting on their next restart; an untrusted project config can disable docker but never re-enable it. Motivated by Trail of Bits' ["VMs won't contain cyber-capable agents"](https://blog.trailofbits.com/2026/08/26/vms-wont-contain-cyber-capable-agents/): the fewer kernel features a contained agent can reach, the smaller the escape surface.
+
+- **Freshness checks in `coi health`** — The health report now flags distribution lag, the other Trail of Bits takeaway: a `Kernel build age` check warns when the running kernel was built more than 6 months ago, a `Kernel mitigations` check warns when CPU side-channel mitigations are disabled on the kernel command line (`mitigations=off` and friends — the report's escape host ran exactly that), a `Distro support` check warns when the host distribution is past (or within 6 months of) its standard-support EOL, and the Incus check now recommends a recent version above the hard 6.1 minimum. All checks degrade gracefully to OK when the signal can't be read.
+
 ## 0.12.0 (2026-09-09)
 
 ### New Features

@@ -344,6 +344,7 @@ func mergeContainerInto(dst *ContainerConfig, src *ContainerConfig) {
 	mergeScalar(&dst.Alias, src.Alias)
 	mergeScalar(&dst.StaleBaseCheck, src.StaleBaseCheck)
 	mergeScalar(&dst.SessionName, src.SessionName)
+	mergePtr(&dst.Docker, src.Docker)
 	mergeBuildInto(&dst.Build, &src.Build)
 }
 
@@ -642,6 +643,7 @@ func mergeSecurityInto(dst *SecurityConfig, src *SecurityConfig) {
 	if len(src.SecretPaths) > 0 {
 		dst.SecretPaths = MergeStringSliceUnique(dst.SecretPaths, src.SecretPaths)
 	}
+	mergePtr(&dst.ReduceKernelSurface, src.ReduceKernelSurface)
 }
 
 func mergeTimezoneInto(dst *TimezoneConfig, src *TimezoneConfig) {

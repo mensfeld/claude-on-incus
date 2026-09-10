@@ -212,8 +212,13 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			// s.useShift is set by whichever hook runs (preStart or preRestart)
 			// before anything reads it.
 			logFn := stderrLogFn
+			hardening := a.hardeningPolicy()
+			warnDockerHardeningConflict(a.cfg)
 			preStart := func() error {
 				defer timing.Start(timing.CatStep, "pre-start-hook")()
+				// The kernel-surface policy is applied once at init by
+				// LaunchWithPreStartPolicy (below), before this hook runs — no
+				// second apply needed here.
 				// Detect a git worktree checkout (.git is a file → external git dirs)
 				// BEFORE the UID-mapping decision: the common dir is mounted as its
 				// own shift-carrying disk device, so its filesystem votes on that
@@ -264,6 +269,22 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			// workspace mount, re-resolve the worktree layout, strip those devices,
 			// and re-run the SAME security setup fresh launch uses (applySecurityMounts).
 			preRestart := func() error {
+				// Reconcile the kernel-surface policy while the container is
+				// stopped — the only window where security.nesting and the
+				// syscall deny list can change — so a persistent container
+				// converges to the current config (mirrors the shell reuse path).
+				// Fail-closed: abort the restart rather than boot a container
+				// whose hardening config could not be brought to the desired
+				// state. Skips the write when the config already matches.
+				changed, reconcileErr := container.ReconcileKernelSurfacePolicy(s.containerName, hardening)
+				if reconcileErr != nil {
+					return fmt.Errorf("could not reconcile docker/kernel-hardening settings: %w", reconcileErr)
+				}
+				if changed {
+					// Never silent: this rewrite also resets any manual `incus
+					// config set` hardening back to policy (mirrors setup.go).
+					logFn("Reconciled docker/kernel-hardening settings to the current config (any manual security.nesting/syscalls overrides were reset)")
+				}
 				s.containerWorkspace = mgr.GetWorkspacePath()
 				layout, wtErr := session.ResolveGitWorktree(s.absWorkspace)
 				if wtErr != nil {
@@ -318,7 +339,7 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			}
 
 			stopLaunch := timing.Start(timing.CatStep, "launch-or-reuse")
-			launchErr := launchOrReuseContainer(mgr, s.img, a.cfg.Container.StoragePool, s.containerName, containerExists, a.persistent, preStart, preRestart)
+			launchErr := launchOrReuseContainer(mgr, s.img, a.cfg.Container.StoragePool, s.containerName, containerExists, a.persistent, preStart, preRestart, hardening)
 			stopLaunch()
 			if launchErr != nil {
 				// No teardown on a failed launch: launchOrReuseContainer already
@@ -411,10 +432,17 @@ func (a *App) configureContainerRunPhase(s *runState) session.Phase {
 				return nil, session.AnnotateReadyTimeout(err, &a.cfg.Limits)
 			}
 
-			if !s.wasRestarted {
+			// Configure the Docker bridge CIDR whenever Docker is enabled — on
+			// reuse too, not only fresh launches: a persistent container flipped
+			// from docker=false to docker=true has no daemon.json yet, so gating
+			// on !wasRestarted would leave dockerd on its default 172.17/16
+			// bridge. The write is idempotent.
+			if a.hardeningPolicy().DockerEnabled() {
 				if err := session.ConfigureDockerDaemon(s.mgr, logFn); err != nil {
 					fmt.Fprintf(os.Stderr, "Warning: failed to configure Docker daemon: %v\n", err)
 				}
+			}
+			if !s.wasRestarted {
 				// Apply an explicit [limits.disk] tmpfs_size the same way the
 				// shell path does, so a profile's /tmp sizing applies to
 				// `coi run` too — the container is running now (#728/#769).
@@ -662,6 +690,13 @@ func (a *App) runPromptPhase(s *runState) session.Phase {
 				Persistent:          a.persistent,
 				ForwardedEnvVars:    resolveForwardedEnvVarNames(a.cfg.Defaults.ForwardEnv),
 				Logger:              stderrLogFn,
+				// The kernel-surface flags feed injectSandboxContext's Docker
+				// availability line; omitting them here (zero value = docker
+				// off) would make every headless run's context claim Docker is
+				// unavailable while the container actually has it (the launch
+				// phase applies the real policy). Mirrors phases_shell.go.
+				DockerSupport:       a.cfg.Container.IsDockerEnabled(),
+				ReduceKernelSurface: a.cfg.Security.IsReduceKernelSurfaceEnabled(),
 			}
 			if err := session.SeedToolConfigForRun(ctx, seedResult, seedOpts); err != nil {
 				return nil, err

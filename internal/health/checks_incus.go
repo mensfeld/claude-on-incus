@@ -82,6 +82,24 @@ func evaluateIncusVersion(versionOutput string) HealthCheck {
 		}
 	}
 
+	if !container.MeetsRecommendedVersion(v) {
+		// Advisory only — NOT a warning. The version meets COI's hard minimum
+		// (6.1) and works, so this must not flip the overall status to degraded
+		// or the exit code to 1: scripts that gate on `coi health` exit 0 run on
+		// supported hosts and would break. The recommendation rides along in the
+		// message/details for anyone reading the report.
+		return HealthCheck{
+			Name:   "incus",
+			Status: StatusOK,
+			Message: fmt.Sprintf("Running (version %s) — works, but %d.%d+ is recommended; distribution lag means older Incus may miss container-isolation fixes (https://github.com/zabbly/incus)",
+				versionStr, container.RecommendedIncusVersionMajor, container.RecommendedIncusVersionMinor),
+			Details: map[string]interface{}{
+				"version":     versionStr,
+				"recommended": fmt.Sprintf("%d.%d", container.RecommendedIncusVersionMajor, container.RecommendedIncusVersionMinor),
+			},
+		}
+	}
+
 	return HealthCheck{
 		Name:    "incus",
 		Status:  StatusOK,

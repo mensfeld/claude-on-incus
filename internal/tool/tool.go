@@ -428,6 +428,13 @@ type ContextInfo struct {
 	ToolName           string      // e.g., "claude", "aider"
 	ContainerName      string      // Incus container name
 	ProfileContext     string      // User-provided profile context content (from profile CONTEXT.md)
+	// DockerUnavailable is set when [container] docker is off or
+	// [security] reduce_kernel_surface is on, so the container has no
+	// Docker/nesting support. The zero value (false) means Docker IS
+	// available, preserving the historical default for callers that don't set
+	// it. When true, the context tells the agent Docker is unavailable instead
+	// of advertising Docker-in-Docker it cannot use.
+	DockerUnavailable bool
 }
 
 // withDefaults fills the fields setup leaves zero-valued (OS name, architecture)
@@ -498,6 +505,7 @@ type contextTemplateData struct {
 	HasGitAuth          bool
 	SSHAgentForwarded   bool
 	GHCLIAuthenticated  bool
+	DockerAvailable     bool
 }
 
 // RenderContextFileContent renders the embedded sandbox context template with
@@ -516,8 +524,12 @@ func RenderContextFileContent(info ContextInfo) string {
 		SSHDesc:         "Not available",
 		GitHubCLIDesc:   "Not authenticated",
 		DockerDesc:      "Available (Docker-in-Docker)",
+		DockerAvailable: !info.DockerUnavailable,
 		UserDesc:        "Non-root user (code)",
 		SudoDesc:        "Available via passwordless sudo",
+	}
+	if info.DockerUnavailable {
+		data.DockerDesc = "Not available (kernel-surface hardening disabled Docker/nesting for this session)"
 	}
 
 	if info.Persistent {
@@ -718,6 +730,7 @@ type SandboxContextJSON struct {
 
 	SSHAgentForwarded  bool              `json:"ssh_agent_forwarded"`
 	GHCLIAuthenticated bool              `json:"gh_cli_authenticated"`
+	DockerAvailable    bool              `json:"docker_available"`
 	ForwardedEnvVars   []string          `json:"forwarded_env_vars"`
 	ProtectedPaths     []string          `json:"protected_paths"`
 	ExtraMounts        []string          `json:"extra_mounts"` // container paths
@@ -799,6 +812,7 @@ func RenderContextFileJSON(info ContextInfo) (string, error) {
 		},
 		SSHAgentForwarded:  info.SSHAgentForwarded,
 		GHCLIAuthenticated: info.GHCLIAuthenticated,
+		DockerAvailable:    !info.DockerUnavailable,
 		ForwardedEnvVars:   nonNilStrings(info.ForwardedEnvVars),
 		ProtectedPaths:     nonNilStrings(info.ProtectedPaths),
 		ExtraMounts:        mounts,

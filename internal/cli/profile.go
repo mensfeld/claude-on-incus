@@ -582,6 +582,9 @@ func printProfileContainer(p *config.ProfileConfig) {
 		if p.Container.Persistent != nil {
 			fmt.Printf("persistent = %v\n", *p.Container.Persistent)
 		}
+		if p.Container.Docker != nil {
+			fmt.Printf("docker = %v\n", *p.Container.Docker)
+		}
 		if p.Container.StoragePool != "" {
 			fmt.Printf("storage_pool = %q\n", p.Container.StoragePool)
 		}
@@ -774,6 +777,9 @@ func printProfileSecurity(p *config.ProfileConfig) {
 		}
 		if len(p.Security.SecretPaths) > 0 {
 			fmt.Printf("secret_paths = [%s]\n", formatStringSlice(p.Security.SecretPaths))
+		}
+		if p.Security.ReduceKernelSurface != nil {
+			fmt.Printf("reduce_kernel_surface = %v\n", *p.Security.ReduceKernelSurface)
 		}
 	}
 }

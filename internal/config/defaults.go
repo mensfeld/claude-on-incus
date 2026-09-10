@@ -124,9 +124,8 @@ func synthesizeDefaultProfile(cfg *Config) ProfileConfig {
 
 // synthesizeHardenedProfile returns the built-in "hardened" profile: a hardened
 // preset for opening untrusted / freshly-cloned repositories. It bundles COI's
-// strongest EXISTING controls (no new enforcement, no in-shell policing) so
-// `coi shell --profile hardened` is a one-flag, maximally-safe way to inspect code
-// you don't trust.
+// strongest controls (no in-shell policing) so `coi shell --profile hardened`
+// is a one-flag, maximally-safe way to inspect code you don't trust.
 //
 // Unlike the "default" profile this is a FIXED baseline, not a clone of the
 // user's resolved config: it sets only the hardened overrides and lets every
@@ -140,7 +139,11 @@ func synthesizeHardenedProfile() ProfileConfig {
 	t, f := true, false
 	return ProfileConfig{
 		Source: "(built-in)",
-		// Ephemeral: nothing from a risky session persists.
+		// Ephemeral: nothing from a risky session persists. Docker/nesting is
+		// left off by reduce_kernel_surface below (the single hardening switch),
+		// so no explicit docker flag is needed here — and omitting it lets an
+		// explicit user `docker = true` surface the override warning rather than
+		// being silently masked.
 		Container: ContainerConfig{Persistent: &f},
 		// No exfil path: internet-only, block LAN + cloud metadata endpoints.
 		Network: &NetworkConfig{
@@ -158,6 +161,9 @@ func synthesizeHardenedProfile() ProfileConfig {
 		Security: &SecurityConfig{
 			HostImmutable: &t,
 			SecretPaths:   cloneSlice(HardenedProfileSecretPaths),
+			// Shrink the shared-kernel attack surface: no nesting, and the
+			// syscall families behind most recent kernel escape chains denied.
+			ReduceKernelSurface: &t,
 		},
 		// Catch in-container exfil / reverse-shell attempts and auto-respond.
 		Monitoring: &MonitoringConfig{
@@ -166,6 +172,12 @@ func synthesizeHardenedProfile() ProfileConfig {
 			AutoKillOnCritical: &t,
 			NFT:                NFTMonitoringConfig{Enabled: &t},
 		},
+		// Bound the session: the Trail of Bits agent-escape report's chains
+		// took 12+ hours of autonomous persistence — a hardened session for an
+		// untrusted repo should not run unattended for that long. auto_stop
+		// defaults to true, so this alone arms the shutdown timer; users who
+		// need longer can override max_duration in their own config/profile.
+		Limits: &LimitsConfig{Runtime: RuntimeLimits{MaxDuration: "4h"}},
 	}
 }
 

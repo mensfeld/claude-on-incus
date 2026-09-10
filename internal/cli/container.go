@@ -35,8 +35,14 @@ var containerLaunchCmd = &cobra.Command{
 			return err
 		}
 
+		// Honor [container] docker / [security] reduce_kernel_surface from the
+		// loaded config (app.cfg is populated by PersistentPreRunE), so `coi
+		// container launch` doesn't silently give a hardened setup the full
+		// Docker/nesting surface.
+		policy := app.hardeningPolicy()
+		warnDockerHardeningConflict(app.cfg)
 		mgr := container.NewManager(name)
-		if err := mgr.Launch(image, ephemeral, pool); err != nil {
+		if err := mgr.LaunchWithPolicy(image, ephemeral, pool, policy); err != nil {
 			return fmt.Errorf("failed to launch container: %v", err)
 		}
 
