@@ -190,14 +190,6 @@ func (c *ContainerConfig) IsDockerEnabled() bool {
 	return *c.Docker
 }
 
-// EffectiveDockerEnabled resolves the docker/hardening conflict: when
-// [security] reduce_kernel_surface is on it wins over [container] docker
-// (nesting is part of the surface being reduced). Callers that want to warn
-// about an explicit docker=true being overridden check the fields directly.
-func (c *Config) EffectiveDockerEnabled() bool {
-	return c.Container.IsDockerEnabled() && !c.Security.IsReduceKernelSurfaceEnabled()
-}
-
 // HasContainerConfig reports whether any field is set.
 func (c *ContainerConfig) HasContainerConfig() bool {
 	return c.Image != "" ||

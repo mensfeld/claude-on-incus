@@ -42,14 +42,14 @@ func TestHardenedProfile_HardensResolvedConfig(t *testing.T) {
 	if !BoolVal(cfg.Monitoring.Enabled) || !BoolVal(cfg.Monitoring.NFT.Enabled) {
 		t.Error("monitoring + nft monitoring should be enabled")
 	}
-	if cfg.Container.IsDockerEnabled() {
-		t.Error("docker support should be forced off")
-	}
 	if !cfg.Security.IsReduceKernelSurfaceEnabled() {
 		t.Error("reduce_kernel_surface should be true")
 	}
-	if cfg.EffectiveDockerEnabled() {
-		t.Error("effective docker should resolve to off")
+	// The hardened profile expresses docker-off through reduce_kernel_surface
+	// (the single hardening switch), not an explicit docker flag — so the raw
+	// [container] docker stays unset while effective docker resolves to off.
+	if effectiveDocker := cfg.Container.IsDockerEnabled() && !cfg.Security.IsReduceKernelSurfaceEnabled(); effectiveDocker {
+		t.Error("effective docker should resolve to off under the hardened profile")
 	}
 
 	// secret_paths must be a UNION: the user's own entry kept, plus the preset's.

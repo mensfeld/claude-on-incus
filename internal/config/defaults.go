@@ -139,9 +139,12 @@ func synthesizeHardenedProfile() ProfileConfig {
 	t, f := true, false
 	return ProfileConfig{
 		Source: "(built-in)",
-		// Ephemeral: nothing from a risky session persists. Docker support off:
-		// no nesting/syscall-intercept surface for an untrusted repo's code.
-		Container: ContainerConfig{Persistent: &f, Docker: &f},
+		// Ephemeral: nothing from a risky session persists. Docker/nesting is
+		// left off by reduce_kernel_surface below (the single hardening switch),
+		// so no explicit docker flag is needed here — and omitting it lets an
+		// explicit user `docker = true` surface the override warning rather than
+		// being silently masked.
+		Container: ContainerConfig{Persistent: &f},
 		// No exfil path: internet-only, block LAN + cloud metadata endpoints.
 		Network: &NetworkConfig{
 			Mode:                    NetworkModeRestricted,

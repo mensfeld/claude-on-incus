@@ -15,9 +15,6 @@ func TestKernelSurface_Defaults(t *testing.T) {
 	if cfg.Security.IsReduceKernelSurfaceEnabled() {
 		t.Error("reduce_kernel_surface should default to disabled")
 	}
-	if !cfg.EffectiveDockerEnabled() {
-		t.Error("effective docker should default to enabled")
-	}
 }
 
 func TestKernelSurface_TOMLParse(t *testing.T) {
@@ -40,13 +37,18 @@ reduce_kernel_surface = true
 	}
 }
 
-// reduce_kernel_surface wins over an explicit docker=true.
+// reduce_kernel_surface wins over an explicit docker=true. The raw flags are
+// kept as set (that's the config layer's job); the precedence is resolved by
+// container.HardeningPolicy.DockerEnabled, mirrored inline here since the config
+// package cannot import container. The App/session layers build the policy from
+// exactly these two accessors.
 func TestKernelSurface_HardeningWinsOverDocker(t *testing.T) {
 	yes := true
 	cfg := GetDefaultConfig()
 	cfg.Container.Docker = &yes
 	cfg.Security.ReduceKernelSurface = &yes
-	if cfg.EffectiveDockerEnabled() {
+	effectiveDocker := cfg.Container.IsDockerEnabled() && !cfg.Security.IsReduceKernelSurfaceEnabled()
+	if effectiveDocker {
 		t.Error("reduce_kernel_surface=true must disable docker even when docker=true is explicit")
 	}
 }
