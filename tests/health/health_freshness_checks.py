@@ -1,9 +1,11 @@
 """
-Test for coi health freshness checks (kernel build age, distro EOL).
+Test for coi health freshness/posture checks (kernel build age, kernel
+mitigations, distro EOL).
 
 Tests that:
-1. coi health --format json includes the kernel_build_age and distro_eol checks
-2. Both degrade gracefully (any of ok/warning, never a crash/failed)
+1. coi health --format json includes the kernel_build_age, kernel_mitigations,
+   and distro_eol checks
+2. All degrade gracefully (any of ok/warning, never a crash/failed)
 3. They render under the SYSTEM category in text output
 """
 
@@ -25,7 +27,7 @@ def test_health_freshness_checks_present(coi_binary):
     data = json.loads(result.stdout)
     checks = data["checks"]
 
-    for name in ("kernel_build_age", "distro_eol"):
+    for name in ("kernel_build_age", "kernel_mitigations", "distro_eol"):
         assert name in checks, f"health report should include the {name} check"
         # Freshness signals advise, they never fail the report outright.
         assert checks[name]["status"] in ("ok", "warning"), (
@@ -49,4 +51,7 @@ def test_health_freshness_checks_in_system_category(coi_binary):
     for header in ("CRITICAL", "NETWORKING"):
         system_section = system_section.split(header, 1)[0]
     assert "Kernel build age" in system_section, "kernel_build_age should render under SYSTEM"
+    assert "Kernel mitigations" in system_section, (
+        "kernel_mitigations should render under SYSTEM"
+    )
     assert "Distro support" in system_section, "distro_eol should render under SYSTEM"

@@ -172,6 +172,12 @@ func synthesizeHardenedProfile() ProfileConfig {
 			AutoKillOnCritical: &t,
 			NFT:                NFTMonitoringConfig{Enabled: &t},
 		},
+		// Bound the session: the Trail of Bits agent-escape report's chains
+		// took 12+ hours of autonomous persistence — a hardened session for an
+		// untrusted repo should not run unattended for that long. auto_stop
+		// defaults to true, so this alone arms the shutdown timer; users who
+		// need longer can override max_duration in their own config/profile.
+		Limits: &LimitsConfig{Runtime: RuntimeLimits{MaxDuration: "4h"}},
 	}
 }
 

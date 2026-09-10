@@ -45,6 +45,9 @@ func TestHardenedProfile_HardensResolvedConfig(t *testing.T) {
 	if !cfg.Security.IsReduceKernelSurfaceEnabled() {
 		t.Error("reduce_kernel_surface should be true")
 	}
+	if cfg.Limits.Runtime.MaxDuration != "4h" {
+		t.Errorf("hardened profile should bound the session (max_duration=4h), got %q", cfg.Limits.Runtime.MaxDuration)
+	}
 	// The hardened profile expresses docker-off through reduce_kernel_surface
 	// (the single hardening switch), not an explicit docker flag — so the raw
 	// [container] docker stays unset while effective docker resolves to off.
