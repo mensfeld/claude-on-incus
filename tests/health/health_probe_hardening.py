@@ -80,10 +80,15 @@ def test_health_probes_honor_reduce_kernel_surface(coi_binary, cleanup_container
     )
 
     observed = {}  # probe name -> (nesting, deny)
+    samples = []  # rolling `incus list` snapshots for failure diagnostics
     try:
-        # Poll fast while the health run is alive; each probe lives seconds.
+        # Poll while the health run is alive; each probe lives seconds. No
+        # sleep — the incus list roundtrip (~50-100ms) is the throttle.
         while proc.poll() is None:
-            for name in _list_running_probe_containers():
+            names = _list_running_probe_containers()
+            if names and (not samples or samples[-1][1] != names):
+                samples.append((time.time(), names))
+            for name in names:
                 if name in observed:
                     continue
                 rc_n, nesting = _expanded_get(name, "security.nesting")
@@ -92,7 +97,6 @@ def test_health_probes_honor_reduce_kernel_surface(coi_binary, cleanup_container
                 # complete reads of a container that was RUNNING at list time.
                 if rc_n == 0 and rc_d == 0:
                     observed[name] = (nesting, deny)
-            time.sleep(0.1)
         stdout, stderr = proc.communicate(timeout=30)
     finally:
         if proc.poll() is None:
@@ -104,11 +108,26 @@ def test_health_probes_honor_reduce_kernel_surface(coi_binary, cleanup_container
     data = json.loads(stdout)
     assert "checks" in data
 
-    assert observed, (
-        "no probe container was observed while coi health ran — the probes "
-        "may have been skipped (no Incus?) or the polling missed them; "
-        f"stderr:\n{stderr[-2000:]}"
-    )
+    if not observed:
+        # Self-diagnose: what did the probe checks themselves report, and what
+        # did `incus list` show while polling?
+        probe_results = {
+            k: {"status": v.get("status"), "message": v.get("message")}
+            for k, v in data["checks"].items()
+            if k
+            in (
+                "container_connectivity",
+                "network_restriction",
+                "secret_masking",
+                "host_credential_isolation",
+            )
+        }
+        raise AssertionError(
+            "no RUNNING probe container was observed while coi health ran.\n"
+            f"probe check results: {json.dumps(probe_results, indent=2)}\n"
+            f"running-probe list samples seen: {samples}\n"
+            f"stderr tail:\n{stderr[-2000:]}"
+        )
     for name, (nesting, deny) in observed.items():
         assert nesting.lower() not in ("true", "1", "yes", "on"), (
             f"probe {name} booted with security.nesting={nesting!r} despite "

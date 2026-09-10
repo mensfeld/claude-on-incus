@@ -1001,12 +1001,21 @@ class TestAutomatedResponse:
                 f"Container should be auto-killed, still {get_container_state(container_name)!r}"
             )
 
-            # The copy is made before the kill completes, so it must already exist.
+            # The rename happens before the kill completes, so it must exist.
             copies = self._forensic_copies(container_name)
-            assert copies, (
-                f"expected a {container_name}-forensics-* copy to survive the kill, "
-                "got none (forensics_on_kill defaults to true)"
-            )
+            if not copies:
+                # Diagnose: the responder reports forensic failures to the
+                # session stderr log — surface it in the assertion output.
+                logs = ""
+                for log in (Path.home() / ".coi" / "logs").glob(f"{container_name}*"):
+                    try:
+                        logs += f"\n--- {log} ---\n" + log.read_text()[-3000:]
+                    except OSError:
+                        pass
+                raise AssertionError(
+                    f"expected a {container_name}-forensics-* container to survive the "
+                    f"kill, got none (forensics_on_kill defaults to true).{logs}"
+                )
             # A copy of a running container lands STOPPED (disk snapshot, not live
             # state) and non-ephemeral — i.e. it did NOT get auto-deleted on stop.
             for row in copies:

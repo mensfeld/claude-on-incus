@@ -268,7 +268,23 @@ func (r *Responder) killContainer(ctx context.Context) error {
 		return fmt.Errorf("failed to stop container: %w", err)
 	}
 
-	// Clean up firewall and NFT monitoring rules BEFORE deleting container
+	// Preserve (rename) IMMEDIATELY after the stop, before the firewall
+	// cleanups below: stopping the container also ends the attached session,
+	// whose own teardown then races to delete the (now stopped, no longer
+	// ephemeral) container — every millisecond between stop and rename widens
+	// that window. Once renamed, the teardown's delete of the ORIGINAL name is
+	// a harmless "not found". The rename of a stopped container is instant; a
+	// failed rename falls back to delete so the kill's contract (the container
+	// is GONE under its name) always holds.
+	if forensicName != "" {
+		if _, renameErr := container.IncusOutputContext(ctx, "rename", r.containerName, forensicName); renameErr != nil {
+			r.reportError(fmt.Errorf("failed to preserve forensic container (deleting instead): %w", renameErr))
+			forensicName = ""
+		}
+	}
+
+	// Clean up firewall and NFT monitoring rules (keyed on the captured IP,
+	// not the container name, so the rename above does not affect them).
 	if containerIP != "" {
 		if err := r.cleanupNftRules(containerIP); err != nil {
 			// Log warning but don't fail the kill operation
@@ -280,19 +296,14 @@ func (r *Responder) killContainer(ctx context.Context) error {
 		}
 	}
 
-	// Preserve (rename) or delete. The rename only runs on a stopped
-	// container, so it is instant; a failed rename falls back to delete so
-	// the kill's contract (the container is GONE under its name) always holds.
-	if forensicName != "" {
-		if _, renameErr := container.IncusOutputContext(ctx, "rename", r.containerName, forensicName); renameErr != nil {
-			r.reportError(fmt.Errorf("failed to preserve forensic container (deleting instead): %w", renameErr))
-			forensicName = ""
-		}
-	}
 	if forensicName == "" {
-		_, err = container.IncusOutputContext(ctx, "delete", r.containerName)
-		if err != nil {
-			return fmt.Errorf("failed to delete container: %w", err)
+		// Tolerate "not found": for an ephemeral container the session
+		// teardown (or, historically, the ephemeral auto-delete) may have
+		// removed it already — the kill's goal state is reached either way.
+		if out, delErr := container.IncusOutputWithStderrContext(ctx, "delete", r.containerName); delErr != nil {
+			if !strings.Contains(strings.ToLower(delErr.Error()+" "+out), "not found") {
+				return fmt.Errorf("failed to delete container: %w", delErr)
+			}
 		}
 	}
 
