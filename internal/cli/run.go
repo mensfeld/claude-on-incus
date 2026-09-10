@@ -268,8 +268,9 @@ func (a *App) resolvePromptMode(cmd *cobra.Command, s *runState, args []string) 
 }
 
 // launchOrReuseContainer restarts an existing persistent container, or
-// recreates / creates a fresh one on the given storage pool.
-func launchOrReuseContainer(mgr container.ContainerManager, img, pool, containerName string, containerExists, persistent bool, preStart, preRestart func() error) error {
+// recreates / creates a fresh one on the given storage pool. policy is the
+// resolved kernel-surface policy, applied once at init on the fresh path.
+func launchOrReuseContainer(mgr container.ContainerManager, img, pool, containerName string, containerExists, persistent bool, preStart, preRestart func() error, policy container.HardeningPolicy) error {
 	if containerExists && persistent {
 		// Fail fast on an already-running container (another session may own
 		// it). Master's plain Start() errored here; StartWithIsolationFallback's
@@ -319,7 +320,7 @@ func launchOrReuseContainer(mgr container.ContainerManager, img, pool, container
 	// raw.idmap for the workspace UID mapping (#530) and every disk device, so
 	// idmap-incompatible device filesystems fail the START where the isolation
 	// fallback covers them (#534).
-	if err := mgr.LaunchWithPreStart(img, ephemeral, pool, preStart); err != nil {
+	if err := mgr.LaunchWithPreStartPolicy(img, ephemeral, pool, preStart, policy); err != nil {
 		// Best-effort cleanup of the half-created container: a preStart/start
 		// failure leaves it behind stopped and half-configured (stopped
 		// ephemeral containers are only auto-deleted after having run, and a

@@ -216,14 +216,9 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			warnDockerHardeningConflict(a.cfg)
 			preStart := func() error {
 				defer timing.Start(timing.CatStep, "pre-start-hook")()
-				// Apply a non-default kernel-surface policy ([container] docker /
-				// [security] reduce_kernel_surface) between init and first start —
-				// the launch path applied the default (docker on) at init.
-				if hardening != container.DefaultHardeningPolicy() {
-					if err := container.ApplyKernelSurfacePolicy(s.containerName, hardening); err != nil {
-						return fmt.Errorf("failed to apply kernel-surface policy: %w", err)
-					}
-				}
+				// The kernel-surface policy is applied once at init by
+				// LaunchWithPreStartPolicy (below), before this hook runs — no
+				// second apply needed here.
 				// Detect a git worktree checkout (.git is a file → external git dirs)
 				// BEFORE the UID-mapping decision: the common dir is mounted as its
 				// own shift-carrying disk device, so its filesystem votes on that
@@ -278,8 +273,11 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 				// stopped — the only window where security.nesting and the
 				// syscall deny list can change — so a persistent container
 				// converges to the current config (mirrors the shell reuse path).
-				if err := container.ApplyKernelSurfacePolicy(s.containerName, hardening); err != nil {
-					logFn(fmt.Sprintf("Warning: could not reconcile docker/kernel-hardening settings: %v", err))
+				// Fail-closed: abort the restart rather than boot a container
+				// whose hardening config could not be brought to the desired
+				// state. Skips the write when the config already matches.
+				if _, err := container.ReconcileKernelSurfacePolicy(s.containerName, hardening); err != nil {
+					return fmt.Errorf("could not reconcile docker/kernel-hardening settings: %w", err)
 				}
 				s.containerWorkspace = mgr.GetWorkspacePath()
 				layout, wtErr := session.ResolveGitWorktree(s.absWorkspace)
@@ -335,7 +333,7 @@ func (a *App) launchContainerRunPhase(s *runState) session.Phase {
 			}
 
 			stopLaunch := timing.Start(timing.CatStep, "launch-or-reuse")
-			launchErr := launchOrReuseContainer(mgr, s.img, a.cfg.Container.StoragePool, s.containerName, containerExists, a.persistent, preStart, preRestart)
+			launchErr := launchOrReuseContainer(mgr, s.img, a.cfg.Container.StoragePool, s.containerName, containerExists, a.persistent, preStart, preRestart, hardening)
 			stopLaunch()
 			if launchErr != nil {
 				// No teardown on a failed launch: launchOrReuseContainer already
@@ -428,12 +426,17 @@ func (a *App) configureContainerRunPhase(s *runState) session.Phase {
 				return nil, session.AnnotateReadyTimeout(err, &a.cfg.Limits)
 			}
 
-			if !s.wasRestarted {
-				if a.hardeningPolicy().Docker {
-					if err := session.ConfigureDockerDaemon(s.mgr, logFn); err != nil {
-						fmt.Fprintf(os.Stderr, "Warning: failed to configure Docker daemon: %v\n", err)
-					}
+			// Configure the Docker bridge CIDR whenever Docker is enabled — on
+			// reuse too, not only fresh launches: a persistent container flipped
+			// from docker=false to docker=true has no daemon.json yet, so gating
+			// on !wasRestarted would leave dockerd on its default 172.17/16
+			// bridge. The write is idempotent.
+			if a.hardeningPolicy().DockerEnabled() {
+				if err := session.ConfigureDockerDaemon(s.mgr, logFn); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to configure Docker daemon: %v\n", err)
 				}
+			}
+			if !s.wasRestarted {
 				// Apply an explicit [limits.disk] tmpfs_size the same way the
 				// shell path does, so a profile's /tmp sizing applies to
 				// `coi run` too — the container is running now (#728/#769).

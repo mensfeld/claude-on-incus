@@ -591,12 +591,21 @@ func LaunchContainerPersistent(imageAlias, containerName, pool string) error {
 
 // LaunchContainerWithPreStart is LaunchContainer/LaunchContainerPersistent with
 // an optional preStart hook that runs AFTER `incus init` (+ config flags) but
-// BEFORE the container is started. This is where start-time-only instance
+// BEFORE the container is started. It applies the DEFAULT hardening policy;
+// callers that honor [container] docker / [security] reduce_kernel_surface use
+// LaunchContainerWithPreStartPolicy instead. A nil preStart is a no-op.
+func LaunchContainerWithPreStart(imageAlias, containerName, pool string, ephemeral bool, preStart func() error) error {
+	return LaunchContainerWithPreStartPolicy(imageAlias, containerName, pool, ephemeral, preStart, DefaultHardeningPolicy())
+}
+
+// LaunchContainerWithPreStartPolicy is LaunchContainerWithPreStart with an
+// explicit kernel-surface policy applied once at init (before first boot, as
+// the seccomp profile requires). This is where start-time-only instance
 // settings such as raw.idmap must be applied (issue #530): the run pipeline
 // needs the workspace UID mapping set before first boot, and `incus launch`
 // would start too early. A nil preStart is a no-op.
-func LaunchContainerWithPreStart(imageAlias, containerName, pool string, ephemeral bool, preStart func() error) error {
-	if err := initAndConfigureContainer(imageAlias, containerName, pool, ephemeral, preStart); err != nil {
+func LaunchContainerWithPreStartPolicy(imageAlias, containerName, pool string, ephemeral bool, preStart func() error, policy HardeningPolicy) error {
+	if err := initAndConfigureContainer(imageAlias, containerName, pool, ephemeral, preStart, policy); err != nil {
 		return err
 	}
 	// Non-fatal: unset and retry at start time if the environment lacks subuid space.
@@ -627,7 +636,7 @@ func LaunchContainerWithPreStart(imageAlias, containerName, pool string, ephemer
 			// prove that, and an idmapped-mount failure (#678) is a different
 			// class entirely (#716).
 			fmt.Fprintf(os.Stderr, "Warning: container start failed; recreating without UID namespace isolation and retrying\n")
-			recreateErr := initConfigureAndStart(imageAlias, containerName, pool, true, preStart)
+			recreateErr := initConfigureAndStart(imageAlias, containerName, pool, true, preStart, policy)
 			// The recreate's start (a plain `incus start`) can soft-fail —
 			// forkstart exits non-zero though the container came up — on the same
 			// nested/CI hosts the initial start does; treat a running container as
@@ -667,10 +676,12 @@ func LaunchContainerWithPreStart(imageAlias, containerName, pool string, ephemer
 	return nil
 }
 
-// initAndConfigureContainer creates a container, applies the required config
-// flags, and runs the optional preStart hook (used for start-time-only settings
-// like raw.idmap) before the caller starts the container.
-func initAndConfigureContainer(imageAlias, containerName, pool string, ephemeral bool, preStart func() error) error {
+// initAndConfigureContainer creates a container, applies the kernel-surface
+// policy and other required config flags, and runs the optional preStart hook
+// (used for start-time-only settings like raw.idmap) before the caller starts
+// the container. The policy is applied once here, before first boot, so no
+// caller needs to patch it on afterward.
+func initAndConfigureContainer(imageAlias, containerName, pool string, ephemeral bool, preStart func() error, policy HardeningPolicy) error {
 	args := []string{"init", imageAlias, containerName}
 	if ephemeral {
 		args = append(args, "--ephemeral")
@@ -681,7 +692,7 @@ func initAndConfigureContainer(imageAlias, containerName, pool string, ephemeral
 	if err := IncusExec(args...); err != nil {
 		return err
 	}
-	if err := EnableDockerSupport(containerName); err != nil {
+	if err := ApplyKernelSurfacePolicy(containerName, policy); err != nil {
 		return err
 	}
 	if err := DisableGuestAPI(containerName); err != nil {
@@ -698,24 +709,11 @@ func initAndConfigureContainer(imageAlias, containerName, pool string, ephemeral
 
 // initConfigureAndStart creates, configures, and starts a container without
 // security.idmap.isolated — used as the isolation-unsupported fallback path.
-func initConfigureAndStart(imageAlias, containerName, pool string, ephemeral bool, preStart func() error) error {
-	if err := initAndConfigureContainer(imageAlias, containerName, pool, ephemeral, preStart); err != nil {
+func initConfigureAndStart(imageAlias, containerName, pool string, ephemeral bool, preStart func() error, policy HardeningPolicy) error {
+	if err := initAndConfigureContainer(imageAlias, containerName, pool, ephemeral, preStart, policy); err != nil {
 		return err
 	}
 	return IncusExec("start", containerName)
-}
-
-// EnableDockerSupport configures the container to support Docker/nested
-// containers (the historical default policy). The flags it sets — and the
-// pre-first-boot requirement — live in hardening.go; session paths that honor
-// [container] docker / [security] reduce_kernel_surface call
-// ApplyKernelSurfacePolicy with their resolved policy instead.
-//
-// Note: If an error occurs during configuration, the container may be left in a
-// partially configured state with some but not all flags set. Future troubleshooting
-// should verify all four settings are properly configured if Docker isn't working.
-func EnableDockerSupport(containerName string) error {
-	return ApplyKernelSurfacePolicy(containerName, DefaultHardeningPolicy())
 }
 
 // DisableGuestAPI prevents the Incus guest API (/dev/incus) from being

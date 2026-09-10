@@ -51,9 +51,12 @@ func TestCheckIncus_VersionCheck(t *testing.T) {
 		t.Fatalf("Version from CheckIncus (%q) should be parseable: %v", versionStr, err)
 	}
 
-	if container.MeetsRecommendedVersion(v) {
+	if container.MeetsMinimumVersion(v) {
+		// At or above the hard minimum the check is StatusOK — including the
+		// [6.1, recommended) band, which only adds an advisory note so `coi
+		// health` exit 0 is preserved on supported hosts.
 		if result.Status != StatusOK {
-			t.Errorf("Version %s meets the recommended floor but status is %s: %s", versionStr, result.Status, result.Message)
+			t.Errorf("Version %s meets the minimum but status is %s: %s", versionStr, result.Status, result.Message)
 		}
 		if !strings.Contains(result.Message, versionStr) {
 			t.Errorf("Message should contain version %q, got %q", versionStr, result.Message)
@@ -100,9 +103,9 @@ func TestEvaluateIncusVersion_OldVersion(t *testing.T) {
 			"zabbly",
 		},
 		{
-			"6.1 meets the minimum but warns about the recommended floor",
+			"6.1 meets the minimum; recommended-floor note stays StatusOK (must not flip exit code)",
 			"Client version: 6.1\nServer version: 6.1",
-			StatusWarning,
+			StatusOK,
 			"recommended",
 		},
 		{

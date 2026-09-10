@@ -91,9 +91,29 @@ func TestEvaluateDistroEOL(t *testing.T) {
 	if c.Status != StatusOK {
 		t.Errorf("supported distro should be OK, got %s: %s", c.Status, c.Message)
 	}
-	// oldstable note: a newer release exists in the table.
-	if c := evaluateDistroEOL(osReleaseUbuntu2004, now); c.Details["newer_release"] == nil {
-		t.Error("expected newer_release detail for an oldstable release")
+	// oldstable note: newer_release must be the NEWEST release, chosen
+	// deterministically (not a random map-order entry). For 20.04 that is 26.04,
+	// and it must be identical across repeated calls.
+	first := evaluateDistroEOL(osReleaseUbuntu2004, now).Details["newer_release"]
+	if first != "26.04" {
+		t.Errorf("newer_release = %v, want the newest release 26.04", first)
+	}
+	for i := 0; i < 50; i++ {
+		if got := evaluateDistroEOL(osReleaseUbuntu2004, now).Details["newer_release"]; got != first {
+			t.Fatalf("newer_release is nondeterministic: %v then %v", first, got)
+		}
+	}
+
+	// The NEWEST release in the table must never report itself as a newer
+	// release: 26.04 is the latest Ubuntu entry, so newer_release stays unset.
+	if got := evaluateDistroEOL("ID=ubuntu\nVERSION_ID=\"26.04\"\n", now).Details["newer_release"]; got != nil {
+		t.Errorf("newest release must not report a newer_release, got %v", got)
+	}
+	// Debian dates track END OF STANDARD (security-team) support, not the later
+	// LTS end: Debian 12's security support ends mid-2026, so a check in 2027
+	// must warn — not report "supported" off an LTS date.
+	if c := evaluateDistroEOL("ID=debian\nVERSION_ID=\"12\"\n", time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)); c.Status != StatusWarning {
+		t.Errorf("Debian 12 in 2027 should warn (standard support ended mid-2026), got %s: %s", c.Status, c.Message)
 	}
 	// Approaching-EOL window: within 6 months of the cutoff.
 	nearEOL := time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC) // 22.04 EOL 2027-06-01

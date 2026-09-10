@@ -631,6 +631,47 @@ func TestRenderContextFileContent(t *testing.T) {
 	}
 }
 
+// When Docker is disabled (docker=false or reduce_kernel_surface=true), the
+// context must NOT advertise Docker-in-Docker the agent can't use — otherwise
+// it burns turns debugging a dockerd that cannot start (finding: sandbox
+// context Docker desc).
+func TestRenderContextFileContent_DockerUnavailable(t *testing.T) {
+	info := ContextInfo{
+		WorkspacePath:     "/workspace",
+		HomeDir:           "/home/code",
+		NetworkMode:       "restricted",
+		DockerUnavailable: true,
+	}
+	content := RenderContextFileContent(info)
+
+	if strings.Contains(content, "Docker-in-Docker") {
+		t.Error("hardened context must not advertise Docker-in-Docker")
+	}
+	if !strings.Contains(content, "Not available") {
+		t.Errorf("Docker row should say Not available, got:\n%s", content)
+	}
+	// The pre-installed-tools line and the docker troubleshooting bullet must
+	// be gated out too.
+	if strings.Contains(content, "Docker not responding") {
+		t.Error("hardened context must omit the docker troubleshooting bullet")
+	}
+
+	// JSON contract must report it too.
+	jsonStr, err := RenderContextFileJSON(info)
+	if err != nil {
+		t.Fatalf("RenderContextFileJSON: %v", err)
+	}
+	if !strings.Contains(jsonStr, "\"docker_available\": false") {
+		t.Errorf("JSON should report docker_available:false, got:\n%s", jsonStr)
+	}
+
+	// Default (zero value) still advertises Docker — back-compat.
+	def := RenderContextFileContent(ContextInfo{WorkspacePath: "/w", HomeDir: "/h", NetworkMode: "open"})
+	if !strings.Contains(def, "Docker-in-Docker") {
+		t.Error("default context should still advertise Docker-in-Docker")
+	}
+}
+
 func TestRenderContextFileContent_Persistent(t *testing.T) {
 	info := ContextInfo{
 		WorkspacePath: "/workspace",

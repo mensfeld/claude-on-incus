@@ -1,5 +1,10 @@
 package container
 
+import (
+	"fmt"
+	"strings"
+)
+
 // HardeningPolicy selects how much kernel-facing surface a container gets.
 // The zero value is maximally hardened; DefaultHardeningPolicy() preserves the
 // historical behavior (Docker support on).
@@ -20,6 +25,10 @@ type HardeningPolicy struct {
 // no syscall denies.
 func DefaultHardeningPolicy() HardeningPolicy { return HardeningPolicy{Docker: true} }
 
+// DockerEnabled resolves the docker/hardening conflict: ReduceKernelSurface
+// wins over Docker (nesting is part of the surface being reduced).
+func (p HardeningPolicy) DockerEnabled() bool { return p.Docker && !p.ReduceKernelSurface }
+
 // KernelSurfaceDenySyscalls is the security.syscalls.deny value applied by
 // ReduceKernelSurface: io_uring, bpf, userfaultfd, and the kernel keyring —
 // the syscall families behind most recent container-escape/LPE chains, none
@@ -29,63 +38,108 @@ func DefaultHardeningPolicy() HardeningPolicy { return HardeningPolicy{Docker: t
 // always supports the key.
 const KernelSurfaceDenySyscalls = "io_uring_setup io_uring_enter io_uring_register bpf userfaultfd keyctl add_key request_key"
 
-// configOp is one incus `config set`/`config unset` operation.
-type configOp struct {
-	set   bool
-	key   string
-	value string // set only
+// kernelSurfaceKeys are the instance config keys ApplyKernelSurfacePolicy owns.
+// Every launch/reconcile writes ALL of them (a wanted key to its value, an
+// unwanted key to "") so re-applying a changed policy to an existing stopped
+// container converges instead of leaking the previous policy's settings. An
+// empty value removes the key (Incus treats `config set key=` as unset), so
+// the whole policy applies in ONE `incus config set` — atomic and fail-closed.
+var kernelSurfaceKeys = []string{
+	"security.nesting",
+	"security.syscalls.intercept.mknod",
+	"security.syscalls.intercept.setxattr",
+	"linux.sysctl.net.ipv4.ip_unprivileged_port_start",
+	"security.syscalls.deny",
 }
 
-// dockerSupportKeys are the instance config keys that make up Docker/nested
-// container support. Kept together so hardeningOps sets and unsets the exact
-// same list and a policy flip converges on persistent-container reuse.
-var dockerSupportKeys = []configOp{
-	// Enable container nesting for Docker support.
-	{set: true, key: "security.nesting", value: "true"},
-	// Syscall interception: safe device node creation / filesystem attributes.
-	{set: true, key: "security.syscalls.intercept.mknod", value: "true"},
-	{set: true, key: "security.syscalls.intercept.setxattr", value: "true"},
-	// Allow unprivileged port binding and prevent runc sysctl permission
-	// errors: newer runc (1.3.x) writes this sysctl via a detached procfs
-	// mount, which AppArmor blocks in nested containers (#187).
-	{set: true, key: "linux.sysctl.net.ipv4.ip_unprivileged_port_start", value: "0"},
-}
-
-// hardeningOps returns the ordered config operations realizing the policy.
-// Every key the policy does not want is explicitly unset (not merely left
-// alone) so re-applying a changed policy to an existing (stopped) container
-// converges instead of leaking the previous session's settings.
-func hardeningOps(p HardeningPolicy) []configOp {
-	docker := p.Docker && !p.ReduceKernelSurface
-	ops := make([]configOp, 0, len(dockerSupportKeys)+1)
-	for _, op := range dockerSupportKeys {
-		op.set = docker
-		ops = append(ops, op)
+// hardeningConfigArgs returns the `key=value` pairs realizing the policy: the
+// four Docker-support keys set to their values (or "" to unset) per
+// DockerEnabled, and security.syscalls.deny set to the deny list (or "") per
+// ReduceKernelSurface. Every key in kernelSurfaceKeys appears exactly once so
+// the result fully specifies the policy.
+func hardeningConfigArgs(p HardeningPolicy) []string {
+	docker := "" // "" unsets the key
+	if p.DockerEnabled() {
+		docker = "true"
 	}
+	lowPort := ""
+	if p.DockerEnabled() {
+		lowPort = "0"
+	}
+	deny := ""
 	if p.ReduceKernelSurface {
-		ops = append(ops, configOp{set: true, key: "security.syscalls.deny", value: KernelSurfaceDenySyscalls})
-	} else {
-		ops = append(ops, configOp{set: false, key: "security.syscalls.deny"})
+		deny = KernelSurfaceDenySyscalls
 	}
-	return ops
+	return []string{
+		"security.nesting=" + docker,
+		"security.syscalls.intercept.mknod=" + docker,
+		"security.syscalls.intercept.setxattr=" + docker,
+		"linux.sysctl.net.ipv4.ip_unprivileged_port_start=" + lowPort,
+		"security.syscalls.deny=" + deny,
+	}
 }
 
 // ApplyKernelSurfacePolicy applies (or re-applies) the hardening policy to a
-// container. Like the Docker flags it replaces, this must run before the
-// container's first boot so the kernel loads the correct seccomp profile —
-// setting security.nesting or security.syscalls.deny on a running container
-// is rejected or racy. It is idempotent: call it again on a STOPPED persistent
-// container to converge it to a changed policy. Unsets of absent keys are
-// tolerated (IncusExecQuiet).
+// container in a single `incus config set`. Like the Docker flags it replaces,
+// this must run before the container's first boot so the kernel loads the
+// correct seccomp profile — setting security.nesting or security.syscalls.deny
+// on a running container is rejected or racy. It is idempotent: call it again
+// on a STOPPED persistent container to converge it to a changed policy. Unlike
+// the previous per-key implementation it is FAIL-CLOSED — a failed write
+// returns an error (the caller must decide, e.g. abort the launch) rather than
+// silently leaving a hardened config partly applied.
 func ApplyKernelSurfacePolicy(containerName string, p HardeningPolicy) error {
-	for _, op := range hardeningOps(p) {
-		if op.set {
-			if err := IncusExec("config", "set", containerName, op.key+"="+op.value); err != nil {
-				return err
-			}
-		} else {
-			_ = IncusExecQuiet("config", "unset", containerName, op.key)
+	args := append([]string{"config", "set", containerName}, hardeningConfigArgs(p)...)
+	return IncusExec(args...)
+}
+
+// ReadKernelSurfaceConfig returns the EXPANDED (profile-inherited plus
+// instance-local) values of the keys ApplyKernelSurfacePolicy owns. Expanded
+// config is what actually takes effect, so a mismatch check against it never
+// spuriously fires for a value a container inherits from an attached Incus
+// profile. A key absent from the config maps to "" in the result. Uses `incus
+// config get --expanded`, which — unlike `incus query` — accepts the --project
+// flag COI injects into every invocation.
+func ReadKernelSurfaceConfig(containerName string) (map[string]string, error) {
+	result := make(map[string]string, len(kernelSurfaceKeys))
+	for _, key := range kernelSurfaceKeys {
+		v, err := IncusOutput("config", "get", "--expanded", containerName, key)
+		if err != nil {
+			return nil, fmt.Errorf("read %s from %s: %w", key, containerName, err)
+		}
+		result[key] = v
+	}
+	return result, nil
+}
+
+// ReconcileKernelSurfacePolicy converges an existing STOPPED container to the
+// policy, but only when its current (expanded) config does not already match —
+// so a reuse that changes nothing performs no writes and, crucially, cannot
+// clobber a deny list or nesting value the container already carries. Returns
+// whether a change was made. Fail-closed: a read or write failure is returned
+// so the caller can abort rather than start a container whose kernel-surface
+// config is unknown or half-applied.
+func ReconcileKernelSurfacePolicy(containerName string, p HardeningPolicy) (changed bool, err error) {
+	current, err := ReadKernelSurfaceConfig(containerName)
+	if err != nil {
+		return false, err
+	}
+	if KernelSurfaceMatches(current, p) {
+		return false, nil
+	}
+	return true, ApplyKernelSurfacePolicy(containerName, p)
+}
+
+// KernelSurfaceMatches reports whether current (as returned by
+// ReadKernelSurfaceConfig) already realizes the policy, so a reconcile can
+// skip the write — avoiding both wasted `config set` calls and clobbering a
+// container whose config already matches. A missing key reads as "".
+func KernelSurfaceMatches(current map[string]string, p HardeningPolicy) bool {
+	for _, kv := range hardeningConfigArgs(p) {
+		key, want, _ := strings.Cut(kv, "=")
+		if strings.TrimSpace(current[key]) != want {
+			return false
 		}
 	}
-	return nil
+	return true
 }

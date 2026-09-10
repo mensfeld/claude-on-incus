@@ -107,26 +107,24 @@ func CheckKernelBuildAge() HealthCheck {
 			Message: "Could not read /proc/version",
 		}
 	}
-	check := evaluateKernelBuildAge(string(content), time.Now())
-	if _, parsed := parseKernelBuildDate(string(content)); !parsed {
-		// The UTS version string is capped at 64 bytes, so kernels with long
-		// banners (e.g. Ubuntu HWE "#30~24.04.1-Ubuntu SMP ...") lose the
-		// trailing year. Fall back to the installed modules directory's
-		// mtime, which tracks when this kernel build landed on the host.
-		if release, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
-			modulesDir := "/lib/modules/" + strings.TrimSpace(string(release))
-			if fi, err := os.Stat(modulesDir); err == nil { //nolint:gosec // G703: path component is the kernel's own release string, not user input
-				return evaluateKernelBuildTime(fi.ModTime(), time.Now())
-			}
-		}
-	}
-	return check
+	// Only the /proc/version build date is used. A tempting fallback —
+	// /lib/modules/<release> directory mtime — is deliberately NOT used: depmod
+	// (run by every DKMS module install/upgrade) rewrites that directory, so its
+	// mtime tracks the last module change, not the kernel build, and would
+	// report a stale kernel as freshly built. When the date can't be parsed
+	// (e.g. a long banner truncated the UTS version string) the check reports
+	// "could not determine" rather than a wrong-but-confident answer.
+	return evaluateKernelBuildAge(string(content), time.Now())
 }
 
-// distroEOL is the end of STANDARD security support (not paid/extended
-// support) for the distributions COI commonly runs on. Small and static on
-// purpose: unknown entries simply return OK, and the dates only need to be
-// right to the month.
+// distroEOL is the end of STANDARD security support — the point at which the
+// distro's security team stops issuing backports — NOT paid/extended/LTS
+// support (which continues for limited architectures via separate teams). This
+// is the honest "backports have stopped" line the staleness check is about.
+// For Ubuntu that is the standard-support end (5 years for LTS); for Debian it
+// is the security-team handoff to the LTS team (~1 year after the next release),
+// which is EARLIER than the LTS end dates. Small and static on purpose: unknown
+// entries return OK, and the dates only need to be right to the month.
 var distroEOL = map[string]map[string]time.Time{
 	"ubuntu": {
 		"20.04": time.Date(2025, 5, 31, 0, 0, 0, 0, time.UTC),
@@ -135,9 +133,10 @@ var distroEOL = map[string]map[string]time.Time{
 		"26.04": time.Date(2031, 5, 31, 0, 0, 0, 0, time.UTC),
 	},
 	"debian": {
-		"11": time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC),
-		"12": time.Date(2028, 6, 30, 0, 0, 0, 0, time.UTC),
-		"13": time.Date(2030, 6, 30, 0, 0, 0, 0, time.UTC),
+		// Security-team support ends (LTS-team handoff), not the later LTS end.
+		"11": time.Date(2024, 8, 14, 0, 0, 0, 0, time.UTC),
+		"12": time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC),
+		"13": time.Date(2028, 6, 30, 0, 0, 0, 0, time.UTC),
 	},
 }
 
@@ -186,13 +185,22 @@ func evaluateDistroEOL(osRelease string, now time.Time) HealthCheck {
 		"version": versionID,
 		"eol":     eol.Format("2006-01-02"),
 	}
-	// Note when a newer release of the same distro is in the table: running
-	// "oldstable" means backports arrive later than for the current release.
+	// Note the NEWEST release of the same distro when this one is older: running
+	// "oldstable" means backports arrive later than for the current release. Pick
+	// the single newest deterministically (highest EOL date, version string as a
+	// stable tie-break) rather than the first later entry Go's randomized map
+	// order happens to yield, so the reported release doesn't flap run-to-run.
+	newest, newestEOL := "", eol
 	for v, otherEOL := range versions {
-		if otherEOL.After(eol) {
-			details["newer_release"] = v
-			break
+		if v == versionID {
+			continue // never report the running release as newer than itself
 		}
+		if otherEOL.After(newestEOL) || (otherEOL.Equal(newestEOL) && v > newest) {
+			newest, newestEOL = v, otherEOL
+		}
+	}
+	if newest != "" {
+		details["newer_release"] = newest
 	}
 
 	switch {

@@ -43,14 +43,16 @@ func (a *App) sessionName() string {
 	return a.cfg.Container.SessionName
 }
 
-// hardeningPolicy resolves [container] docker and [security]
-// reduce_kernel_surface into the container-level kernel-surface policy.
+// hardeningPolicy builds the container-level kernel-surface policy from
+// [container] docker and [security] reduce_kernel_surface. It passes the raw
+// flags; the precedence ("reduce_kernel_surface wins") is resolved in exactly
+// one place, HardeningPolicy.DockerEnabled.
 func (a *App) hardeningPolicy() container.HardeningPolicy {
 	if a.cfg == nil {
 		return container.DefaultHardeningPolicy()
 	}
 	return container.HardeningPolicy{
-		Docker:              a.cfg.EffectiveDockerEnabled(),
+		Docker:              a.cfg.Container.IsDockerEnabled(),
 		ReduceKernelSurface: a.cfg.Security.IsReduceKernelSurfaceEnabled(),
 	}
 }

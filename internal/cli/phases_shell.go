@@ -404,7 +404,7 @@ func (a *App) configureSessionPhase(cmd *cobra.Command, s *shellState) session.P
 				Timezone:              resolvedTimezone,
 				Alias:                 a.cfg.Container.Alias,
 				ReadyTimeout:          a.cfg.Container.ReadyTimeoutSeconds(),
-				DockerSupport:         a.cfg.EffectiveDockerEnabled(),
+				DockerSupport:         a.cfg.Container.IsDockerEnabled(),
 				ReduceKernelSurface:   a.cfg.Security.IsReduceKernelSurfaceEnabled(),
 			}
 			warnDockerHardeningConflict(a.cfg)

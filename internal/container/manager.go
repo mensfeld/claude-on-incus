@@ -49,18 +49,31 @@ func NewManager(containerName string) *Manager {
 }
 
 // Launch creates a new container from an image on the given storage pool.
-// An empty pool falls back to Incus's default pool.
+// An empty pool falls back to Incus's default pool. Applies the default
+// hardening policy (Docker on); use LaunchWithPolicy to honor config.
 func (m *Manager) Launch(image string, ephemeral bool, pool string) error {
-	if ephemeral {
-		return LaunchContainer(image, m.ContainerName, pool)
-	}
-	return LaunchContainerPersistent(image, m.ContainerName, pool)
+	return m.LaunchWithPolicy(image, ephemeral, pool, DefaultHardeningPolicy())
+}
+
+// LaunchWithPolicy is Launch with an explicit kernel-surface policy applied
+// before first boot, so callers with config in scope (e.g. `coi container
+// launch`) can honor [container] docker / [security] reduce_kernel_surface.
+func (m *Manager) LaunchWithPolicy(image string, ephemeral bool, pool string, policy HardeningPolicy) error {
+	return LaunchContainerWithPreStartPolicy(image, m.ContainerName, pool, ephemeral, nil, policy)
 }
 
 // LaunchWithPreStart launches the container, running preStart after init/config
 // but before start (for start-time-only settings like raw.idmap; see #530).
+// Applies the default hardening policy; use LaunchWithPreStartPolicy to honor config.
 func (m *Manager) LaunchWithPreStart(image string, ephemeral bool, pool string, preStart func() error) error {
 	return LaunchContainerWithPreStart(image, m.ContainerName, pool, ephemeral, preStart)
+}
+
+// LaunchWithPreStartPolicy is LaunchWithPreStart with an explicit kernel-surface
+// policy applied once before first boot (used by the run pipeline so a hardened
+// config is honored without a second reconcile pass).
+func (m *Manager) LaunchWithPreStartPolicy(image string, ephemeral bool, pool string, preStart func() error, policy HardeningPolicy) error {
+	return LaunchContainerWithPreStartPolicy(image, m.ContainerName, pool, ephemeral, preStart, policy)
 }
 
 // Stop stops the container
